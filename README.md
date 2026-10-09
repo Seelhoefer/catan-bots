@@ -73,6 +73,11 @@ linken Panel sichtbar.
 - Die Partie wird automatisch im Browser gespeichert und kann im Menü fortgesetzt werden.
 - Bot-Tempo (🐢 / 🚶 / ⚡) oben rechts einstellbar.
 
+## Grafiken
+
+Spielfiguren, Rohstoffe, Räuber-Dieb, Pokal und die Entwicklungskarten sind illustriert (siehe `public/assets/README.md`).
+Fehlen die Bilder, nutzt das Spiel automatisch flache Vektor-Icons.
+
 ## Projektstruktur
 
 ```

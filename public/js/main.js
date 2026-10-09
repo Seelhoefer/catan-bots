@@ -13,7 +13,10 @@ import {
   renderHand, renderOpps, renderTurn, renderDock, renderDice, renderMissionBox, renderLogBox, renderHeroRoll,
 } from './ui/panels.js';
 import { renderMarket, suggestTrade } from './ui/market.js';
-import { floatGain, flyCards, showDiceHero } from './ui/fx.js';
+import {
+  floatGain, flyCards, showDiceHero, showCardHero,
+} from './ui/fx.js';
+import { preloadArt } from './ui/assets.js';
 import {
   devModal, tokensModal, discardModal, stealModal, logModal,
   rulesModal, gameOverModal, closeTopModal, closeAllModals, confirmDialog, hasModal,
@@ -29,6 +32,7 @@ const sum = (o) => RES.reduce((a, r) => a + (o[r] || 0), 0);
 class App {
   constructor() {
     installIcons();
+    preloadArt().then((ok) => { if (ok) this.queueRender(); });
     this.game = null;
     this.mode = null; // 'road' | 'settlement' | 'city' | 'harvest'
     this.pumping = false;
@@ -161,9 +165,14 @@ class App {
       case 'mission':
         this.toastHTML(`${ic(missionById(e.id).icon, 'inline')} ${esc(name(e.pi))} erfüllt „${missionById(e.id).name}“ (+1 Siegpunkt)`, 'big');
         break;
-      case 'devplay':
-        if (e.pi !== HUMAN) this.toastHTML(`${esc(name(e.pi))} spielt ${ic(DEV_INFO[e.card].icon, 'inline')} ${DEV_INFO[e.card].name}`, 'info');
+      case 'devbuy':
+        if (e.pi === HUMAN) showCardHero(e.card, `Neue Karte: <b>${DEV_INFO[e.card].name}</b>`, 2600);
         break;
+      case 'devplay': {
+        const ms = showCardHero(e.card, `${e.pi === HUMAN ? 'Du spielst' : `${esc(name(e.pi))} spielt`} <b>${DEV_INFO[e.card].name}</b>`, 2300 * Math.max(0.6, this.sf));
+        if (e.pi !== HUMAN) this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + ms - 300);
+        break;
+      }
       case 'harvest': this.flash([e.hex], 2400); break;
       case 'steal':
         if (e.from === HUMAN) this.toastHTML(`${esc(name(e.to))} hat dir 1${ic(e.res, 'inline')} gestohlen`, 'warn');
@@ -243,8 +252,7 @@ class App {
       }
       case 'buy-dev': {
         this.mode = null;
-        const r = this.act('buyDevCard', HUMAN);
-        if (r.ok) this.toastHTML(`Neue Karte: ${ic(DEV_INFO[r.card].icon, 'inline')} ${DEV_INFO[r.card].name}`, 'big');
+        this.act('buyDevCard', HUMAN);
         break;
       }
       case 'skip-roads': this.act('skipRoadBuilding', HUMAN); break;

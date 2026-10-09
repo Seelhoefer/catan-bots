@@ -570,3 +570,40 @@ table.score tr.win td { background: var(--surface); font-weight: 700; }
   .me b { display: none; }
   .me { padding-right: 3px; }
 }
+
+/* ==========================================================================
+   Illustrierte Grafiken (Community Asset Pack)
+   ========================================================================== */
+.ic.img { width: 1.3em; height: 1.3em; object-fit: contain; fill: none; vertical-align: -0.3em; user-select: none; }
+.ic.inline.img { width: 1.3em; height: 1.3em; vertical-align: -0.3em; }
+.rsq .ic.img, .rsq.lg .ic.img { width: 86%; height: 86%; filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+.rchip.vp .ic.img { width: 26px; height: 26px; }
+.vp-big .ic.img { width: 56px; height: 56px; }
+.piece-img { filter: drop-shadow(0 .035px .045px rgba(0,0,0,.55)); }
+.hex-art { filter: drop-shadow(0 .03px .04px rgba(0,0,0,.45)); pointer-events: none; }
+.hex.flip .hex-art { animation: flip .8s ease-out; transform-box: fill-box; transform-origin: center; }
+.hex.remap .hex-art { animation: remap 1s ease-in-out var(--d); transform-box: fill-box; transform-origin: center; }
+
+/* Entwicklungskarten */
+.devcard { display: block; width: 100%; height: auto; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.45); user-select: none; }
+.cardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px 16px; padding: 6px 0 2px; }
+.cardslot { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.cardslot.dim .devcard { filter: grayscale(.5) brightness(.75); }
+.cs-img { position: relative; }
+.cs-count { position: absolute; top: -8px; right: -8px; background: var(--ivory); color: var(--ivory-ink); font-weight: 800; border-radius: 99px; padding: 2px 9px; font-size: 13px; box-shadow: var(--shadow); }
+.cs-note { text-align: center; color: var(--muted); font-size: var(--fs-xs); }
+.harvest-card { aspect-ratio: 2 / 3; background: linear-gradient(160deg, #f7e9c4, #ead6a2); border: 5px solid #1e3a68; outline: 2px solid #c9a24a; outline-offset: -9px; display: flex; flex-direction: column; padding: 16px 12px 12px; color: #1b2740; text-align: center; font-family: Georgia, 'Times New Roman', serif; }
+.hc-title { background: #fbf0d0; border: 2px solid #1e3a68; border-radius: 6px; font-weight: 800; font-size: 1.15em; padding: 4px 0; }
+.hc-art { flex: 1; display: grid; place-items: center; margin: 8px 0; border-radius: 8px; background: radial-gradient(circle at 50% 40%, #fdf3d6, #e1c98a); border: 1px solid rgba(30,58,104,.3); overflow: hidden; }
+.hc-art img { width: 78%; }
+.hc-text { font-size: .72em; line-height: 1.35; }
+.cardhero { position: fixed; inset: 0; z-index: 58; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; background: radial-gradient(circle at 50% 50%, rgba(4,10,18,.7), rgba(4,10,18,.15) 70%); animation: fade .25s ease-out; transition: opacity .35s; }
+.cardhero.out { opacity: 0; }
+.ch-card { width: min(270px, 56vw); animation: cardIn .6s cubic-bezier(.2,1.2,.4,1); filter: drop-shadow(0 24px 40px rgba(0,0,0,.6)); }
+.ch-card .devcard { box-shadow: 0 0 0 2px rgba(255,255,255,.18); border-radius: 14px; }
+.ch-cap { margin-top: 16px; font-size: 20px; text-shadow: 0 2px 12px rgba(0,0,0,.7); animation: fade .6s ease-out; }
+@keyframes cardIn { from { opacity: 0; transform: translateY(40px) rotateY(80deg) scale(.6); } }
+
+.modal-art { display: block; margin: 0 auto; width: 110px; height: auto; filter: drop-shadow(0 8px 14px rgba(0,0,0,.5)); }
+.modal-art.small { width: 64px; margin-bottom: 6px; }
+.modal-art.trophy { width: 130px; }

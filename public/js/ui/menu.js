@@ -4,6 +4,7 @@ import { generateBoard, hexCorner } from '../engine/board.js';
 import { makeRng } from '../engine/rng.js';
 import { el, ic, esc } from './dom.js';
 import { avatarSVG } from './avatars.js';
+import { piece, resImg } from './assets.js';
 
 const KEY = 'catan-settings-v1';
 const LAST_KEY = 'catan-last-v1';
@@ -33,20 +34,25 @@ function heroArt() {
   const board = generateBoard('small', 'classic', makeRng(11));
   const hexes = board.hexes.map((h) => {
     const pts = h.verts.map((vid) => { const v = board.vertices[vid]; return `${(h.x + (v.x - h.x) * 0.96).toFixed(2)},${(h.y + (v.y - h.y) * 0.96).toFixed(2)}`; }).join(' ');
-    const ico = h.type === 'desert' ? 'dune' : h.type;
     const num = h.num
       ? `<g transform="translate(${h.x},${h.y + 0.18})"><circle r=".34" fill="#f6efdc"/><text y="0.12" text-anchor="middle" font-size=".36" font-weight="800" font-family="Georgia,serif" fill="${h.num === 6 || h.num === 8 ? '#c62828' : '#3a2f1c'}">${h.num}</text></g>` : '';
     return `<polygon points="${pts}" fill="${TERRAIN_FILL[h.type]}" stroke="rgba(0,0,0,.25)" stroke-width=".04"/>
-      <use href="#i-${ico}" x="${h.x - 0.27}" y="${h.y - (h.num ? 0.78 : 0.45)}" width="${h.num ? 0.54 : 0.9}" height="${h.num ? 0.54 : 0.9}" style="color:rgba(255,255,255,.55)"/>${num}`;
+      ${h.type === 'desert'
+    ? `<use href="#i-dune" x="${h.x - 0.45}" y="${h.y - 0.45}" width=".9" height=".9" style="color:rgba(255,255,255,.55)"/>`
+    : `<image href="${resImg(h.type)}" x="${h.x - 0.36}" y="${h.y - 0.97}" width=".72" height=".72"/>`}${num}`;
   }).join('');
   const picks = [[14, 0], [40, 1], [30, 2], [50, 3]];
   const pieces = picks.map(([vid, pi]) => {
     const v = board.vertices[vid];
     const w = board.vertices[v.adj[0]];
-    const col = PLAYER_COLORS[pi].hex;
-    return `<line x1="${v.x}" y1="${v.y}" x2="${(v.x + w.x) / 2}" y2="${(v.y + w.y) / 2}" stroke="rgba(0,0,0,.6)" stroke-width=".22" stroke-linecap="round"/>
-      <line x1="${v.x}" y1="${v.y}" x2="${(v.x + w.x) / 2}" y2="${(v.y + w.y) / 2}" stroke="${col}" stroke-width=".14" stroke-linecap="round"/>
-      <path transform="translate(${v.x},${v.y})" d="M-0.2,0.17 L-0.2,-0.05 L0,-0.25 L0.2,-0.05 L0.2,0.17 Z" fill="${col}" stroke="rgba(0,0,0,.7)" stroke-width=".05"/>`;
+    const col = PLAYER_COLORS[pi];
+    let ang = (Math.atan2(w.y - v.y, w.x - v.x) * 180) / Math.PI;
+    while (ang >= 90) ang -= 180;
+    while (ang < -90) ang += 180;
+    const mx = (v.x + w.x) / 2;
+    const my = (v.y + w.y) / 2;
+    return `<image href="${piece(col.id, 'road')}" transform="translate(${mx} ${my}) rotate(${ang + 25.7})" x="-.4" y="-.4" width=".8" height=".79"/>
+      <image href="${piece(col.id, 'settlement')}" x="${v.x - 0.34}" y="${v.y - 0.45}" width=".65" height=".65"/>`;
   }).join('');
   const b = board.bounds;
   const pad = 0.8;

@@ -1,4 +1,5 @@
 // Einheitliches Icon-Set (gefüllte Glyphen, 24×24, currentColor) als SVG-Sprite.
+import { art, ICON_IMAGE } from './assets.js';
 
 const ICONS = {
   // Rohstoffe
@@ -50,6 +51,7 @@ const EMOJI = {
 const EMOJI_RE = new RegExp(Object.keys(EMOJI).sort((a, b) => b.length - a.length).join('|'), 'g');
 
 export function ic(name, cls = '') {
+  if (art.ok && ICON_IMAGE[name]) return `<img class="ic img ${cls}" src="${ICON_IMAGE[name]}" alt="" draggable="false">`;
   return `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 }
 

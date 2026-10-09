@@ -1,5 +1,8 @@
 // SVG-Darstellung des Spielfelds inkl. Zoom/Pan und anklickbarer Positionen.
 import { RES_INFO } from '../engine/constants.js';
+import {
+  art, COLOR_ID, piece, resImg, IMG, PIECE_BOX, ROAD_BOX,
+} from './assets.js';
 
 const TERRAIN = {
   wood: { grad: ['#3f9467', '#256a47'] },
@@ -16,6 +19,35 @@ const PIPCOUNT = { 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 8: 5, 9: 4, 10: 3, 11: 2, 12: 1
 const ROBBER = '<ellipse cx="0" cy="0.28" rx="0.2" ry="0.07" fill="rgba(0,0,0,.35)"/><path d="M-0.17,0.28 Q-0.2,-0.05 0,-0.12 Q0.2,-0.05 0.17,0.28 Z" fill="#20242c" stroke="#000" stroke-width="0.02"/><circle cx="0" cy="-0.2" r="0.11" fill="#20242c" stroke="#000" stroke-width="0.02"/>';
 const HOUSE = 'M-0.2,0.17 L-0.2,-0.05 L0,-0.25 L0.2,-0.05 L0.2,0.17 Z';
 const CITY = 'M-0.3,0.2 L-0.3,-0.06 L-0.1,-0.06 L-0.1,-0.26 L0.05,-0.4 L0.2,-0.26 L0.2,-0.02 L0.32,-0.02 L0.32,0.2 Z';
+
+
+/** Illustrierte Siedlung/Stadt: Boden des sichtbaren Inhalts sitzt knapp unter der Ecke. */
+function pieceImage(kind, hex, vx, vy, extra = '') {
+  const b = PIECE_BOX[kind];
+  const w = (b.w * b.target) / b.b;
+  const h = (b.h * b.target) / b.b;
+  const x = vx - ((b.l + b.r) / 2 / b.w) * w;
+  const y = vy + (kind === 'city' ? 0.26 : 0.22) - (b.b / b.h) * h;
+  return `<image href="${piece(COLOR_ID[hex] || 'blue', kind)}" x="${x.toFixed(3)}" y="${y.toFixed(3)}" width="${w.toFixed(3)}" height="${h.toFixed(3)}" class="piece-img" ${extra}/>`;
+}
+
+/** Straße als gedrehter Balken, an die Kante (a→b) angepasst. */
+function roadImage(hex, a, b, extra = '') {
+  let ang = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+  while (ang >= 90) ang -= 180;
+  while (ang < -90) ang += 180;
+  const rot = ang - ROAD_BOX.axisDeg;
+  const w = (ROAD_BOX.w * ROAD_BOX.target) / ROAD_BOX.length;
+  const h = (ROAD_BOX.h * ROAD_BOX.target) / ROAD_BOX.length;
+  const mx = (a.x + b.x) / 2;
+  const my = (a.y + b.y) / 2;
+  return `<image href="${piece(COLOR_ID[hex] || 'blue', 'road')}" transform="translate(${mx.toFixed(3)} ${my.toFixed(3)}) rotate(${rot.toFixed(1)})" x="${(-w / 2).toFixed(3)}" y="${(-h / 2).toFixed(3)}" width="${w.toFixed(3)}" height="${h.toFixed(3)}" class="piece-img road-img" ${extra}/>`;
+}
+
+const THIEF_W = 0.6;
+function thiefImage(extra = '') {
+  return `<image href="${IMG.thief}" x="${-THIEF_W / 2}" y="${0.34 - THIEF_W * 1.024}" width="${THIEF_W}" height="${THIEF_W * 1.024}" class="piece-img" ${extra}/>`;
+}
 
 export class BoardView {
   constructor(svg, onPick) {
@@ -183,12 +215,16 @@ export class BoardView {
       out.push(`<g class="hex${fresh}${remap}${hitHexes.has(h.id) ? ' hit' : ''}" data-hid="${h.id}" style="--d:${(h.id % 7) * 40}ms">`);
       out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#g-${h.fog ? 'fog' : h.type})" class="hexpoly" stroke="rgba(0,0,0,.28)" stroke-width="0.04"/>`);
       if (h.fog) {
-        out.push(`<use href="#i-cloud" x="${h.x - 0.5}" y="${h.y - 0.62}" width="1" height="1" class="hex-ico fogico"/>`);
-        out.push(`<text x="${h.x}" y="${h.y + 0.62}" class="fog-q">?</text>`);
+        if (art.ok) out.push(`<image href="${IMG.wild}" x="${h.x - 0.55}" y="${h.y - 0.55}" width="1.1" height="1.1" class="hex-art" opacity=".92"/>`);
+        else {
+          out.push(`<use href="#i-cloud" x="${h.x - 0.5}" y="${h.y - 0.62}" width="1" height="1" class="hex-ico fogico"/>`);
+          out.push(`<text x="${h.x}" y="${h.y + 0.62}" class="fog-q">?</text>`);
+        }
       } else if (h.type === 'desert') {
         out.push(`<use href="#i-dune" x="${h.x - 0.5}" y="${h.y - 0.5}" width="1" height="1" class="hex-ico"/>`);
       } else {
-        out.push(`<use href="#i-${h.type}" x="${h.x - 0.28}" y="${h.y - 0.8}" width="0.56" height="0.56" class="hex-ico"/>`);
+        if (art.ok) out.push(`<image href="${resImg(h.type)}" x="${h.x - 0.36}" y="${h.y - 0.97}" width="0.72" height="0.72" class="hex-art"/>`);
+        else out.push(`<use href="#i-${h.type}" x="${h.x - 0.28}" y="${h.y - 0.8}" width="0.56" height="0.56" class="hex-ico"/>`);
         const red = h.num === 6 || h.num === 8;
         out.push(`<g transform="translate(${h.x},${h.y + 0.17})" class="token"><circle r="0.36" fill="#f6efdc" stroke="#cdb27a" stroke-width="0.03"/>`);
         out.push(`<text y="-0.04" class="num${red ? ' red' : ''}">${h.num}</text>`);
@@ -212,7 +248,10 @@ export class BoardView {
     out.push('<g class="portmarks">');
     for (const p of board.ports) {
       out.push(`<g transform="translate(${p.x},${p.y})" class="port"><circle r="0.4" class="port-bg"/>`);
-      if (p.type === 'any') out.push('<text y="0.11" class="port-ratio big">3:1</text>');
+      if (p.type === 'any') {
+        if (art.ok) out.push(`<image href="${IMG.harbor}" x="-0.22" y="-0.36" width="0.44" height="0.44"/><text y="0.26" class="port-ratio">3:1</text>`);
+        else out.push('<text y="0.11" class="port-ratio big">3:1</text>');
+      } else if (art.ok) out.push(`<image href="${resImg(p.type)}" x="-0.22" y="-0.36" width="0.44" height="0.44"/><text y="0.27" class="port-ratio">2:1</text>`);
       else out.push(`<use href="#i-${p.type}" x="-0.2" y="-0.31" width="0.4" height="0.4" class="port-ico"/><text y="0.27" class="port-ratio">2:1</text>`);
       out.push('</g>');
     }
@@ -226,7 +265,8 @@ export class BoardView {
       const b = board.vertices[e.b];
       const [x1, y1, x2, y2] = this.shorten(a, b, 0.13);
       const pop = ui.fresh?.pieces?.has(`e${eid}`) ? ' draw' : '';
-      out.push(`<g class="road${pop}"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="road-outline"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${s.players[owner].color}" class="road-fill"/></g>`);
+      if (art.ok) out.push(`<g class="road${pop}">${roadImage(s.players[owner].color, a, b)}</g>`);
+      else out.push(`<g class="road${pop}"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="road-outline"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${s.players[owner].color}" class="road-fill"/></g>`);
     }
     out.push('</g>');
 
@@ -236,13 +276,14 @@ export class BoardView {
       const v = board.vertices[vid];
       const pop = ui.fresh?.pieces?.has(`v${vid}`) ? ' pop' : '';
       const hit = hitVerts.has(Number(vid)) ? ' hit' : '';
-      out.push(`<g transform="translate(${v.x},${v.y})" filter="url(#shadow)"><g class="bld${pop}${hit}"><path d="${b.type === 'city' ? CITY : HOUSE}" fill="${s.players[b.owner].color}" class="bld-shape"/></g></g>`);
+      if (art.ok) out.push(`<g><g class="bld${pop}${hit}">${pieceImage(b.type, s.players[b.owner].color, v.x, v.y)}</g></g>`);
+      else out.push(`<g transform="translate(${v.x},${v.y})" filter="url(#shadow)"><g class="bld${pop}${hit}"><path d="${b.type === 'city' ? CITY : HOUSE}" fill="${s.players[b.owner].color}" class="bld-shape"/></g></g>`);
     }
     out.push('</g>');
 
     // Räuber
     const rh = board.hexes[s.robber];
-    out.push(`<g transform="translate(${rh.x + 0.5},${rh.y + 0.18})" class="robber"><g class="robber-in">${ROBBER}</g></g>`);
+    out.push(`<g transform="translate(${rh.x + 0.5},${rh.y + 0.18})" class="robber"><g class="robber-in">${art.ok ? `<ellipse cx="0" cy="0.34" rx="0.22" ry="0.07" fill="rgba(0,0,0,.4)"/>${thiefImage()}` : ROBBER}</g></g>`);
 
     // Hervorhebungen (klickbar) – ruhig, mit Vorschau der Figur beim Darüberfahren
     const ghost = ui.ghost || {};
@@ -258,7 +299,7 @@ export class BoardView {
       for (const id of ui.hexes) {
         const h = board.hexes[id];
         out.push(`<g class="hl-hex" data-h="${id}"><polygon points="${this.hexPoints(board, h, 0.93)}" class="hl-hex-vis"/>`
-          + (ghost.hexKind === 'harvest' ? '' : `<g transform="translate(${h.x + 0.5},${h.y + 0.18})" class="ghost">${ROBBER}</g>`) + '</g>');
+          + (ghost.hexKind === 'harvest' ? '' : `<g transform="translate(${h.x + 0.5},${h.y + 0.18})" class="ghost">${art.ok ? thiefImage() : ROBBER}</g>`) + '</g>');
       }
     }
     if (ui.edges) {
@@ -268,7 +309,8 @@ export class BoardView {
         const b = board.vertices[e.b];
         const [x1, y1, x2, y2] = this.shorten(a, b, 0.13);
         out.push(`<g data-e="${id}" class="hl-edge"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="hl-edge-vis"/>`
-          + `<g class="ghost"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="road-outline"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${gcol}" class="road-fill"/></g>`
+          + (art.ok ? `<g class="ghost">${roadImage(gcol, a, b)}</g>`
+            : `<g class="ghost"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="road-outline"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${gcol}" class="road-fill"/></g>`)
           + `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="hl-hit"/></g>`);
       }
     }
@@ -277,7 +319,7 @@ export class BoardView {
         const v = board.vertices[id];
         const shape = ghost.kind === 'city' ? CITY : HOUSE;
         out.push(`<g transform="translate(${v.x},${v.y})" data-v="${id}" class="hl-vertex"><circle r="0.17" class="hl-ring"/>`
-          + `<g class="ghost"><path d="${shape}" fill="${gcol}" class="bld-shape"/></g><circle r="0.38" class="hl-hit"/></g>`);
+          + (art.ok ? `<g class="ghost">${pieceImage(ghost.kind === 'city' ? 'city' : 'settlement', gcol, 0, 0)}</g>` : `<g class="ghost"><path d="${shape}" fill="${gcol}" class="bld-shape"/></g>`) + '<circle r="0.38" class="hl-hit"/></g>');
       }
     }
     out.push('</g>');

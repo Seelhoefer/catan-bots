@@ -1,6 +1,7 @@
 // Kleine Inszenierungen: Würfel-Moment, aufpoppende Erträge, fliegende Karten beim Handel.
 import { RES } from '../engine/constants.js';
 import { ic, resSq, dieHTML } from './dom.js';
+import { cardHTML } from './cards.js';
 
 const layer = () => document.getElementById('fx');
 
@@ -76,4 +77,18 @@ export function showDiceHero(dice, who, speedFactor = 1) {
   setTimeout(() => box.classList.add('out'), reveal + hold);
   setTimeout(() => { box.className = 'dicehero'; box.innerHTML = ''; }, reveal + hold + 400);
   return reveal + hold + 200;
+}
+
+/** Karte groß einblenden (gekauft oder ausgespielt). Gibt die Dauer in ms zurück. */
+export function showCardHero(type, caption, ms = 2300) {
+  const old = document.getElementById('cardHero');
+  if (old) old.remove();
+  const box = document.createElement('div');
+  box.id = 'cardHero';
+  box.className = 'cardhero';
+  box.innerHTML = `<div class="ch-card">${cardHTML(type)}</div><div class="ch-cap">${caption}</div>`;
+  document.body.append(box);
+  setTimeout(() => box.classList.add('out'), ms - 350);
+  setTimeout(() => box.remove(), ms);
+  return ms;
 }

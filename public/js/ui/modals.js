@@ -5,6 +5,8 @@ import {
   el, esc, ic, iconize, resSq, handHTML,
 } from './dom.js';
 import { renderLogHTML } from './panels.js';
+import { cardHTML } from './cards.js';
+import { IMG, art } from './assets.js';
 
 const root = () => document.getElementById('modalRoot');
 const HUMAN = 0;
@@ -57,7 +59,7 @@ count !== undefined ? el('b', {}, String(count)) : null, badge ? el('span', { cl
 
 // ------------------------------------------------------------------ Entwicklungskarten
 export function devModal(app) {
-  const m = openModal({ title: 'Entwicklungskarten' });
+  const m = openModal({ title: 'Entwicklungskarten', wide: true });
   let pick = null; // { type: 'plenty'|'monopoly', chosen }
   const draw = () => {
     const g = app.game;
@@ -92,6 +94,7 @@ export function devModal(app) {
       m.body.append(el('p', { class: 'empty' }, 'Du hast keine Entwicklungskarten. Kaufe eine für Wolle + Getreide + Erz.'));
       return;
     }
+    const grid = el('div', { class: 'cardgrid' });
     for (const t of ['knight', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'victory']) {
       const cards = me.dev.filter((c) => c.type === t);
       if (!cards.length) continue;
@@ -103,21 +106,20 @@ export function devModal(app) {
       else if (!ready && g.s.turn !== HUMAN) note = 'Nicht dein Zug';
       else if (!ready && fresh === cards.length) note = 'Ab der nächsten Runde';
       else if (!ready && g.s.devPlayed) note = 'Nur 1 Karte pro Zug';
-      m.body.append(el('div', { class: `devrow ${t}` },
-        el('div', { class: 'dev-icon', html: ic(info.icon) }),
-        el('div', { class: 'dev-main' }, el('b', {}, `${info.name}${cards.length > 1 ? ` ×${cards.length}` : ''}`), el('p', {}, info.desc)),
-        t === 'victory' ? el('span', { class: 'note' }, note)
-          : el('button', {
-            class: `btn small ${ready ? 'solid' : ''}`, disabled: !ready || undefined, title: note,
-            onclick: () => {
-              if (t === 'harvest') { app.startHarvest(); m.close(); } else if (t === 'plenty') { pick = { type: 'plenty', chosen: [] }; draw(); } else if (t === 'monopoly') { pick = { type: 'monopoly' }; draw(); } else if (t === 'remap') {
-                confirmDialog('Weltenwandel einsetzen?', 'Alle Landfelder werden zufällig neu verteilt – für alle Spieler! Siedlungen und Straßen bleiben stehen.', 'Neu mischen').then((yes) => {
-                  if (yes) { const x = app.act('playDev', HUMAN, 'remap'); if (x.ok) m.close(); }
-                });
-              } else { const x = app.act('playDev', HUMAN, t); if (x.ok) m.close(); }
-            },
-          }, ready ? 'Ausspielen' : note || 'Nicht möglich')));
+      else if (!ready && t === 'harvest') note = 'Kein passendes Feld';
+      const play = () => {
+        if (t === 'harvest') { app.startHarvest(); m.close(); } else if (t === 'plenty') { pick = { type: 'plenty', chosen: [] }; draw(); } else if (t === 'monopoly') { pick = { type: 'monopoly' }; draw(); } else if (t === 'remap') {
+          confirmDialog('Weltenwandel einsetzen?', 'Alle Landfelder werden zufällig neu verteilt – für alle Spieler! Siedlungen und Straßen bleiben stehen.', 'Neu mischen').then((yes) => {
+            if (yes) { const x = app.act('playDev', HUMAN, 'remap'); if (x.ok) m.close(); }
+          });
+        } else { const x = app.act('playDev', HUMAN, t); if (x.ok) m.close(); }
+      };
+      grid.append(el('div', { class: `cardslot ${ready || t === 'victory' ? '' : 'dim'}`, title: info.desc },
+        el('div', { class: 'cs-img', html: cardHTML(t) + (cards.length > 1 ? `<span class="cs-count">×${cards.length}</span>` : '') }),
+        t === 'victory' ? el('div', { class: 'cs-note' }, note)
+          : el('button', { class: `btn small ${ready ? 'solid' : ''}`, disabled: !ready || undefined, title: note, onclick: play }, ready ? 'Ausspielen' : note || 'Nicht möglich')));
     }
+    m.body.append(grid);
   };
   draw();
   m.refresh = draw;
@@ -142,7 +144,7 @@ export function tokensModal(app) {
     const cost = g.tokenCost(HUMAN);
     const canNow = g.s.turn === HUMAN && (g.s.sub === 'actions' || g.s.sub === 'roll') && g.s.phase === 'main';
     m.body.replaceChildren();
-    m.body.append(el('div', { class: 'token-meter' },
+    m.body.append(el('div', { class: 'token-meter' }, art.ok ? el('img', { class: 'modal-art small', src: IMG.choice, alt: '' }) : null,
       el('div', { class: 'tm-num' }, `${me.tokens}`, el('small', {}, ` / ${cost}`)),
       el('div', { class: 'tm-bar' }, el('div', { style: `width:${Math.min(100, (me.tokens / cost) * 100)}%` }))));
     m.body.append(el('p', { class: 'hint-text' },
@@ -167,6 +169,7 @@ export function discardModal(app, need) {
     const me = app.game.s.players[HUMAN];
     const n = RES.reduce((a, r) => a + (chosen[r] || 0), 0);
     m.body.replaceChildren();
+    if (art.ok) m.body.append(el('img', { class: 'modal-art', src: IMG.thief, alt: '' }));
     m.body.append(el('p', { class: 'hint-text' }, `Du hast mehr als 7 Karten. Tippe auf die Karten, die du abgeben möchtest.`));
     m.body.append(el('div', { class: 'res-row' }, RES.map((r) => el('div', { class: 'discard-col' },
       resBtn(r, { count: me.hand[r] - (chosen[r] || 0), disabled: (chosen[r] || 0) >= me.hand[r] || n >= need, onclick: () => { chosen[r] = (chosen[r] || 0) + 1; draw(); } }),
@@ -186,6 +189,7 @@ export function discardModal(app, need) {
 export function stealModal(app, targets) {
   const m = openModal({ title: 'Von wem stehlen?', dismissable: false });
   const g = app.game;
+  if (art.ok) m.body.append(el('img', { class: 'modal-art', src: IMG.thief, alt: '' }));
   m.body.append(el('div', { class: 'victims' }, targets.map((t) => {
     const p = g.s.players[t];
     return el('button', { class: 'victim', style: `--pc:${p.color}`, onclick: () => { const x = app.act('steal', HUMAN, t); if (x.ok) m.close(); } },
@@ -241,6 +245,7 @@ export function gameOverModal(app, { onNew, onMenu }) {
   const winner = s.players[s.winner];
   const m = openModal({ title: s.winner === HUMAN ? 'Du hast gewonnen!' : `${winner.name} gewinnt`, wide: true });
   const rows = s.players.map((p) => ({ p, b: g.vpBreakdown(p.id) })).sort((a, b) => b.b.total - a.b.total);
+  if (art.ok) m.body.append(el('img', { class: 'modal-art trophy', src: IMG.trophy, alt: '' }));
   m.body.append(
     el('p', { class: 'hint-text' }, s.winner === HUMAN ? 'Glückwunsch – du hast alle Bots hinter dir gelassen!' : `${winner.name} erreicht ${s.settings.targetVP} Siegpunkte.`),
     el('table', { class: 'score', html: `
