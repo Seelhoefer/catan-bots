@@ -90,4 +90,5 @@ export const DEFAULT_SETTINGS = {
   missions: true,
   remapCard: true,
   harvestCard: true,
+  goldField: true, // Feld mit freier Rohstoffwahl
 };

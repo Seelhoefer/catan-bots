@@ -44,10 +44,13 @@ wird es aufgedeckt und der Entdecker bekommt 1 Rohstoff dieses Feldes. Startsied
 **🌾 Ernte (neue Entwicklungskarte):** Du wählst eines deiner Felder, an dem du eine Siedlung (1 Karte) oder Stadt (2 Karten)
 hast, und erhältst sofort dessen Ertrag. Spielbare Felder werden auf dem Brett markiert.
 
-**🤝 Handelsmarkt:** „Handeln“ öffnet ein Panel direkt am Brett. Mit drei Klicks gibst du ein Angebot an alle ab
-(vorbelegt mit einem sinnvollen Vorschlag). Bots antworten sichtbar mit Zusage, Absage oder **Gegenvorschlag**;
-Angebote der Bots erscheinen ebenfalls offen im Markt und du kannst annehmen, kontern oder ablehnen.
-Karten fliegen beim Abschluss zwischen den Spielern. Dazu: Bank-/Hafentausch und ein Protokoll der letzten Handel.
+**🤝 Handel als Pop-up:** Möchte ein Bot mit dir tauschen, erscheint ein kompaktes Pop-up (am Handy als Bottom-Sheet) mit
+*Annehmen*, *Gegenangebot* und *Ablehnen* samt Timer. „Handeln“ öffnet einen minimalen Dialog: Rohstoff-Kacheln antippen (+1,
+kleines − zum Entfernen) und an alle senden. Bots antworten sichtbar mit Zusage, Absage oder **Gegenvorschlag**. Tab *Bank* für
+4:1 / 3:1 / 2:1 (Häfen). Karten fliegen beim Abschluss zwischen den Spielern.
+
+**🟣 Wahlfeld:** Ein violettes Feld mit freier Rohstoffwahl (wie in Erweiterungen). Wird seine Zahl gewürfelt, suchst du dir
+pro angrenzender Siedlung (Stadt = 2) einen beliebigen Rohstoff aus. Abschaltbar im Regeln-Schritt.
 
 **🎲 Würfeln als Hero-Moment:** Großer Würfeln-Button in der Mitte, animierte Würfel mit großer Augenzahl,
 leuchtende Treffer-Felder und aufpoppende Erträge an den Spielerkarten.
@@ -67,15 +70,24 @@ linken Panel sichtbar.
 
 ## Bedienung
 
-- Leuchtende Punkte / Linien / Felder auf dem Spielbrett zeigen, wohin du klicken kannst. `Esc` bricht ab, `R` würfelt.
+- Leuchtende Punkte / Linien / Felder auf dem Spielbrett zeigen, wohin du klicken kannst. **Zwei Schritte:** erst anklicken (Vorschau),
+  dann dasselbe nochmal anklicken – oder unten „Bestätigen“ – zum Bauen. `Esc` bricht ab, `R` würfelt.
 - Mausrad zoomt, Ziehen verschiebt das Spielfeld, ⌖ zentriert es wieder.
 - Unten: deine Rohstoffe und die Aktionsleiste (Bauen, Handeln, Karten, Anti-Pech-Marker, Zug beenden).
 - Die Partie wird automatisch im Browser gespeichert und kann im Menü fortgesetzt werden.
 - Bot-Tempo (🐢 / 🚶 / ⚡) oben rechts einstellbar.
 
+## Am Handy spielen
+
+- **Im WLAN:** `npm run start:lan` startet den Server für alle Geräte im Netz und zeigt die Adressen (z. B. `http://192.168.0.12:3000`) an.
+- **Von überall:** auf Vercel deployen (s. o.) und die URL am Handy öffnen.
+- Die Oberfläche ist für Hoch- und Querformat ausgelegt (Hand, Gegner und Aktionsleiste ohne Scrollen, Dialoge als Bottom-Sheet).
+  „Zum Home-Bildschirm“ installiert das Spiel als Vollbild-App (PWA).
+
 ## Grafiken
 
-Spielfiguren, Rohstoffe, Räuber-Dieb, Pokal und die Entwicklungskarten sind illustriert (siehe `public/assets/README.md`).
+Siedlungen und Städte, Rohstoffe, Räuber-Dieb, Pokal und die Entwicklungskarten sind illustriert (siehe `public/assets/README.md`). **Straßen** sind keine Bilder, sondern flache Vektor-Holzmarker
+(`public/js/ui/road.js`, `drawRoad({x, y, orientation, color, length, width})`) in sechs Spielerfarben.
 Fehlen die Bilder, nutzt das Spiel automatisch flache Vektor-Icons.
 
 ## Projektstruktur

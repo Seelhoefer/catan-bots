@@ -18,7 +18,7 @@ import {
 } from './ui/fx.js';
 import { preloadArt } from './ui/assets.js';
 import {
-  devModal, tokensModal, discardModal, stealModal, logModal,
+  devModal, tokensModal, discardModal, goldModal, stealModal, logModal,
   rulesModal, gameOverModal, closeTopModal, closeAllModals, confirmDialog, hasModal,
 } from './ui/modals.js';
 
@@ -35,6 +35,7 @@ class App {
     preloadArt().then((ok) => { if (ok) this.queueRender(); });
     this.game = null;
     this.mode = null; // 'road' | 'settlement' | 'city' | 'harvest'
+    this.pending = null; // vorgemerkter Platz (Touch)
     this.pumping = false;
     this.rolling = false;
     this.renderQueued = false;
@@ -96,6 +97,7 @@ class App {
       s.offers = s.offers || [];
       s.trades = s.trades || [];
       s.nextOfferId = s.nextOfferId || 1;
+      s.gold = s.gold || {};
       for (const p of s.players) if (p.isBot && p.face && !p.face.portrait) p.face.portrait = p.name.toLowerCase(); // alte Spielstände
       this.attach(Game.fromJSON(s));
     } catch {
@@ -110,6 +112,7 @@ class App {
     this.closePopover();
     this.game = game;
     this.mode = null;
+    this.pending = null;
     this.auto = {};
     this.pumping = false;
     this.busy = new Set();
@@ -183,9 +186,7 @@ class App {
         flyCards(e.from, e.to, e.give);
         flyCards(e.to, e.from, e.get, 180);
         this.toastHTML(`Handel erfolgreich: ${esc(name(e.from))} erhielt ${handHTML(e.get)}, ${esc(name(e.to))} erhielt ${handHTML(e.give)}`, 'gain');
-        break;
-      case 'offer':
-        if (e.from !== HUMAN) this.market.open = true;
+        if (e.from === HUMAN || e.to === HUMAN) { this.market.open = false; this.market.give = {}; this.market.get = {}; }
         break;
       case 'offerClosed':
         if (this.market.counterFor === e.id) this.market.counterFor = null;
@@ -211,7 +212,28 @@ class App {
     this.queueRender();
   }
 
+  /** Erster Klick auf einen markierten Platz wählt ihn vor (Vorschau), ein zweiter Klick darauf baut. */
   onPick(kind, id) {
+    if (this.game.s.phase === 'over') return;
+    if (!this.pending || this.pending.kind !== kind || this.pending.id !== id) {
+      this.pending = { kind, id };
+      this.queueRender();
+      return;
+    }
+    this.pending = null;
+    this.executePick(kind, id);
+  }
+
+  pendingLabel() {
+    const s = this.game.s;
+    if (s.phase === 'setup') return s.sub === 'settlement' ? 'Hier gründen' : 'Hier eine Straße';
+    if (s.sub === 'robber') return 'Räuber hierhin';
+    if (this.mode === 'harvest') return 'Hier ernten';
+    if (s.roadBuildingLeft > 0 || this.mode === 'road') return 'Hier eine Straße';
+    return { settlement: 'Hier eine Siedlung', city: 'Hier eine Stadt' }[this.mode] || 'Hier';
+  }
+
+  executePick(kind, id) {
     const g = this.game;
     const s = g.s;
     if (s.phase === 'over') return;
@@ -247,6 +269,7 @@ class App {
       case 'end-turn': this.mode = null; this.act('endTurn', HUMAN); break;
       case 'build-road': case 'build-settlement': case 'build-city': {
         const k = act.slice(6);
+        this.pending = null;
         this.mode = this.mode === k ? null : k;
         this.queueRender();
         break;
@@ -257,6 +280,14 @@ class App {
         break;
       }
       case 'skip-roads': this.act('skipRoadBuilding', HUMAN); break;
+      case 'pick-cancel': this.pending = null; this.queueRender(); break;
+      case 'pick-confirm': {
+        const pk = this.pending;
+        this.pending = null;
+        if (pk) this.executePick(pk.kind, pk.id);
+        this.queueRender();
+        break;
+      }
       case 'trade': this.mode = null; this.openMarket(); break;
       case 'dev': this.modal = devModal(this); break;
       case 'tokens': this.modal = tokensModal(this); break;
@@ -354,7 +385,10 @@ class App {
       this.queueRender();
     }
     const left = g.offerById(id);
-    if (left && Object.values(left.responses).every((r) => r.type === 'decline')) this.toast('Niemand möchte tauschen.', 'info');
+    if (left && Object.values(left.responses).every((r) => r.type === 'decline')) {
+      g.withdrawOffer(HUMAN, id);
+      this.toast('Niemand möchte tauschen – passe dein Angebot an.', 'info');
+    }
     this.queueRender();
   }
 
@@ -420,7 +454,6 @@ class App {
       this.waitingOffer = id;
       this.waitStart = Date.now();
       this.offerWaitMs = SPEEDS[this.speed][3];
-      this.market.open = true;
       this.queueRender();
       while (this.game === g && g.offerById(id) && !g.offerById(id).responses[HUMAN] && Date.now() - this.waitStart < this.offerWaitMs) await sleep(150);
       this.waitingOffer = null;
@@ -464,6 +497,9 @@ class App {
         else if (this.mode === 'city') { ui.vertices = new Set(g.legalCitySpots(HUMAN)); ui.ghost.kind = 'city'; }
       }
     }
+    const pend = this.pending;
+    const valid = pend && ({ vertex: ui.vertices, edge: ui.edges, hex: ui.hexes }[pend.kind]?.has(pend.id));
+    if (valid) ui.pending = pend; else this.pending = null;
     return ui;
   }
 
@@ -490,20 +526,47 @@ class App {
       this.ui.turnKey = turn.key;
       hudTurn.firstElementChild.classList.add('enter');
     }
-    $('#dock').innerHTML = renderDock(g, this.mode);
+    $('#dock').innerHTML = renderDock(g, this.mode, this.pending ? { ...this.pending, label: this.pendingLabel() } : null);
     $('#heroRoll').innerHTML = renderHeroRoll(g);
     $('#diceBox').innerHTML = renderDice(g, this.rolling);
-    $('#market').innerHTML = renderMarket(this);
+    this.renderMarketLayer();
     $('#missionBox').innerHTML = renderMissionBox(g, this.ui.missionsOpen);
     $('#logBox').innerHTML = renderLogBox(g, this.ui.logOpen);
     const ll = $('#logBox .loglist');
     if (ll) ll.scrollTop = ll.scrollHeight;
 
     if (s.phase === 'main' && s.sub === 'discard' && s.discard[HUMAN] !== undefined) this.ensure('discard', () => discardModal(this, s.discard[HUMAN]));
+    if (s.phase === 'main' && s.sub === 'gold' && s.gold[HUMAN]) this.ensure('gold', () => goldModal(this, s.gold[HUMAN]));
     if (s.phase === 'main' && s.sub === 'steal' && s.turn === HUMAN) this.ensure('steal', () => stealModal(this, g.stealTargets(s.robber)));
 
     if (this.modal && !this.modal.closed && this.modal.refresh) this.modal.refresh();
+    this.measure();
     this.save();
+  }
+
+  /** Handels-Pop-up: nur neu zeichnen, wenn sich etwas geändert hat; Einblend-Animation nur beim Erscheinen. */
+  renderMarketLayer() {
+    const host = $('#market');
+    const { html, key } = renderMarket(this);
+    if (html !== this.mkHtml) {
+      const scroll = host.querySelector('.tp')?.scrollTop || 0;
+      host.innerHTML = html;
+      const card = host.querySelector('.tp');
+      if (card) {
+        if (key !== this.mkKey) card.classList.add('enter');
+        else card.scrollTop = scroll;
+        const bar = card.querySelector('.tp-timer i');
+        if (bar) bar.style.animationDelay = `-${Math.max(0, Date.now() - this.waitStart)}ms`;
+      }
+      this.mkHtml = html;
+    }
+    this.mkKey = key;
+  }
+
+  /** Höhe der Kopfzeile für Toasts & Co. */
+  measure() {
+    const h = $('.topbar');
+    if (h) document.documentElement.style.setProperty('--hdr', `${h.offsetHeight}px`);
   }
 
   ensure(kind, factory) {
@@ -598,11 +661,24 @@ class App {
     $('#zoomIn').addEventListener('click', () => this.view.zoomBy(0.8));
     $('#zoomOut').addEventListener('click', () => this.view.zoomBy(1.25));
     $('#zoomFit').addEventListener('click', () => this.view.fit());
+    let lastW = window.innerWidth;
+    let lastLandscape = window.innerWidth > window.innerHeight;
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        const landscape = window.innerWidth > window.innerHeight;
+        if (this.game && (landscape !== lastLandscape || Math.abs(window.innerWidth - lastW) > 60)) this.view.fit();
+        lastW = window.innerWidth;
+        lastLandscape = landscape;
+        this.measure();
+      }, 200);
+    });
     document.addEventListener('keydown', (e) => {
       if (e.target.matches('input, textarea')) return;
       if (e.key === 'Escape') {
         if (!$('#menuPop').classList.contains('hidden')) this.closePopover();
-        else if (!closeTopModal()) {
+        else if (this.pending) { this.pending = null; this.queueRender(); } else if (!closeTopModal()) {
           if (this.mode) { this.mode = null; this.queueRender(); } else if (this.market.open) { this.market.open = false; this.queueRender(); }
         }
       } else if ((e.key === 'r' || e.key === 'R') && this.game && !hasModal()) {

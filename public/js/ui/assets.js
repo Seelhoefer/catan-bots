@@ -11,6 +11,7 @@ export const piece = (colorId, kind) => `${BASE}pieces/${colorId}-${kind}.webp`;
 export const resImg = (r) => `${BASE}resources/${r}.webp`;
 export const cardImgSrc = (type) => `assets/cards/${type}.webp`;
 export const IMG = {
+  oceanMinimal: `${BASE}ocean-minimal.webp`,
   thief: `${BASE}thief.webp`,
   trophy: `${BASE}trophy.webp`,
   harbor: `${BASE}special/harbor-3to1.webp`,
@@ -36,9 +37,6 @@ export const PIECE_BOX = {
   settlement: { w: 191, h: 192, l: 14, r: 189, b: 185, target: 0.7 },
   city: { w: 192, h: 192, l: 18, r: 184, b: 179, target: 0.9 },
 };
-// Die Straße ist ein schräger Balken (zugeschnitten, 288×188); Hauptachse im Bild: -26° (y nach unten), Länge ≈ 314 px
-export const ROAD_BOX = { w: 288, h: 188, axisDeg: -26, length: 314, target: 0.8 };
-
 function load(src) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -50,7 +48,7 @@ function load(src) {
 
 export async function preloadArt() {
   const list = [
-    ...PLAYER_COLORS.flatMap((c) => ['settlement', 'city', 'road'].map((k) => piece(c.id, k))),
+    ...PLAYER_COLORS.flatMap((c) => ['settlement', 'city'].map((k) => piece(c.id, k))),
     ...['wood', 'brick', 'sheep', 'wheat', 'ore'].map(resImg),
     IMG.thief, IMG.trophy, IMG.harbor, IMG.choice, IMG.wild, IMG.desert,
   ];

@@ -185,6 +185,31 @@ export function discardModal(app, need) {
   return m;
 }
 
+// ------------------------------------------------------------------ Wahlfeld: Rohstoff nach Wahl
+export function goldModal(app, n) {
+  const m = openModal({ title: 'Wahlfeld – Rohstoff nach Wahl', dismissable: false });
+  const chosen = {};
+  const draw = () => {
+    const g = app.game;
+    const k = RES.reduce((a, r) => a + (chosen[r] || 0), 0);
+    m.body.replaceChildren();
+    if (art.ok) m.body.append(el('img', { class: 'modal-art small', src: IMG.choice, alt: '' }));
+    m.body.append(el('p', { class: 'hint-text' }, `Auf dem Wahlfeld wurde gewürfelt. Du darfst ${n} Rohstoff${n > 1 ? 'e' : ''} frei wählen (${k}/${n}).`));
+    m.body.append(el('div', { class: 'res-row' }, RES.map((r) => resBtn(r, {
+      count: chosen[r] || 0,
+      selected: (chosen[r] || 0) > 0,
+      disabled: k >= n || g.s.bank[r] < (chosen[r] || 0) + 1,
+      title: `${RES_INFO[r].name} (Bank: ${g.s.bank[r]})`,
+      onclick: () => { chosen[r] = (chosen[r] || 0) + 1; draw(); },
+    }))));
+    m.body.append(el('div', { class: 'modal-actions' },
+      el('button', { class: 'btn', disabled: !k || undefined, onclick: () => { for (const r of RES) chosen[r] = 0; draw(); } }, 'Zurücksetzen'),
+      el('button', { class: 'btn solid', disabled: k !== n || undefined, onclick: () => { const x = app.act('chooseGold', HUMAN, { ...chosen }); if (x.ok) m.close(); } }, 'Nehmen')));
+  };
+  draw();
+  return m;
+}
+
 // ------------------------------------------------------------------ Diebstahl
 export function stealModal(app, targets) {
   const m = openModal({ title: 'Von wem stehlen?', dismissable: false });
@@ -222,6 +247,7 @@ export function rulesModal() {
     </ul>
     <h3>Neu in dieser Version</h3>
     <ul>
+      <li>✨ <b>Wahlfeld:</b> Wird die Zahl eines Wahlfelds gewürfelt, darfst du dir für jede angrenzende Siedlung (Stadt = 2) einen beliebigen Rohstoff aussuchen.</li>
       <li>🌫️ <b>Nebel-Variante (Seefahrer):</b> Verdeckte Felder werden aufgedeckt, sobald eine Straße an sie grenzt – und du erhältst 1 Rohstoff davon.</li>
       <li>🌾 <b>Ernte:</b> Neue Entwicklungskarte. Du wählst eines deiner Felder mit Siedlung oder Stadt und erhältst sofort dessen Ertrag (Stadt = doppelt).</li>
       <li>🌍 <b>Weltenwandel:</b> Neue Entwicklungskarte. Alle Landfelder werden zufällig neu gemischt; Siedlungen &amp; Straßen bleiben.</li>

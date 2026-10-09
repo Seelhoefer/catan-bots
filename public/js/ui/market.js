@@ -1,10 +1,9 @@
-// Handelsmarkt: Schnellangebot, offene Angebote, Gegenvorschläge, Bank/Häfen und Protokoll.
+// Handel als Pop-up: Eingehende Angebote erscheinen von selbst, eigene Angebote und Bank im kompakten Dialog.
 import { RES, RES_INFO, COSTS } from '../engine/constants.js';
 import {
   esc, ic, resSq, handHTML,
 } from './dom.js';
 import { avatarSVG } from './avatars.js';
-import { IMG, resImg, art } from './assets.js';
 
 const HUMAN = 0;
 const sum = (o) => RES.reduce((a, r) => a + (o[r] || 0), 0);
@@ -22,143 +21,165 @@ export function suggestTrade(g) {
   return { give: { [give]: 1 }, get: { [want]: 1 } };
 }
 
-function stepper(side, store, r, max) {
+/** Welcher Teil des Angebots fehlt dem Menschen? ("1 Lehm, 2 Holz") */
+function missingText(hand, need) {
+  const parts = RES.filter((r) => (need[r] || 0) > hand[r]).map((r) => `${need[r] - hand[r]} ${RES_INFO[r].name}`);
+  return parts.join(', ');
+}
+
+// ------------------------------------------------------------------ Bausteine
+
+/** Rohstoff-Kachel: Tippen = +1, kleiner Minus-Knopf erscheint, sobald etwas gewählt ist. */
+function tile(side, store, r, cap, have) {
   const n = store[r] || 0;
-  return `<div class="stp ${n ? 'has' : ''}">
-    <button data-act="mk-step" data-side="${side}" data-res="${r}" data-d="1" aria-label="${RES_INFO[r].name} mehr" ${n >= max ? 'disabled' : ''}>${ic('plus')}</button>
-    <div class="stp-sq">${resSq(r)}<b>${n}</b></div>
-    <button data-act="mk-step" data-side="${side}" data-res="${r}" data-d="-1" aria-label="${RES_INFO[r].name} weniger" ${n <= 0 ? 'disabled' : ''}>${ic('minus')}</button>
+  const name = RES_INFO[r].name;
+  return `<div class="tl ${n ? 'has' : ''}">
+    <button class="tl-main" data-act="mk-step" data-side="${side}" data-res="${r}" data-d="1" aria-label="${name} hinzufügen" ${n >= cap ? 'disabled' : ''}>
+      ${resSq(r, 'lg')}${n ? `<b class="tl-n">${n}</b>` : ''}
+    </button>
+    <button class="tl-minus" data-act="mk-step" data-side="${side}" data-res="${r}" data-d="-1" aria-label="${name} entfernen" ${n ? '' : 'tabindex="-1" aria-hidden="true"'}>${ic('minus')}</button>
+    ${have === null ? '' : `<small>${have}</small>`}
   </div>`;
 }
 
-const stepRow = (side, store, hand, cap) => `<div class="stp-row">${RES.map((r) => stepper(side, store, r, cap ? hand[r] : 9)).join('')}</div>`;
+const tileRow = (side, store, hand, capped) => `<div class="tl-row">${RES.map((r) => tile(side, store, r, capped ? hand[r] : 9, capped ? hand[r] : null)).join('')}</div>`;
 
-function summary(give, get) {
-  return `<div class="mk-summary">${sum(give) ? handHTML(give) : '–'}<span class="arrow">⇄</span>${sum(get) ? handHTML(get) : '–'}</div>`;
+const chips = (h) => `<span class="tp-hand">${handHTML(h)}</span>`;
+
+function terms(leftLabel, left, rightLabel, right) {
+  return `<div class="tp-terms">
+    <div><span class="tp-lbl">${leftLabel}</span>${chips(left)}</div>
+    <span class="tp-arrow">⇄</span>
+    <div><span class="tp-lbl">${rightLabel}</span>${chips(right)}</div>
+  </div>`;
 }
 
-const chip = (p, extra = '') => `<span class="mk-who" style="--pc:${p.color}">${avatarSVG(p.face, p.color, 22)}<b>${esc(p.name)}</b>${extra}</span>`;
+const who = (p, text) => `<div class="tp-who" style="--pc:${p.color}">${avatarSVG(p.face, p.color, 36)}<div><b>${esc(p.name)}</b><span>${text}</span></div></div>`;
 
-function respIcon(resp) {
-  if (resp === null) return `<span class="rs wait" title="überlegt …">…</span>`;
-  if (!resp) return `<span class="rs idle"></span>`;
+function respIcon(resp, thinking) {
+  if (thinking) return '<span class="rs wait" title="überlegt …">…</span>';
+  if (!resp) return '<span class="rs idle"></span>';
   if (resp.type === 'accept') return `<span class="rs yes" title="nimmt an">${ic('plus')}</span>`;
   if (resp.type === 'counter') return `<span class="rs cnt" title="Gegenvorschlag">${ic('trade')}</span>`;
   return `<span class="rs no" title="lehnt ab">${ic('close')}</span>`;
 }
 
-function offerCard(app, offer) {
-  const g = app.game;
-  const s = g.s;
-  const from = s.players[offer.from];
-  const mine = offer.from === HUMAN;
-  const myResp = offer.responses[HUMAN];
-  let body = `<div class="oc-head">${chip(from)}<span class="oc-verb">${mine ? 'Dein Angebot' : 'bietet'}</span></div>
-    <div class="oc-terms">${handHTML(offer.give)}<span class="arrow">⇄</span>${handHTML(offer.get)}</div>`;
+// ------------------------------------------------------------------ Eingehendes Angebot
 
-  if (mine) {
-    const others = s.players.filter((p) => p.id !== HUMAN);
-    body += `<div class="oc-resp">${others.map((p) => `<span class="oc-r" title="${esc(p.name)}">${avatarSVG(p.face, p.color, 24)}${respIcon(offer.responses[p.id] || (app.busy.has(p.id) ? null : undefined))}</span>`).join('')}</div>`;
-    for (const [pid, resp] of Object.entries(offer.responses)) {
-      if (resp.type !== 'counter') continue;
-      const p = s.players[pid];
-      body += `<div class="oc-counter">${chip(p)}<div class="oc-terms">${handHTML(resp.give)}<span class="arrow">⇄</span>${handHTML(resp.get)}</div>
-        <button class="btn small solid" data-act="mk-accept-counter" data-id="${offer.id}" data-pid="${pid}">Annehmen</button></div>`;
-    }
-    body += `<div class="oc-actions"><button class="btn small quiet" data-act="mk-withdraw" data-id="${offer.id}">Zurückziehen</button></div>`;
-  } else if (myResp && myResp.type === 'decline') {
-    body += '<div class="oc-note">Du hast abgelehnt.</div>';
-  } else if (myResp && myResp.type === 'counter') {
-    body += `<div class="oc-note">Dein Gegenvorschlag: ${handHTML(myResp.get)}<span class="arrow">⇄</span>${handHTML(myResp.give)} – wartet auf Antwort.</div>`;
-  } else if (app.market.counterFor === offer.id) {
-    const c = app.market.counter;
-    body += `<div class="mk-label">Dein Gegenvorschlag</div>
-      <div class="mk-sub">Ich gebe</div>${stepRow('cgive', c.give, s.players[HUMAN].hand, true)}
-      <div class="mk-sub">Ich möchte</div>${stepRow('cget', c.get, s.players[HUMAN].hand, false)}
-      ${summary(c.give, c.get)}
-      <div class="oc-actions"><button class="btn small quiet" data-act="mk-counter-cancel">Abbrechen</button>
-      <button class="btn small solid" data-act="mk-counter-send" data-id="${offer.id}" ${sum(c.give) && sum(c.get) ? '' : 'disabled'}>Senden</button></div>`;
-  } else {
-    const can = g.canAcceptOffer(HUMAN, offer);
-    body += `<div class="oc-actions">
-      <button class="btn small solid" data-act="mk-accept" data-id="${offer.id}" ${can ? '' : 'disabled'} title="${can ? '' : 'Dir fehlen die geforderten Karten'}">Annehmen</button>
-      <button class="btn small" data-act="mk-counter-open" data-id="${offer.id}">Gegenvorschlag</button>
-      <button class="btn small quiet" data-act="mk-decline" data-id="${offer.id}">Ablehnen</button></div>`;
-    if (app.waitingOffer === offer.id) body += `<div class="oc-timer"><i style="animation-duration:${app.offerWaitMs}ms;animation-delay:-${Math.max(0, Date.now() - app.waitStart)}ms"></i></div>`;
-  }
-  return `<div class="offer-card ${mine ? 'mine' : ''}" data-oid="${offer.id}" style="--pc:${from.color}">${body}</div>`;
+/** Das Angebot, über das der Mensch gerade entscheiden soll (oder auf dessen Antwort er wartet). */
+function incomingOffer(app) {
+  const s = app.game.s;
+  return s.offers.find((o) => o.from !== HUMAN && ((app.waitingOffer === o.id && !o.responses[HUMAN]) || o.responses[HUMAN]?.type === 'counter')) || null;
 }
 
-function historyLine(g, t) {
-  const from = g.s.players[t.from];
-  const to = t.to !== null && t.to !== undefined ? g.s.players[t.to] : null;
-  const label = { accepted: 'Handel', withdrawn: 'zurückgezogen', expired: 'unbeantwortet', declined: 'abgelehnt' }[t.status] || t.status;
-  return `<div class="hist ${t.status}"><span class="pdot" style="background:${from.color}"></span>
-    <span class="h-main">${esc(from.name)}${to ? ` ↔ ${esc(to.name)}` : ''}: ${handHTML(t.give)}<span class="arrow">⇄</span>${handHTML(t.get)}</span>
-    <em>${label}</em></div>`;
+function incomingView(app, offer) {
+  const g = app.game;
+  const s = g.s;
+  const me = s.players[HUMAN];
+  const from = s.players[offer.from];
+  const myResp = offer.responses[HUMAN];
+  const m = app.market;
+
+  if (myResp) {
+    return `<div class="tp-body">${who(from, 'prüft deinen Gegenvorschlag …')}
+      ${terms('Du gibst', myResp.get, 'Du erhältst', myResp.give)}<div class="tp-wait"><i></i><i></i><i></i></div></div>`;
+  }
+
+  if (m.counterFor === offer.id) {
+    const c = m.counter;
+    const ready = sum(c.give) > 0 && sum(c.get) > 0 && !g.validTradeShape(c.give, c.get);
+    return `<div class="tp-body">${who(from, 'Dein Gegenvorschlag')}
+      <div class="tp-lbl">Du gibst</div>${tileRow('cgive', c.give, me.hand, true)}
+      <div class="tp-lbl">Du möchtest</div>${tileRow('cget', c.get, me.hand, false)}
+      <div class="tp-actions"><button class="btn quiet" data-act="mk-counter-cancel">Zurück</button>
+      <button class="btn solid grow" data-act="mk-counter-send" data-id="${offer.id}" ${ready ? '' : 'disabled'}>Gegenvorschlag senden</button></div></div>`;
+  }
+
+  const can = g.canAcceptOffer(HUMAN, offer);
+  const timer = app.waitingOffer === offer.id ? `<div class="tp-timer"><i style="animation-duration:${app.offerWaitMs}ms"></i></div>` : '';
+  return `<div class="tp-body">${who(from, 'möchte tauschen')}
+    ${terms('Du erhältst', offer.give, 'Du gibst', offer.get)}
+    ${can ? '' : `<div class="tp-hint">Dir fehlt: ${missingText(me.hand, offer.get)}</div>`}
+    <div class="tp-actions">
+      <button class="btn quiet" data-act="mk-decline" data-id="${offer.id}">Ablehnen</button>
+      <button class="btn" data-act="mk-counter-open" data-id="${offer.id}">Gegenangebot</button>
+      <button class="btn solid grow" data-act="mk-accept" data-id="${offer.id}" ${can ? '' : 'disabled'}>Annehmen</button>
+    </div>${timer}</div>`;
+}
+
+// ------------------------------------------------------------------ Eigenes Angebot & Bank
+
+function ownOfferStatus(app, offer) {
+  const g = app.game;
+  const s = g.s;
+  const others = s.players.filter((p) => p.id !== HUMAN);
+  const counters = Object.entries(offer.responses).filter(([, r]) => r.type === 'counter');
+  return `<div class="tp-body">
+    ${terms('Du gibst', offer.give, 'Du möchtest', offer.get)}
+    <div class="tp-resp">${others.map((p) => `<span class="tp-r" title="${esc(p.name)}">${avatarSVG(p.face, p.color, 34)}${respIcon(offer.responses[p.id], !offer.responses[p.id] && app.busy.has(p.id))}</span>`).join('')}</div>
+    ${counters.map(([pid, r]) => `<div class="tp-counter">${who(s.players[pid], 'Gegenangebot')}${terms('Du gibst', r.get, 'Du erhältst', r.give)}
+      <button class="btn solid" data-act="mk-accept-counter" data-id="${offer.id}" data-pid="${pid}">Annehmen</button></div>`).join('')}
+    <div class="tp-actions"><button class="btn quiet grow" data-act="mk-withdraw" data-id="${offer.id}">Zurückziehen</button></div></div>`;
+}
+
+function playersTab(app) {
+  const g = app.game;
+  const me = g.s.players[HUMAN];
+  const m = app.market;
+  const open = g.openOfferOf(HUMAN);
+  if (open) return ownOfferStatus(app, open);
+  const valid = sum(m.give) > 0 && sum(m.get) > 0 && !g.validTradeShape(m.give, m.get) && RES.every((r) => (m.give[r] || 0) <= me.hand[r]);
+  return `<div class="tp-body">
+    <div class="tp-lbl">Ich gebe</div>${tileRow('give', m.give, me.hand, true)}
+    <div class="tp-lbl">Ich möchte</div>${tileRow('get', m.get, me.hand, false)}
+    <div class="tp-actions"><button class="btn solid grow" data-act="mk-send" ${valid ? '' : 'disabled'}>An alle senden</button></div></div>`;
 }
 
 function bankTab(app) {
   const g = app.game;
   const me = g.s.players[HUMAN];
   const m = app.market;
-  const myTurn = g.s.turn === HUMAN && g.s.sub === 'actions' && g.s.phase === 'main';
   const ports = RES.map((r) => g.portRatio(HUMAN, r));
   const give = m.bankGive;
   const get = m.bankGet;
   const ok = give && get && give !== get;
-  const owned = new Set();
-  for (const b of g.buildingsOf(HUMAN)) { const pt = g.board.vertices[b.vid].port; if (pt) owned.add(pt); }
-  const harbors = owned.size
-    ? `<div class="mk-harbors"><span>Deine Häfen</span>${[...owned].map((pt) => (pt === 'any'
-      ? `<span class="hb" title="3:1-Hafen: tausche jeden Rohstoff 3:1">${art.ok ? `<img src="${IMG.harbor}" alt="3:1">` : '3:1'}</span>`
-      : `<span class="hb" title="2:1-Hafen für ${RES_INFO[pt].name}">${resSq(pt)}<b>2:1</b></span>`)).join('')}</div>`
-    : '';
-  return `${harbors}<div class="mk-note">${myTurn ? 'Tausche mit der Bank (4:1). Häfen verbessern das Verhältnis.' : 'Mit der Bank tauschst du in deinem Zug.'}</div>
-    <div class="mk-label">Ich gebe</div>
-    <div class="res-row">${RES.map((r, i) => `<button class="res-pick ${give === r ? 'sel' : ''}" data-act="bank-give" data-res="${r}" ${!myTurn || me.hand[r] < ports[i] ? 'disabled' : ''}>${resSq(r)}<b>${me.hand[r]}</b><span class="ratio">${ports[i]}:1</span></button>`).join('')}</div>
-    <div class="mk-label">Ich erhalte</div>
-    <div class="res-row">${RES.map((r) => `<button class="res-pick ${get === r ? 'sel' : ''}" data-act="bank-get" data-res="${r}" ${!myTurn || !give || r === give || g.s.bank[r] < 1 ? 'disabled' : ''}>${resSq(r)}<b>${g.s.bank[r]}</b></button>`).join('')}</div>
-    <div class="mk-summary">${ok ? `${ports[RES.indexOf(give)]}${ic(give, 'inline')}<span class="arrow">→</span>1${ic(get, 'inline')}` : '–'}</div>
-    <button class="btn solid mk-send" data-act="bank-do" ${ok && myTurn ? '' : 'disabled'}>Tauschen</button>`;
+  const pick = (act, sel, r, dis, tag) => `<button class="tl-main bk ${sel ? 'sel' : ''}" data-act="${act}" data-res="${r}" aria-label="${RES_INFO[r].name}" ${dis ? 'disabled' : ''}>${resSq(r, 'lg')}${tag}</button>`;
+  return `<div class="tp-body">
+    <div class="tp-lbl">Ich gebe</div>
+    <div class="tl-row">${RES.map((r, i) => `<div class="tl">${pick('bank-give', give === r, r, me.hand[r] < ports[i], `<b class="tl-n ratio">${ports[i]}:1</b>`)}<small>${me.hand[r]}</small></div>`).join('')}</div>
+    <div class="tp-lbl">Ich erhalte</div>
+    <div class="tl-row">${RES.map((r) => `<div class="tl">${pick('bank-get', get === r, r, !give || r === give || g.s.bank[r] < 1, '')}</div>`).join('')}</div>
+    <div class="tp-actions"><button class="btn solid grow" data-act="bank-do" ${ok ? '' : 'disabled'}>${ok ? `${ports[RES.indexOf(give)]} ${RES_INFO[give].name} → 1 ${RES_INFO[get].name}` : 'Mit der Bank tauschen'}</button></div></div>`;
 }
 
-function playersTab(app) {
-  const g = app.game;
-  const s = g.s;
-  const me = s.players[HUMAN];
-  const m = app.market;
-  const myTurn = s.turn === HUMAN && s.sub === 'actions' && s.phase === 'main';
-  const mineOpen = g.openOfferOf(HUMAN);
-  const valid = sum(m.give) > 0 && sum(m.get) > 0 && !g.validTradeShape(m.give, m.get) && RES.every((r) => (m.give[r] || 0) <= me.hand[r]);
-  let out = '';
-  if (myTurn) {
-    out += `<div class="mk-note">Erstelle ein Angebot an alle Mitspieler.</div>
-      <div class="mk-label">Ich gebe</div>${stepRow('give', m.give, me.hand, true)}
-      <div class="mk-label">Ich möchte</div>${stepRow('get', m.get, me.hand, false)}
-      ${summary(m.give, m.get)}
-      <button class="btn solid mk-send" data-act="mk-send" ${valid ? '' : 'disabled'}>${mineOpen ? 'Angebot ersetzen' : 'Angebot senden'}</button>`;
-  } else {
-    out += '<div class="mk-note">Eigene Angebote erstellst du in deinem Zug. Auf Angebote anderer kannst du jederzeit antworten.</div>';
-  }
-  if (s.offers.length) out += `<div class="mk-label">Offene Angebote</div>${s.offers.map((o) => offerCard(app, o)).join('')}`;
-  const hist = s.trades.slice(-5).reverse();
-  if (hist.length) out += `<div class="mk-label">Zuletzt</div><div class="hist-list">${hist.map((t) => historyLine(g, t)).join('')}</div>`;
-  return out;
-}
+// ------------------------------------------------------------------ Einstieg
 
+/** Liefert { html, key }: `key` ändert sich nur, wenn ein anderes Pop-up erscheint (für die Einblend-Animation). */
 export function renderMarket(app) {
   const g = app.game;
   const s = g.s;
   const m = app.market;
-  if (s.phase !== 'main') return '';
-  if (!m.open) {
-    return s.offers.length ? `<button class="mk-pill" data-act="mk-open">${ic('trade')} Markt · ${s.offers.length} Angebot${s.offers.length > 1 ? 'e' : ''}</button>` : '';
+  if (s.phase !== 'main') return { html: '', key: '' };
+
+  const offer = incomingOffer(app);
+  if (offer) {
+    const view = offer.responses[HUMAN] ? 'wait' : m.counterFor === offer.id ? 'counter' : 'decide';
+    return { html: `<div class="tp in" role="dialog" aria-label="Handelsangebot">${incomingView(app, offer)}</div>`, key: `in-${offer.id}-${view}` };
   }
-  return `<div class="mk-panel">
-    <div class="mk-top"><b>Handel</b>
-      <div class="seg tiny"><button class="${m.tab === 'players' ? 'on' : ''}" data-act="mk-tab" data-tab="players">Spieler</button><button class="${m.tab === 'bank' ? 'on' : ''}" data-act="mk-tab" data-tab="bank">Bank</button></div>
-      <button class="icon-btn small" data-act="mk-close" aria-label="Schließen">${ic('close')}</button></div>
-    <div class="mk-body">${m.tab === 'bank' ? bankTab(app) : playersTab(app)}</div>
-  </div>`;
+
+  const myTurn = s.turn === HUMAN && s.sub === 'actions';
+  if (!m.open || !myTurn) return { html: '', key: '' };
+  const hasOpen = !!g.openOfferOf(HUMAN);
+  const tab = m.tab === 'bank' ? 'bank' : 'players';
+  return {
+    html: `<div class="tp-back" data-act="mk-close"></div>
+      <div class="tp own" role="dialog" aria-label="Handel">
+        <div class="tp-top">
+          <div class="seg tiny"><button class="${tab === 'players' ? 'on' : ''}" data-act="mk-tab" data-tab="players">Spieler</button><button class="${tab === 'bank' ? 'on' : ''}" data-act="mk-tab" data-tab="bank">Bank</button></div>
+          <button class="icon-btn small" data-act="mk-close" aria-label="Schließen">${ic('close')}</button>
+        </div>
+        ${tab === 'bank' ? bankTab(app) : playersTab(app)}
+      </div>`,
+    key: `own-${tab}-${hasOpen ? 'open' : 'new'}`,
+  };
 }

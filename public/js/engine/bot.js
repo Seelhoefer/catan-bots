@@ -6,7 +6,9 @@
 
 import { RES, COSTS, PIP } from './constants.js';
 
-const RES_W = { wood: 1, brick: 1, sheep: 0.85, wheat: 1.1, ore: 1.1 };
+const RES_W = {
+  wood: 1, brick: 1, sheep: 0.85, wheat: 1.1, ore: 1.1, gold: 1.3,
+};
 const DIFF = {
   easy: { noise: 4, trade: 0.35, smart: false },
   normal: { noise: 1.2, trade: 0.7, smart: true },
@@ -219,6 +221,23 @@ function setupRoad(g, pi) {
   return best.eid;
 }
 
+/** Goldfeld: bevorzugt, was für das wichtigste Ziel fehlt, sonst das, wovon am wenigsten da ist. */
+function chooseGoldCards(g, pi) {
+  const n = g.s.gold[pi];
+  const hand = { ...g.player(pi).hand };
+  const bank = { ...g.s.bank };
+  const goals = topGoals(g, pi);
+  const out = {};
+  for (let i = 0; i < n; i++) {
+    const miss = goals.length ? missingFor(hand, costOf(goals[0])) : {};
+    const want = Object.keys(miss).find((r) => bank[r] > 0);
+    const r = want || RES.filter((x) => bank[x] > 0).sort((a, b) => hand[a] - hand[b])[0];
+    hand[r]++; bank[r]--;
+    out[r] = (out[r] || 0) + 1;
+  }
+  return out;
+}
+
 function chooseDiscard(g, pi) {
   const need = g.s.discard[pi];
   const hand = { ...g.player(pi).hand };
@@ -343,6 +362,11 @@ export function botAct(g, pi) {
   if (s.sub === 'discard') {
     if (s.discard[pi] === undefined) return { wait: true };
     g.discard(pi, chooseDiscard(g, pi));
+    return { did: true };
+  }
+  if (s.sub === 'gold') {
+    if (!s.gold[pi]) return { wait: true };
+    g.chooseGold(pi, chooseGoldCards(g, pi));
     return { did: true };
   }
   if (s.turn !== pi) return { wait: true };

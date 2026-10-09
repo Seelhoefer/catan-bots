@@ -46,7 +46,7 @@ export const ICON_NAMES = Object.keys(ICONS);
 const EMOJI = {
   '🌲': 'wood', '🧱': 'brick', '🐑': 'sheep', '🌾': 'wheat', '⛰': 'ore', '⛰️': 'ore',
   '🍀': 'clover', '🎖️': 'flag', '🎖': 'flag', '🌍': 'globe', '🛣️': 'road', '🛣': 'road',
-  '⚔️': 'sword', '⚔': 'sword', '🌫️': 'cloud', '🌫': 'cloud', '🏆': 'trophy', '🎲': 'dice',
+  '✨': 'clover', '⚔️': 'sword', '⚔': 'sword', '🌫️': 'cloud', '🌫': 'cloud', '🏆': 'trophy', '🎲': 'dice',
 };
 const EMOJI_RE = new RegExp(Object.keys(EMOJI).sort((a, b) => b.length - a.length).join('|'), 'g');
 

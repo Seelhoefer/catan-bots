@@ -27,7 +27,7 @@ export class Game {
     settings.bots = Math.max(1, Math.min(settings.bots, size.maxPlayers - 1));
     settings.targetVP = Math.max(4, Math.min(30, settings.targetVP));
 
-    const board = generateBoard(settings.size, settings.variant, r);
+    const board = generateBoard(settings.size, settings.variant, r, { gold: settings.goldField });
     const extra = size.sizeBonus + Math.ceil(Math.max(0, settings.targetVP - 10) / 2);
     const pieces = { road: 15 + extra * 3, settlement: 5 + extra, city: 4 + extra };
 
@@ -103,6 +103,7 @@ export class Game {
       longestRoad: { holder: null, len: 0 },
       largestArmy: { holder: null, count: 0 },
       missions,
+      gold: {},
       offers: [],
       trades: [],
       nextOfferId: 1,
@@ -191,6 +192,7 @@ export class Game {
     if (s.phase === 'over') return [];
     if (s.phase === 'setup') return [s.turn];
     if (s.sub === 'discard') return Object.keys(s.discard).map(Number);
+    if (s.sub === 'gold') return Object.keys(s.gold).map(Number);
     return [s.turn];
   }
 
@@ -274,7 +276,7 @@ export class Game {
       const got = emptyHand();
       for (const hid of this.board.vertices[vid].hexes) {
         const h = this.board.hexes[hid];
-        if (h.type !== 'desert' && s.bank[h.type] > 0) { got[h.type]++; s.bank[h.type]--; p.hand[h.type]++; }
+        if (RES.includes(h.type) && s.bank[h.type] > 0) { got[h.type]++; s.bank[h.type]--; p.hand[h.type]++; }
       }
       this.log(`${p.name} gründet eine zweite Siedlung und erhält ${this.fmtHand(got)}.`, pi);
       this.emit({ type: 'gain', pi, hand: got });
@@ -340,7 +342,7 @@ export class Game {
       }
     } else {
       this.produce(total);
-      s.sub = 'actions';
+      s.sub = Object.keys(s.gold).length ? 'gold' : 'actions';
     }
     this.afterAction();
     return ok({ total });
@@ -349,11 +351,14 @@ export class Game {
   produce(total) {
     const s = this.s;
     const gains = s.players.map(() => emptyHand());
+    const goldPick = {};
     for (const h of this.board.hexes) {
       if (h.num !== total || h.fog || h.id === s.robber) continue;
       for (const vid of h.verts) {
         const b = s.buildings[vid];
-        if (b) gains[b.owner][h.type] += b.type === 'city' ? 2 : 1;
+        if (!b) continue;
+        if (h.type === 'gold') goldPick[b.owner] = (goldPick[b.owner] || 0) + (b.type === 'city' ? 2 : 1);
+        else gains[b.owner][h.type] += b.type === 'city' ? 2 : 1;
       }
     }
     const received = s.players.map(() => 0);
@@ -376,10 +381,21 @@ export class Game {
         received[p.id] += n;
       }
     }
+    s.gold = {};
+    const bankTotal = RES.reduce((a, r) => a + s.bank[r], 0);
+    for (const [pid, n] of Object.entries(goldPick)) {
+      const amount = Math.min(n, bankTotal);
+      if (amount <= 0) continue;
+      s.gold[pid] = amount;
+      received[pid] += amount; // zählt als Ertrag (kein Anti-Pech-Marker)
+      this.log(`✨ ${s.players[pid].name} darf ${amount} Rohstoff${amount > 1 ? 'e' : ''} frei wählen (Wahlfeld).`, Number(pid));
+    }
     for (const p of s.players) {
-      if (received[p.id] > 0) {
+      if (received[p.id] > 0 && RES.some((r) => gains[p.id][r] > 0)) {
         this.log(`${p.name} erhält ${this.fmtHand(gains[p.id])}.`, p.id);
         this.emit({ type: 'gain', pi: p.id, hand: gains[p.id] });
+      } else if (received[p.id] > 0) {
+        // nur Wahlfeld-Ertrag: kein Marker
       } else if (s.settings.antiBad) {
         p.tokens++;
         this.emit({ type: 'token', pi: p.id });
@@ -394,6 +410,26 @@ export class Game {
   fmtHand(h) {
     const parts = RES.filter((r) => h[r] > 0).map((r) => `${h[r]}× ${RES_INFO[r].icon}`);
     return parts.length ? parts.join(' ') : 'nichts';
+  }
+
+  /** Wahlfeld: der Spieler wählt seine Rohstoffe frei aus (Summe = Anspruch). */
+  chooseGold(pi, cards) {
+    const s = this.s;
+    if (s.sub !== 'gold' || !s.gold[pi]) return fail('Du musst keinen Rohstoff wählen.');
+    const n = RES.reduce((a, r) => a + (cards[r] || 0), 0);
+    if (n !== s.gold[pi]) return fail(`Wähle genau ${s.gold[pi]} Rohstoff${s.gold[pi] > 1 ? 'e' : ''}.`);
+    for (const r of RES) {
+      if ((cards[r] || 0) < 0 || (cards[r] || 0) > s.bank[r]) return fail(`Die Bank hat nicht genug ${RES_INFO[r].name}.`);
+    }
+    const p = this.player(pi);
+    const got = emptyHand();
+    for (const r of RES) { const k = cards[r] || 0; p.hand[r] += k; s.bank[r] -= k; got[r] = k; }
+    delete s.gold[pi];
+    this.log(`✨ ${p.name} wählt ${this.fmtHand(got)} vom Wahlfeld.`, pi);
+    this.emit({ type: 'gain', pi, hand: got });
+    if (Object.keys(s.gold).length === 0) s.sub = 'actions';
+    this.afterAction();
+    return ok();
   }
 
   // ---------------------------------------------------------------- 7: Abwerfen, Räuber
@@ -424,7 +460,7 @@ export class Game {
     s.robber = hexId;
     this.emit({ type: 'robber', id: hexId });
     const h = this.board.hexes[hexId];
-    this.log(`${this.cur.name} setzt den Räuber auf ${RES_INFO[h.type]?.terrain || 'die Wüste'}${h.num ? ` (${h.num})` : ''}.`, pi);
+    this.log(`${this.cur.name} setzt den Räuber auf ${h.type === 'gold' ? 'das Wahlfeld' : (RES_INFO[h.type]?.terrain || 'die Wüste')}${h.num ? ` (${h.num})` : ''}.`, pi);
     const targets = this.stealTargets(hexId);
     if (targets.length === 0) {
       s.sub = s.returnSub;
@@ -525,8 +561,8 @@ export class Game {
         if (!h.fog) continue;
         h.fog = false;
         any = true;
-        let txt = 'Wüste';
-        if (h.type !== 'desert') {
+        let txt = h.type === 'gold' ? `Wahlfeld (${h.num})` : 'Wüste';
+        if (RES.includes(h.type)) {
           txt = `${RES_INFO[h.type].terrain} (${h.num})`;
           if (this.s.bank[h.type] > 0) { this.s.bank[h.type]--; p.hand[h.type]++; txt += ` – ${p.name} erhält 1× ${RES_INFO[h.type].icon}`; }
         }
@@ -558,7 +594,7 @@ export class Game {
   harvestHexes(pi) {
     const out = [];
     for (const h of this.board.hexes) {
-      if (h.fog || h.type === 'desert' || h.id === this.s.robber || this.s.bank[h.type] < 1) continue;
+      if (h.fog || !RES.includes(h.type) || h.id === this.s.robber || this.s.bank[h.type] < 1) continue;
       if (this.harvestAmount(pi, h.id) > 0) out.push(h.id);
     }
     return out;

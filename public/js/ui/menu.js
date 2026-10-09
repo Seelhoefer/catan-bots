@@ -4,7 +4,10 @@ import { generateBoard, hexCorner } from '../engine/board.js';
 import { makeRng } from '../engine/rng.js';
 import { el, ic, esc } from './dom.js';
 import { avatarSVG } from './avatars.js';
-import { piece, resImg, IMG } from './assets.js';
+import {
+  piece, resImg, IMG,
+} from './assets.js';
+import { roadDefs, roadOnEdge } from './road.js';
 
 const KEY = 'catan-settings-v1';
 const LAST_KEY = 'catan-last-v1';
@@ -46,17 +49,12 @@ function heroArt() {
     const v = board.vertices[vid];
     const w = board.vertices[v.adj[0]];
     const col = PLAYER_COLORS[pi];
-    let ang = (Math.atan2(w.y - v.y, w.x - v.x) * 180) / Math.PI;
-    while (ang >= 90) ang -= 180;
-    while (ang < -90) ang += 180;
-    const mx = (v.x + w.x) / 2;
-    const my = (v.y + w.y) / 2;
-    return `<image href="${piece(col.id, 'road')}" transform="translate(${mx} ${my}) rotate(${ang + 26})" x="-.37" y="-.242" width=".74" height=".483"/>
+    return `${roadOnEdge(v, w, col.id, '', 'rh')}
       <image href="${piece(col.id, 'settlement')}" x="${v.x - 0.34}" y="${v.y - 0.45}" width=".65" height=".65"/>`;
   }).join('');
   const b = board.bounds;
   const pad = 0.8;
-  return `<svg viewBox="${b.minX - pad} ${b.minY - pad} ${b.maxX - b.minX + pad * 2} ${b.maxY - b.minY + pad * 2}" class="hero-art-svg">${hexes}${pieces}</svg>`;
+  return `<svg viewBox="${b.minX - pad} ${b.minY - pad} ${b.maxX - b.minX + pad * 2} ${b.maxY - b.minY + pad * 2}" class="hero-art-svg"><defs>${roadDefs('rh')}</defs>${hexes}${pieces}</svg>`;
 }
 
 function miniBoard(radius, fog) {
@@ -178,7 +176,8 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
       toggle('antiBad', 'clover', 'Anti-Pech-Marker', 'Ausbleibende Erträge werden ausgeglichen.'),
       toggle('missions', 'flag', 'Öffentliche Missionen', '3 Ziele mit Zusatz-Siegpunkten.'),
       toggle('remapCard', 'globe', 'Weltenwandel-Karte', 'Mischt alle Felder neu.'),
-      toggle('harvestCard', 'wheat', 'Ernte-Karte', 'Ertrag eines eigenen Feldes sofort holen.')));
+      toggle('harvestCard', 'wheat', 'Ernte-Karte', 'Ertrag eines eigenen Feldes sofort holen.'),
+      toggle('goldField', 'coin', 'Wahlfeld', 'Ein Feld mit freier Rohstoffwahl (wie in Erweiterungen).')));
 
   const drawWizard = () => {
     const body = [stepMap, stepPlayers, stepRules][step]();

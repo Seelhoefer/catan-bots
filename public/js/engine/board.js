@@ -72,9 +72,10 @@ function placeNumbers(board, numbers, rng) {
   for (const h of board.hexes) h.num = h.type === 'desert' ? null : byId[h.id];
 }
 
-function buildTypeList(count, rng) {
+function buildTypeList(count, rng, withGold = false) {
   const desertCount = Math.max(1, Math.round(count / 19));
-  const m = count - desertCount;
+  const goldCount = withGold ? Math.max(1, Math.round(count / 19)) : 0;
+  const m = count - desertCount - goldCount;
   const total = Object.values(RES_WEIGHT).reduce((a, b) => a + b, 0);
   const counts = {};
   const fracs = [];
@@ -90,6 +91,7 @@ function buildTypeList(count, rng) {
   const list = [];
   for (const r of RES) for (let i = 0; i < counts[r]; i++) list.push(r);
   for (let i = 0; i < desertCount; i++) list.push('desert');
+  for (let i = 0; i < goldCount; i++) list.push('gold');
   return shuffle(list, rng);
 }
 
@@ -201,7 +203,7 @@ function placeFog(board, rng) {
   for (const c of cand) board.hexes[c.id].fog = true;
 }
 
-export function generateBoard(sizeId, variant, rng) {
+export function generateBoard(sizeId, variant, rng, opts = {}) {
   const size = SIZES[sizeId];
   const R = size.radius;
   const hexes = [];
@@ -215,7 +217,7 @@ export function generateBoard(sizeId, variant, rng) {
   const board = { size: sizeId, variant, radius: R, hexes, hexIndex: {} };
   hexes.forEach((h) => { board.hexIndex[`${h.q},${h.r}`] = h.id; });
 
-  const types = buildTypeList(hexes.length, rng);
+  const types = buildTypeList(hexes.length, rng, !!opts.gold);
   hexes.forEach((h, i) => { h.type = types[i]; });
   placeNumbers(board, buildNumberList(types.filter((t) => t !== 'desert').length), rng);
 

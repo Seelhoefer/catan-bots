@@ -339,3 +339,37 @@ test('Bots haben Charaktere (Name, Eigenschaft, Gesicht)', () => {
   const g2 = newGame({ bots: 2, botIds: ['mira', 'amir'] });
   assert.deepEqual(g2.s.players.slice(1).map((p) => p.name), ['Mira', 'Amir']);
 });
+
+test('Goldfeld: bei passender Zahl wählt der Besitzer frei (Stadt = 2), kein Anti-Pech-Marker', () => {
+  const g = afterSetup({ goldField: true }, 31);
+  clearBoard(g);
+  assert.ok(g.board.hexes.some((h) => h.type === 'gold'), 'Karte enthält ein Goldfeld');
+  const gold = g.board.hexes.find((h) => h.type === 'gold');
+  gold.fog = false;
+  gold.num = 8;
+  g.s.robber = g.board.hexes.find((h) => h.type === 'desert').id;
+  g.s.buildings[gold.verts[0]] = { owner: 1, type: 'city' };
+  g.s.players.forEach((p) => { p.tokens = 0; });
+  g.s.sub = 'roll';
+  g.s.turn = 0;
+  g.rollDice(0, [4, 4]);
+  assert.equal(g.s.sub, 'gold');
+  assert.deepEqual(g.pendingActors(), [1]);
+  assert.equal(g.player(1).tokens, 0, 'Goldfeld-Ertrag zählt als Ertrag');
+  assert.equal(g.chooseGold(1, { ore: 1 }).ok, false, 'es müssen genau 2 Rohstoffe sein');
+  assert.equal(g.chooseGold(1, { ore: 1, wheat: 1 }).ok, true);
+  assert.equal(g.player(1).hand.ore, 1);
+  assert.equal(g.player(1).hand.wheat, 1);
+  assert.equal(g.s.sub, 'actions');
+});
+
+test('Goldfeld bleibt beim Weltenwandel erhalten und ist auf dem Standardfeld optional', () => {
+  const g = afterSetup({ goldField: true }, 32);
+  const countBefore = g.board.hexes.filter((h) => h.type === 'gold').length;
+  g.player(0).dev.push({ type: 'remap', turn: 1 });
+  g.s.sub = 'actions';
+  assert.equal(g.playDev(0, 'remap').ok, true);
+  assert.equal(g.board.hexes.filter((h) => h.type === 'gold').length, countBefore);
+  const off = newGame({ goldField: false }, 33);
+  assert.ok(off.board.hexes.every((h) => h.type !== 'gold'));
+});
