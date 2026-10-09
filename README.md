@@ -14,6 +14,14 @@ npm start            # → http://localhost:3000
 Alternativ (anderer Port): `PORT=8080 npm start`. Tests: `npm test`.
 Voraussetzung: Node.js ≥ 18. Es muss nichts installiert werden (`npm install` ist nicht nötig).
 
+## Auf Vercel hosten
+
+Das Spiel ist eine rein statische Seite (Ordner `public/`), es wird kein Build und kein Server benötigt.
+1. Auf [vercel.com/new](https://vercel.com/new) das Repo importieren.
+2. Alles andere übernimmt `vercel.json` (kein Framework, kein Build, Output `public`) – **Deploy** klicken.
+
+Alternativ per CLI: `npx vercel --prod` im Projektordner.
+
 ## Funktionsumfang
 
 **Grundregeln:** Gründungsphase (Schlangenreihenfolge, Startrohstoffe), Würfeln & Erträge (Bankvorrat),
