@@ -4,7 +4,7 @@ import { generateBoard, hexCorner } from '../engine/board.js';
 import { makeRng } from '../engine/rng.js';
 import { el, ic, esc } from './dom.js';
 import { avatarSVG } from './avatars.js';
-import { piece, resImg } from './assets.js';
+import { piece, resImg, IMG } from './assets.js';
 
 const KEY = 'catan-settings-v1';
 const LAST_KEY = 'catan-last-v1';
@@ -38,7 +38,7 @@ function heroArt() {
       ? `<g transform="translate(${h.x},${h.y + 0.18})"><circle r=".34" fill="#f6efdc"/><text y="0.12" text-anchor="middle" font-size=".36" font-weight="800" font-family="Georgia,serif" fill="${h.num === 6 || h.num === 8 ? '#c62828' : '#3a2f1c'}">${h.num}</text></g>` : '';
     return `<polygon points="${pts}" fill="${TERRAIN_FILL[h.type]}" stroke="rgba(0,0,0,.25)" stroke-width=".04"/>
       ${h.type === 'desert'
-    ? `<use href="#i-dune" x="${h.x - 0.45}" y="${h.y - 0.45}" width=".9" height=".9" style="color:rgba(255,255,255,.55)"/>`
+    ? `<image href="${IMG.desert}" x="${h.x - 0.62}" y="${h.y - 0.5}" width="1.24" height=".92"/>`
     : `<image href="${resImg(h.type)}" x="${h.x - 0.36}" y="${h.y - 0.97}" width=".72" height=".72"/>`}${num}`;
   }).join('');
   const picks = [[14, 0], [40, 1], [30, 2], [50, 3]];
@@ -51,7 +51,7 @@ function heroArt() {
     while (ang < -90) ang += 180;
     const mx = (v.x + w.x) / 2;
     const my = (v.y + w.y) / 2;
-    return `<image href="${piece(col.id, 'road')}" transform="translate(${mx} ${my}) rotate(${ang + 25.7})" x="-.4" y="-.4" width=".8" height=".79"/>
+    return `<image href="${piece(col.id, 'road')}" transform="translate(${mx} ${my}) rotate(${ang + 26})" x="-.37" y="-.242" width=".74" height=".483"/>
       <image href="${piece(col.id, 'settlement')}" x="${v.x - 0.34}" y="${v.y - 0.45}" width=".65" height=".65"/>`;
   }).join('');
   const b = board.bounds;

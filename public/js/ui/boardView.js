@@ -221,7 +221,8 @@ export class BoardView {
           out.push(`<text x="${h.x}" y="${h.y + 0.62}" class="fog-q">?</text>`);
         }
       } else if (h.type === 'desert') {
-        out.push(`<use href="#i-dune" x="${h.x - 0.5}" y="${h.y - 0.5}" width="1" height="1" class="hex-ico"/>`);
+        if (art.ok) out.push(`<image href="${IMG.desert}" x="${h.x - 0.62}" y="${h.y - 0.5}" width="1.24" height="0.92" class="hex-art"/>`);
+        else out.push(`<use href="#i-dune" x="${h.x - 0.5}" y="${h.y - 0.5}" width="1" height="1" class="hex-ico"/>`);
       } else {
         if (art.ok) out.push(`<image href="${resImg(h.type)}" x="${h.x - 0.36}" y="${h.y - 0.97}" width="0.72" height="0.72" class="hex-art"/>`);
         else out.push(`<use href="#i-${h.type}" x="${h.x - 0.28}" y="${h.y - 0.8}" width="0.56" height="0.56" class="hex-ico"/>`);
@@ -247,11 +248,14 @@ export class BoardView {
     // Hafen-Marker
     out.push('<g class="portmarks">');
     for (const p of board.ports) {
+      if (p.type === 'any' && art.ok) {
+        out.push(`<g transform="translate(${p.x},${p.y})" class="port any"><image href="${IMG.harbor}" x="-0.47" y="-0.465" width="0.94" height="0.93" class="port-img"/>`);
+        out.push('</g>');
+        continue;
+      }
       out.push(`<g transform="translate(${p.x},${p.y})" class="port"><circle r="0.4" class="port-bg"/>`);
-      if (p.type === 'any') {
-        if (art.ok) out.push(`<image href="${IMG.harbor}" x="-0.22" y="-0.36" width="0.44" height="0.44"/><text y="0.26" class="port-ratio">3:1</text>`);
-        else out.push('<text y="0.11" class="port-ratio big">3:1</text>');
-      } else if (art.ok) out.push(`<image href="${resImg(p.type)}" x="-0.22" y="-0.36" width="0.44" height="0.44"/><text y="0.27" class="port-ratio">2:1</text>`);
+      if (p.type === 'any') out.push('<text y="0.11" class="port-ratio big">3:1</text>');
+      else if (art.ok) out.push(`<image href="${resImg(p.type)}" x="-0.22" y="-0.36" width="0.44" height="0.44"/><text y="0.27" class="port-ratio">2:1</text>`);
       else out.push(`<use href="#i-${p.type}" x="-0.2" y="-0.31" width="0.4" height="0.4" class="port-ico"/><text y="0.27" class="port-ratio">2:1</text>`);
       out.push('</g>');
     }

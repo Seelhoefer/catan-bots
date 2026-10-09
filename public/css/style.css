@@ -607,3 +607,10 @@ table.score tr.win td { background: var(--surface); font-weight: 700; }
 .modal-art { display: block; margin: 0 auto; width: 110px; height: auto; filter: drop-shadow(0 8px 14px rgba(0,0,0,.5)); }
 .modal-art.small { width: 64px; margin-bottom: 6px; }
 .modal-art.trophy { width: 130px; }
+
+/* v2-Assets: Hafen-Marker, Straßen */
+.port-img { filter: drop-shadow(0 .05px .07px rgba(0,0,0,.55)); }
+.mk-harbors { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--r-md); background: var(--surface); font-size: var(--fs-xs); color: var(--muted); flex-wrap: wrap; }
+.mk-harbors .hb { display: inline-flex; align-items: center; gap: 4px; color: var(--text); font-weight: 700; }
+.mk-harbors .hb img { width: 34px; height: 34px; object-fit: contain; }
+.mk-harbors .hb .rsq { width: 24px; height: 24px; }

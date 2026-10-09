@@ -4,6 +4,7 @@ import {
   esc, ic, resSq, handHTML,
 } from './dom.js';
 import { avatarSVG } from './avatars.js';
+import { IMG, resImg, art } from './assets.js';
 
 const HUMAN = 0;
 const sum = (o) => RES.reduce((a, r) => a + (o[r] || 0), 0);
@@ -106,7 +107,14 @@ function bankTab(app) {
   const give = m.bankGive;
   const get = m.bankGet;
   const ok = give && get && give !== get;
-  return `<div class="mk-note">${myTurn ? 'Tausche mit der Bank (4:1). Häfen verbessern das Verhältnis.' : 'Mit der Bank tauschst du in deinem Zug.'}</div>
+  const owned = new Set();
+  for (const b of g.buildingsOf(HUMAN)) { const pt = g.board.vertices[b.vid].port; if (pt) owned.add(pt); }
+  const harbors = owned.size
+    ? `<div class="mk-harbors"><span>Deine Häfen</span>${[...owned].map((pt) => (pt === 'any'
+      ? `<span class="hb" title="3:1-Hafen: tausche jeden Rohstoff 3:1">${art.ok ? `<img src="${IMG.harbor}" alt="3:1">` : '3:1'}</span>`
+      : `<span class="hb" title="2:1-Hafen für ${RES_INFO[pt].name}">${resSq(pt)}<b>2:1</b></span>`)).join('')}</div>`
+    : '';
+  return `${harbors}<div class="mk-note">${myTurn ? 'Tausche mit der Bank (4:1). Häfen verbessern das Verhältnis.' : 'Mit der Bank tauschst du in deinem Zug.'}</div>
     <div class="mk-label">Ich gebe</div>
     <div class="res-row">${RES.map((r, i) => `<button class="res-pick ${give === r ? 'sel' : ''}" data-act="bank-give" data-res="${r}" ${!myTurn || me.hand[r] < ports[i] ? 'disabled' : ''}>${resSq(r)}<b>${me.hand[r]}</b><span class="ratio">${ports[i]}:1</span></button>`).join('')}</div>
     <div class="mk-label">Ich erhalte</div>
