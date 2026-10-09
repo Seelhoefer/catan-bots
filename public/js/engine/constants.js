@@ -57,12 +57,12 @@ export const PLAYER_COLORS = [
 
 // Computergegner mit Charakter. `trait` beeinflusst die Spielweise (siehe bot.js).
 export const BOT_ROSTER = [
-  { id: 'fritz', name: 'Fritz', trait: 'expander', tagline: 'Expandiert aggressiv', face: { skin: '#f1c7a1', hair: 'short', hairColor: '#8a4b25', acc: 'none', mouth: 'grin' } },
-  { id: 'greta', name: 'Greta', trait: 'trader', tagline: 'Handelt oft fair', face: { skin: '#f5d2b3', hair: 'long', hairColor: '#d9a441', acc: 'none', mouth: 'smile' } },
-  { id: 'otto', name: 'Otto', trait: 'builder', tagline: 'Baut schnell Straßen', face: { skin: '#e0ac85', hair: 'cap', hairColor: '#3b6ea5', acc: 'beard', mouth: 'flat' } },
-  { id: 'mira', name: 'Mira', trait: 'strategist', tagline: 'Spart auf Städte', face: { skin: '#c98f65', hair: 'bun', hairColor: '#2a1b16', acc: 'glasses', mouth: 'smile' } },
-  { id: 'lea', name: 'Lea', trait: 'knight', tagline: 'Liebt Ritterkarten', face: { skin: '#f6d9c3', hair: 'curly', hairColor: '#b5381f', acc: 'headband', mouth: 'grin' } },
-  { id: 'amir', name: 'Amir', trait: 'gambler', tagline: 'Zieht gern Entwicklungskarten', face: { skin: '#a8744f', hair: 'short', hairColor: '#18110d', acc: 'none', mouth: 'grin' } },
+  { id: 'fritz', name: 'Fritz', trait: 'expander', tagline: 'Expandiert aggressiv', face: { portrait: 'fritz', skin: '#f1c7a1', hair: 'short', hairColor: '#8a4b25', acc: 'none', mouth: 'grin' } },
+  { id: 'greta', name: 'Greta', trait: 'trader', tagline: 'Handelt oft fair', face: { portrait: 'greta', skin: '#f5d2b3', hair: 'long', hairColor: '#d9a441', acc: 'none', mouth: 'smile' } },
+  { id: 'otto', name: 'Otto', trait: 'builder', tagline: 'Baut schnell Straßen', face: { portrait: 'otto', skin: '#e0ac85', hair: 'cap', hairColor: '#3b6ea5', acc: 'beard', mouth: 'flat' } },
+  { id: 'mira', name: 'Mira', trait: 'strategist', tagline: 'Spart auf Städte', face: { portrait: 'mira', skin: '#c98f65', hair: 'bun', hairColor: '#2a1b16', acc: 'glasses', mouth: 'smile' } },
+  { id: 'lea', name: 'Lea', trait: 'knight', tagline: 'Liebt Ritterkarten', face: { portrait: 'lea', skin: '#f6d9c3', hair: 'curly', hairColor: '#b5381f', acc: 'headband', mouth: 'grin' } },
+  { id: 'amir', name: 'Amir', trait: 'gambler', tagline: 'Zieht gern Entwicklungskarten', face: { portrait: 'amir', skin: '#a8744f', hair: 'short', hairColor: '#18110d', acc: 'none', mouth: 'grin' } },
 ];
 
 // Auswählbare Avatare für den Menschen

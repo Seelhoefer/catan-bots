@@ -96,6 +96,7 @@ class App {
       s.offers = s.offers || [];
       s.trades = s.trades || [];
       s.nextOfferId = s.nextOfferId || 1;
+      for (const p of s.players) if (p.isBot && p.face && !p.face.portrait) p.face.portrait = p.name.toLowerCase(); // alte Spielstände
       this.attach(Game.fromJSON(s));
     } catch {
       this.toast('Der Spielstand konnte nicht geladen werden.', 'warn');

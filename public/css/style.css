@@ -614,3 +614,9 @@ table.score tr.win td { background: var(--surface); font-weight: 700; }
 .mk-harbors .hb { display: inline-flex; align-items: center; gap: 4px; color: var(--text); font-weight: 700; }
 .mk-harbors .hb img { width: 34px; height: 34px; object-fit: contain; }
 .mk-harbors .hb .rsq { width: 24px; height: 24px; }
+
+/* Illustrierte Bot-Portraits (Ausschnitt auf das Gesicht) und Meer-Hintergrund */
+.avatar-svg.portrait { position: relative; overflow: hidden; display: block; flex: none; }
+.avatar-svg.portrait img { position: absolute; left: -24%; top: 4%; width: 148%; height: auto; max-width: none; user-select: none; pointer-events: none; }
+#board { background: linear-gradient(rgba(6,28,48,.18), rgba(6,28,48,.32)), url('../assets/illustrated/ocean.webp') center / cover no-repeat, #0d3858; }
+#menu { background: linear-gradient(rgba(8,18,30,.55), rgba(8,18,30,.9) 78%), url('../assets/illustrated/ocean.webp') center / cover no-repeat fixed; }

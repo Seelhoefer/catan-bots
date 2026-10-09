@@ -13,6 +13,8 @@ Illustrierte Grafiken aus dem **Community Asset Pack** und dem **Devcards Pack**
 | `illustrated/desert.webp` | Wüste (v2) | Wüstenfeld |
 | `illustrated/thief.webp` | Dieb | Räuber-Figur, Abwerfen/Stehlen-Dialoge |
 | `illustrated/trophy.webp` | Pokal | Siegpunkte, Siegerehrung |
+| `portraits/*.webp` | 6 Bot-Portraits (360 px, transparent) | Gegner-Karten, Markt, Charakterauswahl; Gesicht wird rund ausgeschnitten, Hintergrund = Spielerfarbe |
+| `illustrated/ocean.webp` | Meer-Hintergrund (1600×900) | Spielbrett und Startseite |
 | `cards/*.webp` | Entwicklungskarten (480×720) | Karten-Galerie, Karten-Einblendung |
 
 Die v2-Straßen wurden zugeschnitten und auf 288×188 vereinheitlicht. Die Karten-Originale (PNG, ~3 MB je Karte) wurden für das Web auf 480×720 WebP verkleinert.

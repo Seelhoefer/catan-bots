@@ -52,7 +52,7 @@ Karten fliegen beim Abschluss zwischen den Spielern. Dazu: Bank-/Hafentausch und
 **🎲 Würfeln als Hero-Moment:** Großer Würfeln-Button in der Mitte, animierte Würfel mit großer Augenzahl,
 leuchtende Treffer-Felder und aufpoppende Erträge an den Spielerkarten.
 
-**🙂 Charaktere:** Jeder Spieler hat ein generiertes Portrait. Die Bots haben Namen, Eigenschaft und Spielstil
+**🙂 Charaktere:** Die Bots haben illustrierte Portraits (du ein generiertes Avatar-Gesicht). Sie haben Namen, Eigenschaft und Spielstil
 (Fritz expandiert, Greta handelt fair, Otto baut Straßen, Mira spart auf Städte, Lea liebt Ritter, Amir zieht Karten).
 
 **🌍 Weltenwandel (neue Entwicklungskarte):** Alle Landfelder (Rohstoff + Zahlenchip) werden komplett zufällig neu

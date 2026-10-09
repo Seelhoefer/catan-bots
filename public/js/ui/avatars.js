@@ -33,8 +33,14 @@ function accessory(face, color) {
   return '';
 }
 
-/** Portrait als SVG-String. `color` = Spielerfarbe (Hintergrund). */
+/** Illustriertes Bot-Portrait im runden Ausschnitt (Gesicht), Hintergrund = Spielerfarbe. */
+function portraitHTML(name, color, size) {
+  return `<span class="avatar-svg portrait" style="width:${size}px;height:${size}px;background:radial-gradient(circle at 50% 35%, ${color}, color-mix(in srgb, ${color} 55%, #0b1626))"><img src="assets/portraits/${name}.webp" alt="" draggable="false"></span>`;
+}
+
+/** Portrait als HTML-String. Bots: illustriertes Bild; sonst generiertes SVG-Gesicht. `color` = Spielerfarbe. */
 export function avatarSVG(face, color = '#4c8dff', size = 40) {
+  if (face && face.portrait) return portraitHTML(face.portrait, color, size);
   const id = `av${uid++}`;
   const f = face || { skin: '#f1c7a1', hair: 'short', hairColor: '#5b3a22', acc: 'none', mouth: 'smile' };
   const beardBeforeMouth = f.acc === 'beard' ? accessory(f, color) : '';
