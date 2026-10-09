@@ -155,6 +155,9 @@ export class BoardView {
     this.board = board;
     const s = game.s;
     const out = [];
+    const hitHexes = ui.hitHexes || new Set();
+    const hitVerts = new Set();
+    for (const id of hitHexes) for (const v of board.hexes[id].verts) hitVerts.add(v);
 
     // Küste / Meer
     out.push('<g class="shore">');
@@ -177,7 +180,7 @@ export class BoardView {
       const t = h.fog ? TERRAIN.fog : TERRAIN[h.type];
       const fresh = ui.fresh?.hexes?.has(h.id) ? ' flip' : '';
       const remap = ui.fresh?.remap ? ' remap' : '';
-      out.push(`<g class="hex${fresh}${remap}" data-hid="${h.id}" style="--d:${(h.id % 7) * 40}ms">`);
+      out.push(`<g class="hex${fresh}${remap}${hitHexes.has(h.id) ? ' hit' : ''}" data-hid="${h.id}" style="--d:${(h.id % 7) * 40}ms">`);
       out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#g-${h.fog ? 'fog' : h.type})" class="hexpoly" stroke="rgba(0,0,0,.28)" stroke-width="0.04"/>`);
       if (h.fog) {
         out.push(`<use href="#i-cloud" x="${h.x - 0.5}" y="${h.y - 0.62}" width="1" height="1" class="hex-ico fogico"/>`);
@@ -197,6 +200,13 @@ export class BoardView {
       out.push('</g>');
     }
     out.push('</g>');
+
+    // Treffer des Würfelwurfs: einmaliges Aufleuchten der betroffenen Felder
+    if (hitHexes.size) {
+      out.push('<g class="hitrings">');
+      for (const id of hitHexes) out.push(`<polygon points="${this.hexPoints(board, board.hexes[id], 0.965)}" class="hit-ring"/>`);
+      out.push('</g>');
+    }
 
     // Hafen-Marker
     out.push('<g class="portmarks">');
@@ -225,7 +235,8 @@ export class BoardView {
     for (const [vid, b] of Object.entries(s.buildings)) {
       const v = board.vertices[vid];
       const pop = ui.fresh?.pieces?.has(`v${vid}`) ? ' pop' : '';
-      out.push(`<g transform="translate(${v.x},${v.y})" filter="url(#shadow)"><g class="bld${pop}"><path d="${b.type === 'city' ? CITY : HOUSE}" fill="${s.players[b.owner].color}" class="bld-shape"/></g></g>`);
+      const hit = hitVerts.has(Number(vid)) ? ' hit' : '';
+      out.push(`<g transform="translate(${v.x},${v.y})" filter="url(#shadow)"><g class="bld${pop}${hit}"><path d="${b.type === 'city' ? CITY : HOUSE}" fill="${s.players[b.owner].color}" class="bld-shape"/></g></g>`);
     }
     out.push('</g>');
 
@@ -247,7 +258,7 @@ export class BoardView {
       for (const id of ui.hexes) {
         const h = board.hexes[id];
         out.push(`<g class="hl-hex" data-h="${id}"><polygon points="${this.hexPoints(board, h, 0.93)}" class="hl-hex-vis"/>`
-          + `<g transform="translate(${h.x + 0.5},${h.y + 0.18})" class="ghost">${ROBBER}</g></g>`);
+          + (ghost.hexKind === 'harvest' ? '' : `<g transform="translate(${h.x + 0.5},${h.y + 0.18})" class="ghost">${ROBBER}</g>`) + '</g>');
       }
     }
     if (ui.edges) {

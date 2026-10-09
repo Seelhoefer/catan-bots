@@ -1,6 +1,5 @@
 // Dialoge: Handel, Entwicklungskarten, Anti-Pech, Abwerfen, Diebstahl, Angebote, Regeln, Spielende.
 import { RES, RES_INFO, DEV_INFO } from '../engine/constants.js';
-import { botEvaluateOffer } from '../engine/bot.js';
 import { MISSION_POOL } from '../engine/missions.js';
 import {
   el, esc, ic, iconize, resSq, handHTML,
@@ -56,87 +55,6 @@ const resBtn = (r, { count, badge, disabled, selected, onclick, title } = {}) =>
 }, el('span', { html: resSq(r, 'lg') }), el('small', {}, RES_INFO[r].name),
 count !== undefined ? el('b', {}, String(count)) : null, badge ? el('span', { class: 'ratio' }, badge) : null);
 
-// ------------------------------------------------------------------ Handel
-export function tradeModal(app) {
-  const m = openModal({ title: 'Handeln', wide: true });
-  let tab = 'bank';
-  let give = null;
-  let get = null;
-  const offerGive = {};
-  const offerGet = {};
-  let answers = null;
-
-  const draw = () => {
-    const g = app.game;
-    const me = g.s.players[HUMAN];
-    m.body.replaceChildren();
-    m.body.append(el('div', { class: 'tabs' },
-      el('button', { class: tab === 'bank' ? 'on' : '', onclick: () => { tab = 'bank'; draw(); } }, 'Bank & Häfen'),
-      el('button', { class: tab === 'players' ? 'on' : '', onclick: () => { tab = 'players'; draw(); } }, 'Mit Spielern')));
-
-    if (tab === 'bank') {
-      const ports = RES.map((r) => g.portRatio(HUMAN, r));
-      m.body.append(el('p', { class: 'hint-text' }, 'Wähle, was du abgibst und was du bekommen möchtest. Häfen verbessern dein Verhältnis (4:1 → 3:1 → 2:1).'));
-      m.body.append(el('h4', {}, 'Du gibst'));
-      m.body.append(el('div', { class: 'res-row' }, RES.map((r, i) => resBtn(r, {
-        count: me.hand[r], badge: `${ports[i]}:1`, selected: give === r, disabled: me.hand[r] < ports[i],
-        onclick: () => { give = give === r ? null : r; if (get === give) get = null; draw(); },
-      }))));
-      m.body.append(el('h4', {}, 'Du erhältst'));
-      m.body.append(el('div', { class: 'res-row' }, RES.map((r) => resBtn(r, {
-        count: g.s.bank[r], selected: get === r, disabled: !give || r === give || g.s.bank[r] < 1,
-        title: `${RES_INFO[r].name} (Bank: ${g.s.bank[r]})`,
-        onclick: () => { get = get === r ? null : r; draw(); },
-      }))));
-      const ready = give && get;
-      m.body.append(el('div', { class: 'modal-actions' },
-        el('div', { class: 'summary', html: ready ? `${ports[RES.indexOf(give)]}${ic(give, 'inline')} <span class="arrow">→</span> 1${ic(get, 'inline')}` : 'Wähle Rohstoffe aus …' }),
-        el('button', {
-          class: 'btn solid', disabled: !ready || undefined,
-          onclick: () => { const r = app.act('bankTrade', HUMAN, give, get); if (r.ok) { give = null; get = null; } draw(); },
-        }, 'Tauschen')));
-    } else {
-      m.body.append(el('p', { class: 'hint-text' }, 'Biete den Bots einen Tausch an. Sie antworten sofort – du wählst dann, mit wem du handelst.'));
-      const counter = (store, r, max) => el('div', { class: 'counter' },
-        el('span', { html: resSq(r) }),
-        el('button', { 'aria-label': 'weniger', html: ic('minus'), onclick: () => { store[r] = Math.max(0, (store[r] || 0) - 1); answers = null; draw(); } }),
-        el('b', {}, String(store[r] || 0)),
-        el('button', { 'aria-label': 'mehr', html: ic('plus'), onclick: () => { store[r] = Math.min(max, (store[r] || 0) + 1); if (store === offerGive) offerGet[r] = 0; else offerGive[r] = 0; answers = null; draw(); } }));
-      m.body.append(el('div', { class: 'two-col' },
-        el('div', {}, el('h4', {}, 'Du bietest'), RES.map((r) => counter(offerGive, r, me.hand[r]))),
-        el('div', {}, el('h4', {}, 'Du möchtest'), RES.map((r) => counter(offerGet, r, 6)))));
-      const ng = RES.reduce((a, r) => a + (offerGive[r] || 0), 0);
-      const nt = RES.reduce((a, r) => a + (offerGet[r] || 0), 0);
-      m.body.append(el('div', { class: 'modal-actions' },
-        el('div', { class: 'summary', html: `${handHTML(offerGive)} <span class="arrow">⇄</span> ${handHTML(offerGet)}` }),
-        el('button', {
-          class: 'btn solid', disabled: !(ng && nt) || undefined,
-          onclick: () => {
-            answers = g.s.players.filter((p) => p.isBot).map((p) => ({ p, ...botEvaluateOffer(g, p.id, HUMAN, offerGive, offerGet) }));
-            draw();
-          },
-        }, 'Angebot machen')));
-      if (answers) {
-        m.body.append(el('div', { class: 'answers' }, answers.map((a) => el('div', { class: `answer ${a.accept ? 'yes' : 'no'}` },
-          el('span', { class: 'pdot', style: `background:${a.p.color}` }),
-          el('b', {}, a.p.name),
-          el('span', { class: 'say' }, a.accept ? '„Einverstanden!“' : `„${a.reason}“`),
-          a.accept ? el('button', {
-            class: 'btn small solid',
-            onclick: () => {
-              const r = app.act('tradeWith', HUMAN, a.p.id, { ...offerGive }, { ...offerGet });
-              if (r.ok) { for (const k of RES) { offerGive[k] = 0; offerGet[k] = 0; } answers = null; }
-              draw();
-            },
-          }, 'Tauschen') : null))));
-      }
-    }
-  };
-  draw();
-  m.refresh = draw;
-  return m;
-}
-
 // ------------------------------------------------------------------ Entwicklungskarten
 export function devModal(app) {
   const m = openModal({ title: 'Entwicklungskarten' });
@@ -174,7 +92,7 @@ export function devModal(app) {
       m.body.append(el('p', { class: 'empty' }, 'Du hast keine Entwicklungskarten. Kaufe eine für Wolle + Getreide + Erz.'));
       return;
     }
-    for (const t of ['knight', 'roadbuilding', 'plenty', 'monopoly', 'remap', 'victory']) {
+    for (const t of ['knight', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'victory']) {
       const cards = me.dev.filter((c) => c.type === t);
       if (!cards.length) continue;
       const info = DEV_INFO[t];
@@ -192,7 +110,7 @@ export function devModal(app) {
           : el('button', {
             class: `btn small ${ready ? 'solid' : ''}`, disabled: !ready || undefined, title: note,
             onclick: () => {
-              if (t === 'plenty') { pick = { type: 'plenty', chosen: [] }; draw(); } else if (t === 'monopoly') { pick = { type: 'monopoly' }; draw(); } else if (t === 'remap') {
+              if (t === 'harvest') { app.startHarvest(); m.close(); } else if (t === 'plenty') { pick = { type: 'plenty', chosen: [] }; draw(); } else if (t === 'monopoly') { pick = { type: 'monopoly' }; draw(); } else if (t === 'remap') {
                 confirmDialog('Weltenwandel einsetzen?', 'Alle Landfelder werden zufällig neu verteilt – für alle Spieler! Siedlungen und Straßen bleiben stehen.', 'Neu mischen').then((yes) => {
                   if (yes) { const x = app.act('playDev', HUMAN, 'remap'); if (x.ok) m.close(); }
                 });
@@ -276,21 +194,6 @@ export function stealModal(app, targets) {
   return m;
 }
 
-// ------------------------------------------------------------------ Angebot eines Bots
-export function offerModal(app, from, give, get) {
-  return new Promise((resolve) => {
-    const m = openModal({ title: `${from.name} macht dir ein Angebot`, dismissable: false });
-    m.body.append(
-      el('div', { class: 'offer' },
-        el('div', { class: 'offer-side' }, el('small', {}, `${from.name} gibt`), el('b', { html: handHTML(give) })),
-        el('div', { class: 'offer-arrow' }, '⇄'),
-        el('div', { class: 'offer-side' }, el('small', {}, 'Du gibst'), el('b', { html: handHTML(get) }))),
-      el('div', { class: 'modal-actions' },
-        el('button', { class: 'btn', onclick: () => { m.close(); resolve(false); } }, 'Ablehnen'),
-        el('button', { class: 'btn solid', onclick: () => { m.close(); resolve(true); } }, 'Annehmen')));
-  });
-}
-
 // ------------------------------------------------------------------ Verlauf (vollständig)
 export function logModal(app) {
   const m = openModal({ title: 'Spielverlauf', wide: true });
@@ -316,6 +219,7 @@ export function rulesModal() {
     <h3>Neu in dieser Version</h3>
     <ul>
       <li>🌫️ <b>Nebel-Variante (Seefahrer):</b> Verdeckte Felder werden aufgedeckt, sobald eine Straße an sie grenzt – und du erhältst 1 Rohstoff davon.</li>
+      <li>🌾 <b>Ernte:</b> Neue Entwicklungskarte. Du wählst eines deiner Felder mit Siedlung oder Stadt und erhältst sofort dessen Ertrag (Stadt = doppelt).</li>
       <li>🌍 <b>Weltenwandel:</b> Neue Entwicklungskarte. Alle Landfelder werden zufällig neu gemischt; Siedlungen &amp; Straßen bleiben.</li>
       <li>🍀 <b>Anti-Pech-Marker:</b> Erhältst du bei einem Wurf (außer 7) nichts, bekommst du 1 Marker. So viele Marker wie du Siegpunkte hast = 1 Rohstoff deiner Wahl.</li>
       <li>🎖️ <b>Öffentliche Missionen:</b> 3 zufällige Ziele für alle sichtbar. Wer sie als Erster schafft, bekommt +1 Siegpunkt.</li>

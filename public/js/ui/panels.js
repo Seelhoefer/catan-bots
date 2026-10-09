@@ -4,6 +4,7 @@ import { missionById } from '../engine/missions.js';
 import {
   esc, rich, ic, resSq, costHTML, dieHTML,
 } from './dom.js';
+import { avatarSVG } from './avatars.js';
 
 const HUMAN = 0;
 
@@ -13,7 +14,7 @@ export function renderHand(g) {
   const p = s.players[HUMAN];
   const chips = RES.map((r) => {
     const n = p.hand[r];
-    return `<div class="rchip ${n ? '' : 'zero'}" title="${RES_INFO[r].name}: ${n}">${resSq(r)}${n ? `<b>${n}</b>` : ''}</div>`;
+    return `<div class="rchip ${n ? '' : 'zero'}" data-res="${r}" title="${RES_INFO[r].name}: ${n}">${resSq(r)}${n ? `<b>${n}</b>` : ''}</div>`;
   }).join('');
   let tokens = '';
   if (s.settings.antiBad && p.tokens > 0) {
@@ -23,25 +24,31 @@ export function renderHand(g) {
       <span class="rsq tokensq">${ic('clover')}</span><b>${p.tokens}</b><small>/${cost}</small></button>`;
   }
   const vp = `<div class="rchip vp" title="Deine Siegpunkte (Ziel: ${s.settings.targetVP})">${ic('trophy')}<b>${g.vp(HUMAN)}</b><small>/${s.settings.targetVP}</small></div>`;
-  return `${vp}<span class="hud-sep"></span>${chips}${tokens}`;
+  const me = `<div class="me" data-pid="${HUMAN}" style="--pc:${p.color}" title="${esc(p.name)}">${avatarSVG(p.face, p.color, 38)}<b>${esc(p.name)}</b></div>`;
+  return `${me}${vp}<span class="hud-sep"></span>${chips}${tokens}`;
 }
 
 // ------------------------------------------------------------------ Kopfzeile: rechts (Gegner)
-export function renderOpps(g) {
+export function renderOpps(g, busy = new Set()) {
   const s = g.s;
   return s.players.filter((p) => p.id !== HUMAN).map((p) => {
     const active = s.phase !== 'over' && s.turn === p.id;
+    let status = '';
+    if (busy.has(p.id)) status = 'überlegt …';
+    else if (active && s.phase === 'main') status = g.openOfferOf(p.id) ? 'handelt' : { roll: 'würfelt', actions: 'am Zug', robber: 'Räuber', steal: 'stiehlt', discard: 'Räuber' }[s.sub] || 'am Zug';
+    else if (active) status = 'am Zug';
     const badges = (s.longestRoad.holder === p.id ? `<span class="badge" title="Längste Handelsstraße">${ic('road')}</span>` : '')
       + (s.largestArmy.holder === p.id ? `<span class="badge" title="Größte Rittermacht">${ic('sword')}</span>` : '');
     return `
-      <div class="opp ${active ? 'active' : ''}" style="--pc:${p.color}" title="${esc(p.name)}">
-        <span class="opp-dot">${esc(p.name[0])}</span>
+      <div class="opp ${active ? 'active' : ''}" data-pid="${p.id}" style="--pc:${p.color}" title="${esc(p.name)}${p.tagline ? ` – ${esc(p.tagline)}` : ''}">
+        <span class="opp-av">${avatarSVG(p.face, p.color, 40)}</span>
         <div class="opp-body">
           <div class="opp-name">${esc(p.name)}${badges}</div>
           <div class="opp-stats">
             <span title="Rohstoffkarten auf der Hand">${ic('cards', 'inline')}${g.handCount(p.id)}</span>
             <span title="Entwicklungskarten auf der Hand">${ic('card', 'inline')}${p.dev.length}</span>
           </div>
+          <div class="opp-status">${status}</div>
         </div>
         <div class="opp-vp" title="Öffentliche Siegpunkte">${g.vp(p.id, true)}</div>
       </div>`;
@@ -87,13 +94,14 @@ export function turnInfo(g, mode) {
     return out;
   }
   out.who = 'Du bist dran';
+  if (mode === 'harvest') { out.what = 'Wähle ein Feld, von dem du ernten möchtest'; out.next = 'Siedlung = 1 Karte, Stadt = 2 Karten · Esc bricht ab.'; return out; }
   if (s.sub === 'roll') { out.what = 'Würfle, um Rohstoffe zu erhalten'; out.next = 'Danach kannst du bauen und handeln.'; return out; }
   if (s.sub === 'robber') { out.what = 'Versetze den Räuber auf ein Feld'; out.next = 'Danach stiehlst du eine Karte von einem Nachbarn.'; return out; }
   if (s.sub === 'steal') { out.what = 'Von wem möchtest du stehlen?'; return out; }
   if (s.roadBuildingLeft > 0) { out.what = `Setze noch ${s.roadBuildingLeft} kostenlose Straße${s.roadBuildingLeft > 1 ? 'n' : ''}`; return out; }
   if (mode) {
-    out.what = { road: 'Wähle einen Platz für deine Straße', settlement: 'Wähle einen Platz für deine Siedlung', city: 'Wähle die Siedlung, die zur Stadt wird' }[mode];
-    out.next = 'Klicke auf einen markierten Punkt · Esc bricht ab.';
+    out.what = { road: 'Wähle einen Platz für deine Straße', settlement: 'Wähle einen Platz für deine Siedlung', city: 'Wähle die Siedlung, die zur Stadt wird', harvest: 'Wähle ein Feld, von dem du ernten möchtest' }[mode];
+    out.next = 'Klicke auf eine Markierung · Esc bricht ab.';
     return out;
   }
   out.what = 'Baue, handle oder beende deinen Zug';
@@ -148,7 +156,7 @@ function tool(g, kind, label, icon, mode) {
     <span class="tool-ico">${ic(icon)}</span><span class="tool-name">${label}</span><span class="tool-cost">${costHTML(COSTS[kind])}</span></button>`;
 }
 
-const anyPlayable = (g) => ['knight', 'roadbuilding', 'plenty', 'monopoly', 'remap'].some((t) => g.playableDev(HUMAN, t));
+const anyPlayable = (g) => ['knight', 'roadbuilding', 'plenty', 'monopoly', 'remap', 'harvest'].some((t) => g.playableDev(HUMAN, t));
 
 export function renderDock(g, mode) {
   const s = g.s;
@@ -159,8 +167,7 @@ export function renderDock(g, mode) {
     return `<span class="dock-note">${ic('road', 'inline')} Straßenbau</span><button class="btn quiet" data-act="skip-roads">Überspringen</button>`;
   }
   if (s.sub === 'roll') {
-    return `<button class="btn solid xl" data-act="roll">${ic('dice')} Würfeln</button>
-      ${anyPlayable(g) ? `<button class="btn quiet" data-act="dev">${ic('card', 'inline')} Karte spielen</button>` : ''}`;
+    return anyPlayable(g) ? `<button class="btn quiet" data-act="dev">${ic('card', 'inline')} Karte vor dem Würfeln spielen</button>` : '';
   }
   if (s.sub !== 'actions') return '';
 
@@ -177,6 +184,13 @@ export function renderDock(g, mode) {
     ${p.dev.length ? `<button class="tool" data-act="dev" title="Entwicklungskarten"><span class="tool-ico">${ic('cards')}${anyPlayable(g) ? '<i class="dot"></i>' : ''}</span><span class="tool-name">Karten · ${p.dev.length}</span></button>` : ''}
     <span class="dock-sep"></span>
     <button class="btn solid" data-act="end-turn">Zug beenden</button>`;
+}
+
+// ------------------------------------------------------------------ Hero: großer Würfeln-Button in der Mitte
+export function renderHeroRoll(g) {
+  const s = g.s;
+  if (s.phase !== 'main' || s.turn !== HUMAN || s.sub !== 'roll' || s.roadBuildingLeft > 0) return '';
+  return `<button class="hero-roll" data-act="roll"><span class="hr-dice">${ic('dice')}</span><span class="hr-text">Würfeln</span><small>oder Taste R</small></button>`;
 }
 
 // ------------------------------------------------------------------ Missionen (einklappbar)

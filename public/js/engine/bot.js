@@ -14,6 +14,7 @@ const DIFF = {
 };
 
 const cfg = (g) => DIFF[g.s.settings.difficulty] || DIFF.normal;
+const traitOf = (g, pi) => g.player(pi).trait;
 const rnd = (g, n = 1) => (g.rng() - 0.5) * 2 * n;
 
 function memory(g, pi) {
@@ -124,24 +125,27 @@ function topGoals(g, pi) {
   const owned = ownedTypes(g, pi);
   if (p.pieces.city > 0) {
     for (const vid of g.legalCitySpots(pi)) {
-      goals.push({ kind: 'city', id: vid, score: 10 + vertexValue(g, vid, pi, owned) / 3 });
+      goals.push({ kind: 'city', id: vid, score: 10 + vertexValue(g, vid, pi, owned) / 3 + (traitOf(g, pi) === 'strategist' ? 1.5 : 0) });
     }
   }
   let haveSpot = false;
   if (p.pieces.settlement > 0) {
     for (const vid of g.legalSettlementSpots(pi)) {
       haveSpot = true;
-      goals.push({ kind: 'settlement', id: vid, score: 9 + vertexValue(g, vid, pi, owned) / 3 });
+      goals.push({ kind: 'settlement', id: vid, score: 9 + vertexValue(g, vid, pi, owned) / 3 + (traitOf(g, pi) === 'expander' ? 1.2 : 0) });
     }
   }
   if (s.devDeck.length > 0) {
     const nearArmy = p.playedKnights + p.dev.filter((c) => c.type === 'knight').length >= 2 ? 1.5 : 0;
-    goals.push({ kind: 'devcard', score: 5 + nearArmy });
+    const tr = traitOf(g, pi);
+    const devBonus = { gambler: 2.5, knight: 1.5, strategist: -0.8 }[tr] || 0;
+    goals.push({ kind: 'devcard', score: 5 + nearArmy + devBonus });
   }
   if (p.pieces.road > 0) {
     const rt = roadTarget(g, pi);
-    if (rt && !haveSpot) goals.push({ kind: 'road', id: rt.eid, score: 5.5 + rt.val / 5 - rt.dist * 0.4 });
-    else if (rt) goals.push({ kind: 'road', id: rt.eid, score: 3 + rt.val / 8 });
+    const rb = traitOf(g, pi) === 'builder' ? 1.5 : 0;
+    if (rt && !haveSpot) goals.push({ kind: 'road', id: rt.eid, score: 5.5 + rb + rt.val / 5 - rt.dist * 0.4 });
+    else if (rt) goals.push({ kind: 'road', id: rt.eid, score: 3 + rb + rt.val / 8 });
     const len = g.longestRoadFor(pi);
     if (len >= 4 && s.longestRoad.holder !== pi) {
       const rts = g.legalRoadSpots(pi);
@@ -272,7 +276,7 @@ function tryPlayDev(g, pi, beforeRoll) {
     const robbed = rh.verts.some((v) => s.buildings[v] && s.buildings[v].owner === pi);
     const k = p.playedKnights + 1;
     const army = k >= 3 && k > s.largestArmy.count;
-    if (robbed || army || (!beforeRoll && p.dev.filter((x) => x.type === 'knight').length >= 2)) {
+    if (robbed || army || p.trait === 'knight' || (!beforeRoll && p.dev.filter((x) => x.type === 'knight').length >= 2)) {
       return g.playDev(pi, 'knight').ok;
     }
   }
@@ -285,6 +289,17 @@ function tryPlayDev(g, pi, beforeRoll) {
   if (beforeRoll) return false;
 
   const goals = topGoals(g, pi);
+  if (g.playableDev(pi, 'harvest')) {
+    const need = goals.length ? missingFor(p.hand, costOf(goals[0])) : {};
+    let best = null;
+    for (const hid of g.harvestHexes(pi)) {
+      const h = g.board.hexes[hid];
+      const amount = Math.min(g.harvestAmount(pi, hid), s.bank[h.type]);
+      const score = amount * (need[h.type] ? 2.5 : 1) + PIP[h.num] * 0.1;
+      if (!best || score > best.score) best = { hid, score, amount };
+    }
+    if (best && (best.amount >= 2 || best.score >= 2.5 || p.dev.length >= 3)) return g.playDev(pi, 'harvest', { hex: best.hid }).ok;
+  }
   const goal = goals[0];
   if (g.playableDev(pi, 'plenty') && goal) {
     const miss = missingFor(p.hand, costOf(goal));
@@ -388,7 +403,7 @@ export function botAct(g, pi) {
   }
 
   // 4) Spielertausch anbieten
-  if (goals.length && mem.offers < 2 && g.rng() < cfg(g).trade) {
+  if (goals.length && mem.offers < (p.trait === 'trader' ? 3 : 2) && g.rng() < Math.min(1, cfg(g).trade * (p.trait === 'trader' ? 1.4 : 1))) {
     const goal = goals[0];
     const cost = costOf(goal);
     const miss = missingFor(p.hand, cost);
@@ -423,31 +438,71 @@ function finish(g, pi) {
 }
 
 // ------------------------------------------------------------------ Antworten auf Angebote
-/** Bewertet ein Angebot: `from` gibt `give` und möchte `get` vom Bot `bi`. */
-export function botEvaluateOffer(g, bi, from, give, get) {
+/** Wert eines Tauschs aus Sicht von Bot `bi`: er erhält `receive` und gibt `giveAway` ab. */
+function tradeBalance(g, bi, receive, giveAway) {
   const p = g.player(bi);
-  const c = cfg(g);
-  for (const r of RES) {
-    if ((get[r] || 0) > p.hand[r]) return { accept: false, reason: 'Hat nicht genug Karten.' };
-  }
-  if (c.smart && g.vp(from, true) >= g.s.settings.targetVP - 2) {
-    return { accept: false, reason: 'Hilft dir nicht beim Gewinnen!' };
-  }
   const goals = topGoals(g, bi);
   const cost = goals.length ? costOf(goals[0]) : {};
   const need = missingFor(p.hand, cost);
   let gain = 0;
   let loss = 0;
   for (const r of RES) {
-    const gv = give[r] || 0;
-    const lv = get[r] || 0;
+    const gv = receive[r] || 0;
+    const lv = giveAway[r] || 0;
     if (gv) gain += gv * (need[r] ? 3 : p.hand[r] === 0 ? 1.6 : 0.8);
     if (lv) {
       const after = p.hand[r] - lv;
       loss += lv * ((cost[r] || 0) > after ? 3 : after >= 2 ? 0.7 : 1.3);
     }
   }
-  const threshold = c.smart ? 1.05 : 0.6;
-  if (gain > loss * threshold) return { accept: true, reason: 'Einverstanden.' };
+  return { gain, loss };
+}
+
+function acceptThreshold(g, bi) {
+  const smart = cfg(g).smart;
+  if (!smart) return 0.6;
+  return traitOf(g, bi) === 'trader' ? 0.85 : 1.05;
+}
+
+/** Bewertet ein Angebot: `from` gibt `give` und möchte `get` vom Bot `bi`. */
+export function botEvaluateOffer(g, bi, from, give, get) {
+  const p = g.player(bi);
+  for (const r of RES) {
+    if ((get[r] || 0) > p.hand[r]) return { accept: false, reason: 'Hat nicht genug Karten.' };
+  }
+  if (cfg(g).smart && g.vp(from, true) >= g.s.settings.targetVP - 2) {
+    return { accept: false, reason: 'Hilft dir nicht beim Gewinnen!' };
+  }
+  const { gain, loss } = tradeBalance(g, bi, give, get);
+  if (gain > loss * acceptThreshold(g, bi)) return { accept: true, reason: 'Einverstanden.' };
   return { accept: false, reason: 'Lohnt sich nicht.' };
+}
+
+/**
+ * Antwort eines Bots auf ein öffentliches Angebot.
+ * → { type: 'accept' | 'decline' | 'counter', give?, get?, reason }
+ */
+export function botRespondOffer(g, bi, offer) {
+  const ev = botEvaluateOffer(g, bi, offer.from, offer.give, offer.get);
+  if (ev.accept) return { type: 'accept', reason: ev.reason };
+  const p = g.player(bi);
+  const canGive = RES.every((r) => (offer.get[r] || 0) <= p.hand[r]);
+  // Gegenvorschlag: eine zusätzliche Karte des Anbieters verlangen
+  if (canGive && cfg(g).smart && ev.reason === 'Lohnt sich nicht.' && g.rng() < (p.trait === 'trader' ? 0.9 : 0.55)) {
+    const proposer = g.player(offer.from);
+    const options = RES.filter((r) => !(offer.get[r] > 0) && proposer.hand[r] > (offer.give[r] || 0));
+    for (const r of options.sort(() => g.rng() - 0.5)) {
+      const give = { ...offer.give, [r]: (offer.give[r] || 0) + 1 };
+      if (botEvaluateOffer(g, bi, offer.from, give, offer.get).accept) {
+        return { type: 'counter', give, get: { ...offer.get }, reason: 'Mit einer Karte mehr bin ich dabei.' };
+      }
+    }
+  }
+  return { type: 'decline', reason: ev.reason };
+}
+
+/** Der Bot ist Anbieter und bekommt einen Gegenvorschlag: er gibt `c.give` ab, erhält `c.get`. */
+export function botJudgeCounter(g, bi, c) {
+  const { gain, loss } = tradeBalance(g, bi, c.get, c.give);
+  return gain > loss * acceptThreshold(g, bi);
 }

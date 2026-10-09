@@ -42,6 +42,7 @@ export const DEV_INFO = {
   roadbuilding: { name: 'Straßenbau', icon: 'road', desc: 'Baue sofort 2 Straßen kostenlos.' },
   plenty: { name: 'Erfindung', icon: 'bulb', desc: 'Nimm dir 2 beliebige Rohstoffe aus der Bank.' },
   monopoly: { name: 'Monopol', icon: 'coin', desc: 'Nenne einen Rohstoff – alle Gegner geben dir alle Karten dieser Sorte.' },
+  harvest: { name: 'Ernte', icon: 'wheat', desc: 'Wähle eines deiner Felder mit Siedlung oder Stadt und erhalte sofort dessen Ertrag (Stadt = doppelt).' },
   remap: { name: 'Weltenwandel', icon: 'globe', desc: 'Alle Landfelder werden zufällig neu verteilt. Siedlungen und Straßen bleiben stehen.' },
 };
 
@@ -54,10 +55,32 @@ export const PLAYER_COLORS = [
   { id: 'pink', hex: '#f06ab4', name: 'Pink' },
 ];
 
-export const BOT_NAMES = ['Fritz', 'Greta', 'Otto', 'Liesl', 'Hans', 'Mia'];
+// Computergegner mit Charakter. `trait` beeinflusst die Spielweise (siehe bot.js).
+export const BOT_ROSTER = [
+  { id: 'fritz', name: 'Fritz', trait: 'expander', tagline: 'Expandiert aggressiv', face: { skin: '#f1c7a1', hair: 'short', hairColor: '#8a4b25', acc: 'none', mouth: 'grin' } },
+  { id: 'greta', name: 'Greta', trait: 'trader', tagline: 'Handelt oft fair', face: { skin: '#f5d2b3', hair: 'long', hairColor: '#d9a441', acc: 'none', mouth: 'smile' } },
+  { id: 'otto', name: 'Otto', trait: 'builder', tagline: 'Baut schnell Straßen', face: { skin: '#e0ac85', hair: 'cap', hairColor: '#3b6ea5', acc: 'beard', mouth: 'flat' } },
+  { id: 'mira', name: 'Mira', trait: 'strategist', tagline: 'Spart auf Städte', face: { skin: '#c98f65', hair: 'bun', hairColor: '#2a1b16', acc: 'glasses', mouth: 'smile' } },
+  { id: 'lea', name: 'Lea', trait: 'knight', tagline: 'Liebt Ritterkarten', face: { skin: '#f6d9c3', hair: 'curly', hairColor: '#b5381f', acc: 'headband', mouth: 'grin' } },
+  { id: 'amir', name: 'Amir', trait: 'gambler', tagline: 'Zieht gern Entwicklungskarten', face: { skin: '#a8744f', hair: 'short', hairColor: '#18110d', acc: 'none', mouth: 'grin' } },
+];
+
+// Auswählbare Avatare für den Menschen
+export const HUMAN_FACES = [
+  { skin: '#f1c7a1', hair: 'short', hairColor: '#5b3a22', acc: 'none', mouth: 'smile' },
+  { skin: '#e0ac85', hair: 'curly', hairColor: '#1d1410', acc: 'glasses', mouth: 'grin' },
+  { skin: '#f6d9c3', hair: 'long', hairColor: '#c0392b', acc: 'none', mouth: 'smile' },
+  { skin: '#c98f65', hair: 'bun', hairColor: '#2a1b16', acc: 'none', mouth: 'smile' },
+  { skin: '#a8744f', hair: 'cap', hairColor: '#7a2f2f', acc: 'beard', mouth: 'flat' },
+  { skin: '#f5d2b3', hair: 'bald', hairColor: '#000', acc: 'beard', mouth: 'grin' },
+  { skin: '#e8b98f', hair: 'long', hairColor: '#2b1d14', acc: 'headband', mouth: 'smile' },
+  { skin: '#8d5a3b', hair: 'short', hairColor: '#0f0a07', acc: 'glasses', mouth: 'smile' },
+];
 
 export const DEFAULT_SETTINGS = {
   playerName: 'Du',
+  avatar: 0,
+  botIds: null, // Liste von BOT_ROSTER-IDs oder null = die ersten N
   bots: 3,
   difficulty: 'normal', // easy | normal | hard
   size: 'small',
@@ -66,4 +89,5 @@ export const DEFAULT_SETTINGS = {
   antiBad: true,
   missions: true,
   remapCard: true,
+  harvestCard: true,
 };

@@ -1,7 +1,7 @@
 // Regel-Engine: kompletter Spielzustand (JSON-serialisierbar) + alle Aktionen.
 
 import {
-  RES, RES_INFO, COSTS, SIZES, DEV_INFO, PLAYER_COLORS, BOT_NAMES, DEFAULT_SETTINGS,
+  RES, RES_INFO, COSTS, SIZES, DEV_INFO, PLAYER_COLORS, BOT_ROSTER, HUMAN_FACES, DEFAULT_SETTINGS,
 } from './constants.js';
 import { makeRng, shuffle } from './rng.js';
 import { generateBoard, remapBoard } from './board.js';
@@ -32,11 +32,18 @@ export class Game {
     const pieces = { road: 15 + extra * 3, settlement: 5 + extra, city: 4 + extra };
 
     const n = settings.bots + 1;
+    const roster = [];
+    for (const id of settings.botIds || []) { const b = BOT_ROSTER.find((x) => x.id === id); if (b && !roster.includes(b)) roster.push(b); }
+    for (const b of BOT_ROSTER) { if (roster.length >= settings.bots) break; if (!roster.includes(b)) roster.push(b); }
     const players = [];
     for (let i = 0; i < n; i++) {
+      const bot = i === 0 ? null : roster[i - 1];
       players.push({
         id: i,
-        name: i === 0 ? (settings.playerName || 'Du') : BOT_NAMES[(i - 1) % BOT_NAMES.length],
+        name: i === 0 ? (settings.playerName || 'Du') : bot.name,
+        trait: bot ? bot.trait : null,
+        tagline: bot ? bot.tagline : '',
+        face: bot ? bot.face : HUMAN_FACES[(settings.avatar || 0) % HUMAN_FACES.length],
         isBot: i !== 0,
         color: PLAYER_COLORS[i].hex,
         hand: emptyHand(),
@@ -56,6 +63,7 @@ export class Game {
     add('knight', 14 * f); add('victory', 5 * f); add('roadbuilding', 2 * f);
     add('plenty', 2 * f); add('monopoly', 2 * f);
     if (settings.remapCard) add('remap', 2 * f);
+    if (settings.harvestCard) add('harvest', 2 * f);
 
     const bank = {};
     for (const res of RES) bank[res] = 19 * f;
@@ -95,6 +103,9 @@ export class Game {
       longestRoad: { holder: null, len: 0 },
       largestArmy: { holder: null, count: 0 },
       missions,
+      offers: [],
+      trades: [],
+      nextOfferId: 1,
       winner: null,
       log: [],
       botMemory: {},
@@ -543,12 +554,32 @@ export class Game {
     return ok({ card: type });
   }
 
+  /** Felder, von denen `pi` mit "Ernte" etwas bekommen kann: eigene Gebäude, aufgedeckt, kein Räuber, Bank hat den Rohstoff. */
+  harvestHexes(pi) {
+    const out = [];
+    for (const h of this.board.hexes) {
+      if (h.fog || h.type === 'desert' || h.id === this.s.robber || this.s.bank[h.type] < 1) continue;
+      if (this.harvestAmount(pi, h.id) > 0) out.push(h.id);
+    }
+    return out;
+  }
+
+  harvestAmount(pi, hexId) {
+    let n = 0;
+    for (const vid of this.board.hexes[hexId].verts) {
+      const b = this.s.buildings[vid];
+      if (b && b.owner === pi) n += b.type === 'city' ? 2 : 1;
+    }
+    return n;
+  }
+
   playableDev(pi, type) {
     const s = this.s;
     if (s.phase !== 'main' || s.turn !== pi) return false;
     if (s.sub !== 'roll' && s.sub !== 'actions') return false;
     if (s.devPlayed || s.roadBuildingLeft > 0) return false;
     if (type === 'victory') return false;
+    if (type === 'harvest' && this.harvestHexes(pi).length === 0) return false;
     return this.player(pi).dev.some((c) => c.type === type && c.turn < s.turnNumber);
   }
 
@@ -591,6 +622,17 @@ export class Game {
       s.returnSub = s.sub;
       s.sub = 'robber';
       this.log(`${p.name} spielt einen Ritter.`, pi);
+    } else if (type === 'harvest') {
+      const hexId = params.hex;
+      if (!this.harvestHexes(pi).includes(hexId)) return fail('Wähle ein Feld, an dem du eine Siedlung oder Stadt hast.');
+      const h = this.board.hexes[hexId];
+      const n = Math.min(this.harvestAmount(pi, hexId), s.bank[h.type]);
+      p.dev.splice(idx, 1);
+      p.hand[h.type] += n;
+      s.bank[h.type] -= n;
+      this.log(`${p.name} spielt Ernte auf ${RES_INFO[h.type].terrain} (${h.num}) und erhält ${n}× ${RES_INFO[h.type].icon}.`, pi);
+      this.emit({ type: 'gain', pi, hand: { ...emptyHand(), [h.type]: n } });
+      this.emit({ type: 'harvest', pi, hex: hexId });
     } else if (type === 'remap') {
       p.dev.splice(idx, 1);
       remapBoard(this.board, this.rng);
@@ -641,7 +683,109 @@ export class Game {
       b.hand[r] += (give[r] || 0) - (get[r] || 0);
     }
     this.log(`${a.name} tauscht ${this.fmtHand(give)} gegen ${this.fmtHand(get)} mit ${b.name}.`, pi);
-    this.emit({ type: 'trade', from: pi, to: other });
+    this.emit({ type: 'trade', from: pi, to: other, give: { ...give }, get: { ...get } });
+    this.afterAction();
+    return ok();
+  }
+
+  // ---------------------------------------------------------------- Handelsmarkt (öffentliche Angebote)
+  openOfferOf(pi) { return this.s.offers.find((o) => o.from === pi) || null; }
+
+  offerById(id) { return this.s.offers.find((o) => o.id === id) || null; }
+
+  /** Kann `pi` das Angebot überhaupt annehmen (hat die geforderten Karten)? */
+  canAcceptOffer(pi, offer) {
+    if (pi === offer.from) return false;
+    const h = this.player(pi).hand;
+    return RES.every((r) => (offer.get[r] || 0) <= h[r]);
+  }
+
+  closeOffer(offer, status, partner = null) {
+    const s = this.s;
+    s.offers = s.offers.filter((o) => o !== offer);
+    s.trades.push({ id: offer.id, from: offer.from, to: partner, give: offer.give, get: offer.get, status, turn: s.turnNumber });
+    if (s.trades.length > 24) s.trades.shift();
+    this.emit({ type: 'offerClosed', id: offer.id, status });
+  }
+
+  validTradeShape(give, get) {
+    const ng = RES.reduce((a, r) => a + (give[r] || 0), 0);
+    const nt = RES.reduce((a, r) => a + (get[r] || 0), 0);
+    if (ng === 0 || nt === 0) return 'Beide Seiten müssen etwas geben.';
+    for (const r of RES) if ((give[r] || 0) > 0 && (get[r] || 0) > 0) return 'Man kann nicht denselben Rohstoff tauschen.';
+    return null;
+  }
+
+  createOffer(pi, give, get) {
+    const s = this.s;
+    if (s.phase !== 'main' || s.turn !== pi || s.sub !== 'actions') return fail('Jetzt nicht möglich.');
+    const bad = this.validTradeShape(give, get);
+    if (bad) return fail(bad);
+    const hand = this.player(pi).hand;
+    for (const r of RES) if ((give[r] || 0) > hand[r]) return fail('Dir fehlen Karten für dieses Angebot.');
+    const prev = this.openOfferOf(pi);
+    if (prev) this.closeOffer(prev, 'withdrawn');
+    const clean = (o) => Object.fromEntries(RES.filter((r) => o[r] > 0).map((r) => [r, o[r]]));
+    const offer = { id: s.nextOfferId++, from: pi, give: clean(give), get: clean(get), responses: {}, turn: s.turnNumber };
+    s.offers.push(offer);
+    this.log(`${this.player(pi).name} bietet ${this.fmtHand(offer.give)} gegen ${this.fmtHand(offer.get)}.`, pi);
+    this.emit({ type: 'offer', id: offer.id, from: pi });
+    this.afterAction();
+    return ok({ offer });
+  }
+
+  /** answer: 'accept' | 'decline' | 'counter' (counter = {give, get} aus Sicht des Anbieters) */
+  respondOffer(pi, offerId, answer, counter = null) {
+    const s = this.s;
+    const offer = this.offerById(offerId);
+    if (!offer) return fail('Das Angebot ist nicht mehr offen.');
+    if (pi === offer.from) return fail('Das ist dein eigenes Angebot.');
+    if (answer === 'decline') {
+      offer.responses[pi] = { type: 'decline' };
+      this.emit({ type: 'offerResponse', id: offerId, pi, answer });
+      this.afterAction();
+      return ok();
+    }
+    if (answer === 'accept') {
+      if (!this.canAcceptOffer(pi, offer)) return fail('Dir fehlen die geforderten Karten.');
+      const r = this.tradeWith(offer.from, pi, offer.give, offer.get);
+      if (!r.ok) return r;
+      this.closeOffer(offer, 'accepted', pi);
+      this.afterAction();
+      return ok();
+    }
+    if (answer === 'counter') {
+      if (!counter) return fail('Gegenvorschlag fehlt.');
+      const bad = this.validTradeShape(counter.give, counter.get);
+      if (bad) return fail(bad);
+      const h = this.player(pi).hand;
+      for (const r of RES) if ((counter.get[r] || 0) > h[r]) return fail('Dir fehlen Karten für diesen Gegenvorschlag.');
+      offer.responses[pi] = { type: 'counter', give: { ...counter.give }, get: { ...counter.get } };
+      this.log(`${this.player(pi).name} macht ${this.player(offer.from).name} einen Gegenvorschlag.`, pi);
+      this.emit({ type: 'offerResponse', id: offerId, pi, answer });
+      this.afterAction();
+      return ok();
+    }
+    return fail('Unbekannte Antwort.');
+  }
+
+  /** Der Anbieter nimmt den Gegenvorschlag von `responder` an. */
+  acceptCounter(pi, offerId, responder) {
+    const offer = this.offerById(offerId);
+    if (!offer || offer.from !== pi) return fail('Das Angebot ist nicht mehr offen.');
+    const c = offer.responses[responder];
+    if (!c || c.type !== 'counter') return fail('Kein Gegenvorschlag vorhanden.');
+    const r = this.tradeWith(pi, responder, c.give, c.get);
+    if (!r.ok) return r;
+    this.closeOffer(offer, 'accepted', responder);
+    this.afterAction();
+    return ok();
+  }
+
+  withdrawOffer(pi, offerId) {
+    const offer = this.offerById(offerId);
+    if (!offer || offer.from !== pi) return fail('Das Angebot ist nicht mehr offen.');
+    this.closeOffer(offer, 'withdrawn');
     this.afterAction();
     return ok();
   }
@@ -669,6 +813,7 @@ export class Game {
     const s = this.s;
     if (s.phase !== 'main' || s.turn !== pi || s.sub !== 'actions') return fail('Du kannst den Zug jetzt nicht beenden.');
     if (s.roadBuildingLeft > 0) return fail('Baue zuerst deine Straßen.');
+    for (const o of [...s.offers]) this.closeOffer(o, 'expired');
     s.turn = (s.turn + 1) % s.players.length;
     s.turnNumber++;
     s.sub = 'roll';

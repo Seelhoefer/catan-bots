@@ -1,6 +1,6 @@
 // App-Controller: verbindet Engine, Bots und Oberfläche.
 import { Game } from './engine/game.js';
-import { botAct, botEvaluateOffer } from './engine/bot.js';
+import { botAct, botRespondOffer, botJudgeCounter } from './engine/bot.js';
 import { RES, DEV_INFO } from './engine/constants.js';
 import { missionById } from './engine/missions.js';
 import { BoardView } from './ui/boardView.js';
@@ -8,32 +8,43 @@ import {
   $, esc, rich, ic, handHTML,
 } from './ui/dom.js';
 import { installIcons } from './ui/icons.js';
-import { renderMenu } from './ui/menu.js';
+import { renderMenu, rememberLast } from './ui/menu.js';
 import {
-  renderHand, renderOpps, renderTurn, renderDock, renderDice, renderMissionBox, renderLogBox,
+  renderHand, renderOpps, renderTurn, renderDock, renderDice, renderMissionBox, renderLogBox, renderHeroRoll,
 } from './ui/panels.js';
+import { renderMarket, suggestTrade } from './ui/market.js';
+import { floatGain, flyCards, showDiceHero } from './ui/fx.js';
 import {
-  tradeModal, devModal, tokensModal, discardModal, stealModal, offerModal, logModal,
+  devModal, tokensModal, discardModal, stealModal, logModal,
   rulesModal, gameOverModal, closeTopModal, closeAllModals, confirmDialog, hasModal,
 } from './ui/modals.js';
 
 const SAVE_KEY = 'catan-save-v1';
 const SPEED_KEY = 'catan-speed';
 const HUMAN = 0;
-const SPEEDS = { slow: ['Langsam', 1300], normal: ['Normal', 650], fast: ['Schnell', 110] };
+const SPEEDS = { slow: ['Langsam', 1300, 1.3, 25000], normal: ['Normal', 650, 1, 18000], fast: ['Schnell', 110, 0.4, 9000] };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sum = (o) => RES.reduce((a, r) => a + (o[r] || 0), 0);
 
 class App {
   constructor() {
     installIcons();
     this.game = null;
-    this.mode = null; // 'road' | 'settlement' | 'city'
+    this.mode = null; // 'road' | 'settlement' | 'city' | 'harvest'
     this.pumping = false;
     this.rolling = false;
     this.renderQueued = false;
     this.auto = {};
     this.ui = { missionsOpen: false, logOpen: false, turnKey: null };
     this.fresh = { pieces: new Set(), hexes: new Set(), remap: false };
+    this.hit = new Set();
+    this.busy = new Set();
+    this.waitingOffer = null;
+    this.waitStart = 0;
+    this.offerWaitMs = 18000;
+    this.diceRevealAt = 0;
+    this.rollPauseUntil = 0;
+    this.market = this.freshMarket();
     this.speed = 'normal';
     try { this.speed = localStorage.getItem(SPEED_KEY) || 'normal'; } catch { /* egal */ }
     if (!SPEEDS[this.speed]) this.speed = 'normal';
@@ -45,6 +56,12 @@ class App {
     this.bindUI();
     this.showMenu();
   }
+
+  freshMarket() {
+    return { open: false, tab: 'players', give: {}, get: {}, bankGive: null, bankGet: null, counterFor: null, counter: { give: {}, get: {} } };
+  }
+
+  get sf() { return SPEEDS[this.speed][2]; }
 
   // ------------------------------------------------------------- Start / Menü
   hasSave() {
@@ -65,12 +82,16 @@ class App {
   }
 
   start(settings) {
+    rememberLast({ ...settings, seed: undefined });
     this.attach(Game.create(settings));
   }
 
   resume() {
     try {
       const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+      s.offers = s.offers || [];
+      s.trades = s.trades || [];
+      s.nextOfferId = s.nextOfferId || 1;
       this.attach(Game.fromJSON(s));
     } catch {
       this.toast('Der Spielstand konnte nicht geladen werden.', 'warn');
@@ -86,6 +107,10 @@ class App {
     this.mode = null;
     this.auto = {};
     this.pumping = false;
+    this.busy = new Set();
+    this.hit = new Set();
+    this.waitingOffer = null;
+    this.market = this.freshMarket();
     this.ui = { missionsOpen: false, logOpen: false, turnKey: null };
     this.view.fitKey = null;
     game.on((e) => this.onEvent(e));
@@ -96,35 +121,64 @@ class App {
     this.pump();
   }
 
+  flash(ids, ms = 2400) {
+    this.hit = new Set(ids);
+    this.queueRender();
+    clearTimeout(this.hitTimer);
+    this.hitTimer = setTimeout(() => { this.hit = new Set(); this.queueRender(); }, ms);
+  }
+
   // ------------------------------------------------------------- Events der Engine
   onEvent(e) {
     const g = this.game;
+    const name = (pi) => g.s.players[pi].name;
     switch (e.type) {
       case 'build': this.fresh.pieces.add(`${e.kind === 'road' ? 'e' : 'v'}${e.id}`); break;
       case 'reveal': this.fresh.hexes.add(e.id); this.toast('Nebel gelüftet', 'info'); break;
       case 'remap':
         this.fresh.remap = true;
-        this.toast(`${g.s.players[e.pi].name} spielt Weltenwandel – alle Felder wurden neu verteilt.`, 'big');
+        this.toast(`${name(e.pi)} spielt Weltenwandel – alle Felder wurden neu verteilt.`, 'big');
         break;
-      case 'dice':
+      case 'dice': {
         this.rolling = true;
+        const total = e.dice[0] + e.dice[1];
+        const dur = showDiceHero(e.dice, e.pi === HUMAN ? 'Du' : name(e.pi), this.sf);
+        const reveal = 750 * this.sf;
+        this.diceRevealAt = Date.now() + reveal + 150;
+        this.rollPauseUntil = Date.now() + dur;
         setTimeout(() => { this.rolling = false; this.queueRender(); }, 650);
+        if (total !== 7) {
+          setTimeout(() => this.flash(g.s.board.hexes.filter((h) => h.num === total && !h.fog).map((h) => h.id), 2600), reveal);
+        }
         break;
+      }
       case 'gain':
-        if (e.pi === HUMAN && g.s.phase === 'main') this.toastHTML(`Du erhältst ${handHTML(e.hand)}`, 'gain');
+        if (g.s.phase === 'main') floatGain(e.pi, e.hand, Math.max(0, this.diceRevealAt - Date.now()));
         break;
       case 'token':
         if (e.pi === HUMAN) this.toastHTML(`${ic('clover', 'inline')} +1 Anti-Pech-Marker`, 'gain');
         break;
       case 'mission':
-        this.toastHTML(`${ic(missionById(e.id).icon, 'inline')} ${esc(g.s.players[e.pi].name)} erfüllt „${missionById(e.id).name}“ (+1 Siegpunkt)`, 'big');
+        this.toastHTML(`${ic(missionById(e.id).icon, 'inline')} ${esc(name(e.pi))} erfüllt „${missionById(e.id).name}“ (+1 Siegpunkt)`, 'big');
         break;
       case 'devplay':
-        if (e.pi !== HUMAN) this.toastHTML(`${esc(g.s.players[e.pi].name)} spielt ${ic(DEV_INFO[e.card].icon, 'inline')} ${DEV_INFO[e.card].name}`, 'info');
+        if (e.pi !== HUMAN) this.toastHTML(`${esc(name(e.pi))} spielt ${ic(DEV_INFO[e.card].icon, 'inline')} ${DEV_INFO[e.card].name}`, 'info');
         break;
+      case 'harvest': this.flash([e.hex], 2400); break;
       case 'steal':
-        if (e.from === HUMAN) this.toastHTML(`${esc(g.s.players[e.to].name)} hat dir 1${ic(e.res, 'inline')} gestohlen`, 'warn');
+        if (e.from === HUMAN) this.toastHTML(`${esc(name(e.to))} hat dir 1${ic(e.res, 'inline')} gestohlen`, 'warn');
         else if (e.to === HUMAN) this.toastHTML(`Du hast 1${ic(e.res, 'inline')} gestohlen`, 'gain');
+        break;
+      case 'trade':
+        flyCards(e.from, e.to, e.give);
+        flyCards(e.to, e.from, e.get, 180);
+        this.toastHTML(`Handel erfolgreich: ${esc(name(e.from))} erhielt ${handHTML(e.get)}, ${esc(name(e.to))} erhielt ${handHTML(e.give)}`, 'gain');
+        break;
+      case 'offer':
+        if (e.from !== HUMAN) this.market.open = true;
+        break;
+      case 'offerClosed':
+        if (this.market.counterFor === e.id) this.market.counterFor = null;
         break;
       case 'win': setTimeout(() => this.showGameOver(), 700); break;
       case 'change': this.queueRender(); break;
@@ -142,6 +196,11 @@ class App {
     return r;
   }
 
+  startHarvest() {
+    this.mode = 'harvest';
+    this.queueRender();
+  }
+
   onPick(kind, id) {
     const g = this.game;
     const s = g.s;
@@ -154,6 +213,7 @@ class App {
     }
     if (s.turn !== HUMAN) return;
     if (kind === 'hex' && s.sub === 'robber') { this.act('moveRobber', HUMAN, id); return; }
+    if (kind === 'hex' && this.mode === 'harvest') { if (this.act('playDev', HUMAN, 'harvest', { hex: id }).ok) this.mode = null; return; }
     if (kind === 'edge' && (s.roadBuildingLeft > 0 || this.mode === 'road')) {
       const r = this.act('build', HUMAN, 'road', id);
       if (r.ok && s.roadBuildingLeft === 0) this.mode = null;
@@ -170,6 +230,7 @@ class App {
       this.toast(el.title || 'Gerade nicht möglich', 'warn');
       return;
     }
+    if (act.startsWith('mk-') || act.startsWith('bank-')) { this.handleMarket(act, el); return; }
     this.closePopover();
     switch (act) {
       case 'roll': this.act('rollDice', HUMAN); break;
@@ -187,7 +248,7 @@ class App {
         break;
       }
       case 'skip-roads': this.act('skipRoadBuilding', HUMAN); break;
-      case 'trade': this.mode = null; this.queueRender(); this.modal = tradeModal(this); break;
+      case 'trade': this.mode = null; this.openMarket(); break;
       case 'dev': this.modal = devModal(this); break;
       case 'tokens': this.modal = tokensModal(this); break;
       case 'toggle-missions': this.ui.missionsOpen = !this.ui.missionsOpen; this.ui.logOpen = false; this.queueRender(); break;
@@ -196,10 +257,100 @@ class App {
     }
   }
 
-  // ------------------------------------------------------------- Bots
-  delay() {
-    return SPEEDS[this.speed][1];
+  // ------------------------------------------------------------- Handelsmarkt (Mensch)
+  openMarket() {
+    const m = this.market;
+    m.open = true;
+    m.tab = 'players';
+    if (!sum(m.give) && !sum(m.get)) {
+      const sug = suggestTrade(this.game);
+      m.give = sug.give;
+      m.get = sug.get;
+    }
+    this.queueRender();
   }
+
+  handleMarket(act, el) {
+    const g = this.game;
+    const m = this.market;
+    const d = el.dataset;
+    const hand = g.s.players[HUMAN].hand;
+    switch (act) {
+      case 'mk-open': m.open = true; break;
+      case 'mk-close': m.open = false; m.counterFor = null; break;
+      case 'mk-tab': m.tab = d.tab; break;
+      case 'mk-step': {
+        const delta = Number(d.d);
+        const side = d.side;
+        const store = { give: m.give, get: m.get, cgive: m.counter.give, cget: m.counter.get }[side];
+        const opposite = { give: m.get, get: m.give, cgive: m.counter.get, cget: m.counter.give }[side];
+        const isGive = side === 'give' || side === 'cgive';
+        const cur = store[d.res] || 0;
+        const next = Math.max(0, Math.min(isGive ? hand[d.res] : 9, cur + delta));
+        store[d.res] = next;
+        if (next > 0) opposite[d.res] = 0;
+        break;
+      }
+      case 'mk-send': {
+        const r = this.act('createOffer', HUMAN, m.give, m.get);
+        if (r.ok) this.runHumanOffer(r.offer.id);
+        break;
+      }
+      case 'mk-withdraw': this.act('withdrawOffer', HUMAN, Number(d.id)); break;
+      case 'mk-accept': this.act('respondOffer', HUMAN, Number(d.id), 'accept'); break;
+      case 'mk-decline': this.act('respondOffer', HUMAN, Number(d.id), 'decline'); break;
+      case 'mk-counter-open': {
+        const o = g.offerById(Number(d.id));
+        if (o) { m.counterFor = o.id; m.counter = { give: { ...o.get }, get: { ...o.give } }; }
+        break;
+      }
+      case 'mk-counter-cancel': m.counterFor = null; break;
+      case 'mk-counter-send': {
+        const id = Number(d.id);
+        const r = this.act('respondOffer', HUMAN, id, 'counter', { give: { ...m.counter.get }, get: { ...m.counter.give } });
+        if (r.ok) m.counterFor = null;
+        break;
+      }
+      case 'mk-accept-counter': this.act('acceptCounter', HUMAN, Number(d.id), Number(d.pid)); break;
+      case 'bank-give': m.bankGive = m.bankGive === d.res ? null : d.res; if (m.bankGet === m.bankGive) m.bankGet = null; break;
+      case 'bank-get': m.bankGet = m.bankGet === d.res ? null : d.res; break;
+      case 'bank-do': {
+        const r = this.act('bankTrade', HUMAN, m.bankGive, m.bankGet);
+        if (r.ok) { m.bankGive = null; m.bankGet = null; }
+        break;
+      }
+      default: break;
+    }
+    this.queueRender();
+  }
+
+  /** Bots antworten nacheinander auf ein Angebot des Menschen. */
+  async runHumanOffer(id) {
+    const g = this.game;
+    for (const bot of g.s.players.filter((p) => p.isBot)) {
+      if (this.game !== g) return;
+      const offer = g.offerById(id);
+      if (!offer || g.s.turn !== HUMAN) return;
+      this.busy.add(bot.id);
+      this.queueRender();
+      await sleep(450 * this.sf + 250);
+      this.busy.delete(bot.id);
+      if (this.game !== g) return;
+      const cur = g.offerById(id);
+      if (!cur) return;
+      const ans = botRespondOffer(g, bot.id, cur);
+      if (ans.type === 'accept') g.respondOffer(bot.id, id, 'accept');
+      else if (ans.type === 'counter') g.respondOffer(bot.id, id, 'counter', { give: ans.give, get: ans.get });
+      else g.respondOffer(bot.id, id, 'decline');
+      this.queueRender();
+    }
+    const left = g.offerById(id);
+    if (left && Object.values(left.responses).every((r) => r.type === 'decline')) this.toast('Niemand möchte tauschen.', 'info');
+    this.queueRender();
+  }
+
+  // ------------------------------------------------------------- Bots
+  delay() { return SPEEDS[this.speed][1]; }
 
   async pump() {
     if (this.pumping) return;
@@ -214,7 +365,10 @@ class App {
         await sleep(isRoll ? this.delay() * 1.2 : this.delay());
         if (this.game !== g || g.s.phase === 'over') return;
         const r = botAct(g, pi);
-        if (r.offer) await this.handleBotOffer(pi, r.offer);
+        if (r.offer) await this.runBotOffer(pi, r.offer);
+        // Nach einem Wurf: Würfel-Moment und Ertrags-Animation zu Ende laufen lassen
+        const rest = this.rollPauseUntil - Date.now();
+        if (rest > 0) await sleep(rest);
       }
     } finally {
       if (this.game === g) this.pumping = false;
@@ -222,26 +376,56 @@ class App {
     this.queueRender();
   }
 
-  async handleBotOffer(pi, offer) {
+  /** Ein Bot macht ein öffentliches Angebot: andere Bots antworten, danach hat der Mensch Zeit zu reagieren. */
+  async runBotOffer(pi, offer) {
     const g = this.game;
-    const bot = g.s.players[pi];
+    const created = g.createOffer(pi, offer.give, offer.get);
+    if (!created.ok) return;
+    const id = created.offer.id;
+    this.queueRender();
+    await sleep(350 * this.sf + 200);
     for (const o of g.s.players) {
+      if (this.game !== g) return;
       if (o.id === pi || !o.isBot) continue;
-      const ev = botEvaluateOffer(g, o.id, pi, offer.give, offer.get);
-      if (ev.accept && g.tradeWith(pi, o.id, offer.give, offer.get).ok) {
-        this.toast(`${bot.name} handelt mit ${o.name}`, 'info');
-        return;
+      const cur = g.offerById(id);
+      if (!cur) return;
+      this.busy.add(o.id);
+      this.queueRender();
+      await sleep(450 * this.sf + 250);
+      this.busy.delete(o.id);
+      if (this.game !== g) return;
+      const live = g.offerById(id);
+      if (!live) return;
+      const ans = botRespondOffer(g, o.id, live);
+      if (ans.type === 'accept') { g.respondOffer(o.id, id, 'accept'); this.queueRender(); return; }
+      if (ans.type === 'counter') {
+        g.respondOffer(o.id, id, 'counter', { give: ans.give, get: ans.get });
+        if (botJudgeCounter(g, pi, ans) && g.acceptCounter(pi, id, o.id).ok) { this.queueRender(); return; }
+      } else g.respondOffer(o.id, id, 'decline');
+      this.queueRender();
+    }
+
+    // Der Mensch ist an der Reihe, zu antworten
+    const live = g.offerById(id);
+    if (live && !live.responses[HUMAN] && g.handCount(HUMAN) > 0) {
+      this.waitingOffer = id;
+      this.waitStart = Date.now();
+      this.offerWaitMs = SPEEDS[this.speed][3];
+      this.market.open = true;
+      this.queueRender();
+      while (this.game === g && g.offerById(id) && !g.offerById(id).responses[HUMAN] && Date.now() - this.waitStart < this.offerWaitMs) await sleep(150);
+      this.waitingOffer = null;
+      if (this.game !== g) return;
+      const after = g.offerById(id);
+      const myResp = after && after.responses[HUMAN];
+      if (myResp && myResp.type === 'counter') {
+        await sleep(500);
+        if (botJudgeCounter(g, pi, myResp) && g.acceptCounter(pi, id, HUMAN).ok) { this.queueRender(); return; }
+        this.toast(`${g.s.players[pi].name} lehnt deinen Gegenvorschlag ab.`, 'info');
       }
     }
-    const me = g.s.players[HUMAN];
-    if (RES.some((r) => (offer.get[r] || 0) > me.hand[r])) return;
-    this.queueRender();
-    const yes = await offerModal(this, bot, offer.give, offer.get);
-    if (this.game !== g) return;
-    if (yes) {
-      const r = g.tradeWith(pi, HUMAN, offer.give, offer.get);
-      if (!r.ok) this.toast(r.error, 'warn');
-    }
+    const last = g.offerById(id);
+    if (last) g.withdrawOffer(pi, id);
     this.queueRender();
   }
 
@@ -255,7 +439,7 @@ class App {
   highlights() {
     const g = this.game;
     const s = g.s;
-    const ui = { fresh: this.fresh, ghost: { color: s.players[HUMAN].color, kind: 'settlement' } };
+    const ui = { fresh: this.fresh, hitHexes: this.hit, ghost: { color: s.players[HUMAN].color, kind: 'settlement' } };
     if (s.phase === 'setup' && s.turn === HUMAN) {
       if (s.sub === 'settlement') ui.vertices = new Set(g.legalSettlementSpots(HUMAN));
       else {
@@ -265,7 +449,7 @@ class App {
     } else if (s.phase === 'main' && s.turn === HUMAN) {
       if (s.sub === 'robber') ui.hexes = new Set(g.legalRobberHexes());
       else if (s.roadBuildingLeft > 0) ui.edges = new Set(g.legalRoadSpots(HUMAN));
-      else if (s.sub === 'actions') {
+      else if (this.mode === 'harvest') { ui.hexes = new Set(g.harvestHexes(HUMAN)); ui.ghost.hexKind = 'harvest'; } else if (s.sub === 'actions') {
         if (this.mode === 'road') ui.edges = new Set(g.legalRoadSpots(HUMAN));
         else if (this.mode === 'settlement') ui.vertices = new Set(g.legalSettlementSpots(HUMAN));
         else if (this.mode === 'city') { ui.vertices = new Set(g.legalCitySpots(HUMAN)); ui.ghost.kind = 'city'; }
@@ -278,7 +462,8 @@ class App {
     const g = this.game;
     if (!g) return;
     const s = g.s;
-    if (this.mode && !(s.phase === 'main' && s.turn === HUMAN && s.sub === 'actions')) this.mode = null;
+    const modeOk = s.phase === 'main' && s.turn === HUMAN && (s.sub === 'actions' || (this.mode === 'harvest' && s.sub === 'roll'));
+    if (this.mode && !modeOk) this.mode = null;
 
     const root = $('#game');
     root.dataset.phase = s.phase;
@@ -288,7 +473,7 @@ class App {
     this.fresh = { pieces: new Set(), hexes: new Set(), remap: false };
 
     $('#hudHand').innerHTML = renderHand(g);
-    $('#hudOpps').innerHTML = renderOpps(g);
+    $('#hudOpps').innerHTML = renderOpps(g, this.busy);
     const turn = renderTurn(g, this.mode);
     const hudTurn = $('#hudTurn');
     hudTurn.innerHTML = turn.html;
@@ -297,13 +482,14 @@ class App {
       hudTurn.firstElementChild.classList.add('enter');
     }
     $('#dock').innerHTML = renderDock(g, this.mode);
+    $('#heroRoll').innerHTML = renderHeroRoll(g);
     $('#diceBox').innerHTML = renderDice(g, this.rolling);
+    $('#market').innerHTML = renderMarket(this);
     $('#missionBox').innerHTML = renderMissionBox(g, this.ui.missionsOpen);
     $('#logBox').innerHTML = renderLogBox(g, this.ui.logOpen);
     const ll = $('#logBox .loglist');
     if (ll) ll.scrollTop = ll.scrollHeight;
 
-    // Dialoge, die der Mensch zwingend beantworten muss
     if (s.phase === 'main' && s.sub === 'discard' && s.discard[HUMAN] !== undefined) this.ensure('discard', () => discardModal(this, s.discard[HUMAN]));
     if (s.phase === 'main' && s.sub === 'steal' && s.turn === HUMAN) this.ensure('steal', () => stealModal(this, g.stealTargets(s.robber)));
 
@@ -344,10 +530,10 @@ class App {
     t.innerHTML = html;
     box.append(t);
     while (box.children.length > 3) box.firstChild.remove();
-    setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, kind === 'big' ? 3600 : 2400);
+    setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, kind === 'big' ? 3600 : 2600);
   }
 
-  // ------------------------------------------------------------- Menü-Popover (Tempo, Regeln, Verlauf, Hauptmenü)
+  // ------------------------------------------------------------- Menü-Popover
   closePopover() {
     const pop = $('#menuPop');
     if (pop) pop.classList.add('hidden');
@@ -407,7 +593,9 @@ class App {
       if (e.target.matches('input, textarea')) return;
       if (e.key === 'Escape') {
         if (!$('#menuPop').classList.contains('hidden')) this.closePopover();
-        else if (!closeTopModal() && this.mode) { this.mode = null; this.queueRender(); }
+        else if (!closeTopModal()) {
+          if (this.mode) { this.mode = null; this.queueRender(); } else if (this.market.open) { this.market.open = false; this.queueRender(); }
+        }
       } else if ((e.key === 'r' || e.key === 'R') && this.game && !hasModal()) {
         const s = this.game.s;
         if (s.phase === 'main' && s.turn === HUMAN && s.sub === 'roll') this.act('rollDice', HUMAN);

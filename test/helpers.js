@@ -1,14 +1,22 @@
 import { Game } from '../public/js/engine/game.js';
-import { botAct, botEvaluateOffer } from '../public/js/engine/bot.js';
+import { botAct, botRespondOffer, botJudgeCounter } from '../public/js/engine/bot.js';
 import { makeRng } from '../public/js/engine/rng.js';
 
-/** Löst ein Bot-Angebot unter den anderen Bots auf (wie der Browser-Controller). */
+/** Löst ein Bot-Angebot über den öffentlichen Markt auf (wie der Browser-Controller). */
 export function resolveOffer(g, pi, offer) {
+  const created = g.createOffer(pi, offer.give, offer.get);
+  if (!created.ok) return false;
+  const id = created.offer.id;
   for (const o of g.s.players) {
     if (o.id === pi) continue;
-    const ev = botEvaluateOffer(g, o.id, pi, offer.give, offer.get);
-    if (ev.accept && g.tradeWith(pi, o.id, offer.give, offer.get).ok) return true;
+    if (!g.offerById(id)) return true;
+    const ans = botRespondOffer(g, o.id, g.offerById(id));
+    if (ans.type === 'accept') { if (g.respondOffer(o.id, id, 'accept').ok) return true; } else if (ans.type === 'counter') {
+      if (g.respondOffer(o.id, id, 'counter', { give: ans.give, get: ans.get }).ok && botJudgeCounter(g, pi, ans) && g.acceptCounter(pi, id, o.id).ok) return true;
+    } else g.respondOffer(o.id, id, 'decline');
   }
+  const open = g.offerById(id);
+  if (open) g.withdrawOffer(pi, id);
   return false;
 }
 

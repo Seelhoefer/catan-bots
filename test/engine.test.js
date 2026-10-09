@@ -23,7 +23,10 @@ function afterSetup(settings, seed) {
 function clearBoard(g) {
   g.s.buildings = {};
   g.s.roads = {};
-  for (const p of g.s.players) p.hand = { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 };
+  for (const p of g.s.players) { p.hand = { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 }; p.missions = []; p.dev = []; }
+  g.s.longestRoad = { holder: null, len: 0 };
+  g.s.largestArmy = { holder: null, count: 0 };
+  g.s.missions.forEach((m) => { m.claimedBy = null; });
 }
 
 test('Spielfeld-Geometrie: Felder, Ecken, Kanten, Häfen', () => {
@@ -277,4 +280,62 @@ test('Spielstand ist JSON-serialisierbar und wieder ladbar', () => {
   assert.equal(copy.board.hexes.length, g.board.hexes.length);
   g.s.sub = 'roll';
   assert.equal(copy.rollDice(0).ok, true);
+});
+
+test('Ernte-Karte: Ertrag eines eigenen Feldes (Stadt doppelt), Auswahl nur eigener Felder', () => {
+  const g = afterSetup({}, 21);
+  clearBoard(g);
+  g.s.sub = 'actions';
+  g.s.robber = g.board.hexes.find((h) => h.type === 'desert').id;
+  const hex = g.board.hexes.find((h) => h.type !== 'desert');
+  g.s.buildings[hex.verts[0]] = { owner: 0, type: 'city' };
+  const p = g.player(0);
+  p.dev = [{ type: 'harvest', turn: 1 }];
+  assert.deepEqual(g.harvestHexes(0), g.harvestHexes(0).filter((id) => g.harvestAmount(0, id) > 0));
+  assert.ok(g.harvestHexes(0).includes(hex.id));
+  const foreign = g.board.hexes.find((h) => h.type !== 'desert' && !g.harvestHexes(0).includes(h.id));
+  assert.equal(g.playDev(0, 'harvest', { hex: foreign.id }).ok, false, 'fremdes Feld nicht wählbar');
+  const r = g.playDev(0, 'harvest', { hex: hex.id });
+  assert.equal(r.ok, true, r.error);
+  assert.equal(p.hand[hex.type], g.harvestAmount(0, hex.id));
+  assert.ok(p.hand[hex.type] >= 2);
+});
+
+test('Angebote: erstellen, Gegenvorschlag, annehmen, auslaufen', () => {
+  const g = afterSetup({}, 22);
+  clearBoard(g);
+  g.s.sub = 'actions';
+  g.player(0).hand.wood = 2;
+  g.player(1).hand.brick = 1;
+  g.player(2).hand.sheep = 3;
+  assert.equal(g.createOffer(0, { sheep: 1 }, { brick: 1 }).ok, false, 'Angebot ohne passende Karten');
+  const { offer } = g.createOffer(0, { wood: 1 }, { brick: 1 });
+  assert.equal(g.canAcceptOffer(1, offer), true);
+  assert.equal(g.canAcceptOffer(2, offer), false, 'Spieler ohne Lehm kann nicht annehmen');
+  assert.equal(g.respondOffer(2, offer.id, 'accept').ok, false);
+  g.respondOffer(2, offer.id, 'decline');
+  assert.equal(g.respondOffer(1, offer.id, 'counter', { give: { wood: 2 }, get: { brick: 1 } }).ok, true);
+  assert.equal(g.acceptCounter(0, offer.id, 1).ok, true);
+  assert.equal(g.player(0).hand.wood, 0);
+  assert.equal(g.player(0).hand.brick, 1);
+  assert.equal(g.player(1).hand.wood, 2);
+  assert.equal(g.s.offers.length, 0);
+  assert.equal(g.s.trades.at(-1).status, 'accepted');
+
+  g.player(0).hand.ore = 1;
+  const o2 = g.createOffer(0, { ore: 1 }, { sheep: 1 }).offer;
+  assert.equal(g.s.offers.length, 1);
+  g.endTurn(0);
+  assert.equal(g.s.offers.length, 0);
+  assert.equal(g.s.trades.at(-1).status, 'expired');
+  assert.equal(g.respondOffer(2, o2.id, 'accept').ok, false);
+});
+
+test('Bots haben Charaktere (Name, Eigenschaft, Gesicht)', () => {
+  const g = newGame({ bots: 5, size: 'large' });
+  const bots = g.s.players.filter((p) => p.isBot);
+  assert.equal(new Set(bots.map((b) => b.name)).size, 5);
+  for (const b of bots) { assert.ok(b.trait && b.tagline && b.face.skin); }
+  const g2 = newGame({ bots: 2, botIds: ['mira', 'amir'] });
+  assert.deepEqual(g2.s.players.slice(1).map((p) => p.name), ['Mira', 'Amir']);
 });
