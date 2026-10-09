@@ -23,7 +23,7 @@ function adjacentHexes(g, pi) {
 
 export const MISSION_POOL = [
   {
-    id: 'harbor', name: 'Hafenmeister', icon: '⚓', max: 2,
+    id: 'harbor', name: 'Hafenmeister', icon: 'anchor', max: 2,
     desc: 'Besitze Siedlungen an 2 verschiedenen Häfen.',
     progress(g, pi) {
       const types = new Set();
@@ -35,7 +35,7 @@ export const MISSION_POOL = [
     },
   },
   {
-    id: 'explorer', name: 'Entdecker', icon: '🧭', max: 5,
+    id: 'explorer', name: 'Entdecker', icon: 'compass', max: 5,
     desc: 'Besitze Gebäude an allen 5 Rohstoffarten.',
     progress(g, pi) {
       const types = new Set(adjacentHexes(g, pi).map((h) => h.type));
@@ -43,32 +43,32 @@ export const MISSION_POOL = [
     },
   },
   {
-    id: 'citybuilder', name: 'Städtebauer', icon: '🏰', max: 3,
+    id: 'citybuilder', name: 'Städtebauer', icon: 'city', max: 3,
     desc: 'Errichte 3 Städte.',
     progress: (g, pi) => myBuildings(g, pi).filter((b) => b.type === 'city').length,
   },
   {
-    id: 'roads', name: 'Wegbereiter', icon: '🛣️', max: 8,
+    id: 'roads', name: 'Wegbereiter', icon: 'road', max: 8,
     desc: 'Besitze 8 Straßen.',
     progress: (g, pi) => Object.values(g.s.roads).filter((o) => o === pi).length,
   },
   {
-    id: 'expansion', name: 'Expansion', icon: '🏘️', max: 6,
+    id: 'expansion', name: 'Expansion', icon: 'house', max: 6,
     desc: 'Besitze 6 Gebäude (Siedlungen + Städte).',
     progress: (g, pi) => myBuildings(g, pi).length,
   },
   {
-    id: 'knights', name: 'Ritterschlag', icon: '⚔️', max: 2,
+    id: 'knights', name: 'Ritterschlag', icon: 'sword', max: 2,
     desc: 'Spiele 2 Ritterkarten aus.',
     progress: (g, pi) => g.s.players[pi].playedKnights,
   },
   {
-    id: 'trader', name: 'Handelsmann', icon: '⚖️', max: 3,
+    id: 'trader', name: 'Handelsmann', icon: 'trade', max: 3,
     desc: 'Tausche 3-mal mit der Bank oder einem Hafen.',
     progress: (g, pi) => g.s.players[pi].bankTrades,
   },
   {
-    id: 'lucky', name: 'Glückspilz', icon: '🎯', max: 2,
+    id: 'lucky', name: 'Glückspilz', icon: 'dice', max: 2,
     desc: 'Besitze Gebäude an einem 6er- und einem 8er-Feld.',
     progress(g, pi) {
       const hs = adjacentHexes(g, pi);
@@ -76,7 +76,7 @@ export const MISSION_POOL = [
     },
   },
   {
-    id: 'cards', name: 'Kartenhai', icon: '🃏', max: 3,
+    id: 'cards', name: 'Kartenhai', icon: 'card', max: 3,
     desc: 'Kaufe 3 Entwicklungskarten.',
     progress: (g, pi) => g.s.players[pi].devBought,
   },

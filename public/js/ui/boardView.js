@@ -2,17 +2,18 @@
 import { RES_INFO } from '../engine/constants.js';
 
 const TERRAIN = {
-  wood: { grad: ['#3a9d63', '#1f6b43'], emoji: '🌲' },
-  brick: { grad: ['#e0794d', '#a94a28'], emoji: '🧱' },
-  sheep: { grad: ['#b6e6a0', '#79b866'], emoji: '🐑' },
-  wheat: { grad: ['#f6d767', '#d6a428'], emoji: '🌾' },
-  ore: { grad: ['#a3b0c7', '#667592'], emoji: '⛰️' },
-  desert: { grad: ['#efe0b0', '#d5bf84'], emoji: '🏜️' },
-  fog: { grad: ['#6d7f99', '#3f4f68'], emoji: '🌫️' },
+  wood: { grad: ['#3f9467', '#256a47'] },
+  brick: { grad: ['#d27249', '#a24a2a'] },
+  sheep: { grad: ['#a9d696', '#76ad66'] },
+  wheat: { grad: ['#efcf62', '#d1a02c'] },
+  ore: { grad: ['#9eabc4', '#657592'] },
+  desert: { grad: ['#ecdcab', '#d3bd86'] },
+  fog: { grad: ['#6c7d97', '#44546d'] },
 };
 
 const PIPCOUNT = { 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 8: 5, 9: 4, 10: 3, 11: 2, 12: 1 };
 
+const ROBBER = '<ellipse cx="0" cy="0.28" rx="0.2" ry="0.07" fill="rgba(0,0,0,.35)"/><path d="M-0.17,0.28 Q-0.2,-0.05 0,-0.12 Q0.2,-0.05 0.17,0.28 Z" fill="#20242c" stroke="#000" stroke-width="0.02"/><circle cx="0" cy="-0.2" r="0.11" fill="#20242c" stroke="#000" stroke-width="0.02"/>';
 const HOUSE = 'M-0.2,0.17 L-0.2,-0.05 L0,-0.25 L0.2,-0.05 L0.2,0.17 Z';
 const CITY = 'M-0.3,0.2 L-0.3,-0.06 L-0.1,-0.06 L-0.1,-0.26 L0.05,-0.4 L0.2,-0.26 L0.2,-0.02 L0.32,-0.02 L0.32,0.2 Z';
 
@@ -133,9 +134,11 @@ export class BoardView {
     if (!board) return;
     const b = board.bounds;
     const pad = 1.9;
+    const top = 1.6;
+    const bottom = 3.0;
     const w = b.maxX - b.minX + pad * 2;
-    const h = b.maxY - b.minY + pad * 2;
-    this.setVB({ x: b.minX - pad, y: b.minY - pad, w, h });
+    const h = b.maxY - b.minY + top + bottom;
+    this.setVB({ x: b.minX - pad, y: b.minY - top, w, h });
     this.minW = w * 0.18;
     this.maxW = w * 1.8;
   }
@@ -177,14 +180,14 @@ export class BoardView {
       out.push(`<g class="hex${fresh}${remap}" data-hid="${h.id}" style="--d:${(h.id % 7) * 40}ms">`);
       out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#g-${h.fog ? 'fog' : h.type})" class="hexpoly" stroke="rgba(0,0,0,.28)" stroke-width="0.04"/>`);
       if (h.fog) {
-        out.push(`<text x="${h.x}" y="${h.y - 0.08}" class="hex-emoji big">🌫️</text>`);
-        out.push(`<text x="${h.x}" y="${h.y + 0.55}" class="fog-q">?</text>`);
+        out.push(`<use href="#i-cloud" x="${h.x - 0.5}" y="${h.y - 0.62}" width="1" height="1" class="hex-ico fogico"/>`);
+        out.push(`<text x="${h.x}" y="${h.y + 0.62}" class="fog-q">?</text>`);
       } else if (h.type === 'desert') {
-        out.push(`<text x="${h.x}" y="${h.y + 0.05}" class="hex-emoji big">${t.emoji}</text>`);
+        out.push(`<use href="#i-dune" x="${h.x - 0.5}" y="${h.y - 0.5}" width="1" height="1" class="hex-ico"/>`);
       } else {
-        out.push(`<text x="${h.x}" y="${h.y - 0.46}" class="hex-emoji">${t.emoji}</text>`);
+        out.push(`<use href="#i-${h.type}" x="${h.x - 0.28}" y="${h.y - 0.8}" width="0.56" height="0.56" class="hex-ico"/>`);
         const red = h.num === 6 || h.num === 8;
-        out.push(`<g transform="translate(${h.x},${h.y + 0.17})" class="token"><circle r="0.36" fill="#f8efd9" stroke="#caa86a" stroke-width="0.03"/>`);
+        out.push(`<g transform="translate(${h.x},${h.y + 0.17})" class="token"><circle r="0.36" fill="#f6efdc" stroke="#cdb27a" stroke-width="0.03"/>`);
         out.push(`<text y="-0.04" class="num${red ? ' red' : ''}">${h.num}</text>`);
         const n = PIPCOUNT[h.num];
         let dots = '';
@@ -198,10 +201,9 @@ export class BoardView {
     // Hafen-Marker
     out.push('<g class="portmarks">');
     for (const p of board.ports) {
-      const label = p.type === 'any' ? '3:1' : '2:1';
       out.push(`<g transform="translate(${p.x},${p.y})" class="port"><circle r="0.4" class="port-bg"/>`);
-      if (p.type === 'any') out.push(`<text y="0.1" class="port-ratio big">3:1</text><text y="-0.18" class="port-icon small">?</text>`);
-      else out.push(`<text y="-0.1" class="port-icon">${RES_INFO[p.type].icon}</text><text y="0.25" class="port-ratio">${label}</text>`);
+      if (p.type === 'any') out.push('<text y="0.11" class="port-ratio big">3:1</text>');
+      else out.push(`<use href="#i-${p.type}" x="-0.2" y="-0.31" width="0.4" height="0.4" class="port-ico"/><text y="0.27" class="port-ratio">2:1</text>`);
       out.push('</g>');
     }
     out.push('</g>');
@@ -229,14 +231,23 @@ export class BoardView {
 
     // Räuber
     const rh = board.hexes[s.robber];
-    out.push(`<g transform="translate(${rh.x + 0.5},${rh.y + 0.18})" class="robber"><g class="robber-in"><ellipse cx="0" cy="0.28" rx="0.2" ry="0.07" fill="rgba(0,0,0,.35)"/><path d="M-0.17,0.28 Q-0.2,-0.05 0,-0.12 Q0.2,-0.05 0.17,0.28 Z" fill="#20242c" stroke="#000" stroke-width="0.02"/><circle cx="0" cy="-0.2" r="0.11" fill="#20242c" stroke="#000" stroke-width="0.02"/></g></g>`);
+    out.push(`<g transform="translate(${rh.x + 0.5},${rh.y + 0.18})" class="robber"><g class="robber-in">${ROBBER}</g></g>`);
 
-    // Hervorhebungen (klickbar)
+    // Hervorhebungen (klickbar) – ruhig, mit Vorschau der Figur beim Darüberfahren
+    const ghost = ui.ghost || {};
+    const gcol = ghost.color || '#fff';
     out.push('<g class="hl">');
+    if (ui.selected) {
+      for (const id of ui.selected) {
+        const v = board.vertices[id];
+        out.push(`<circle cx="${v.x}" cy="${v.y}" r="0.36" class="sel-ring"/>`);
+      }
+    }
     if (ui.hexes) {
       for (const id of ui.hexes) {
         const h = board.hexes[id];
-        out.push(`<polygon points="${this.hexPoints(board, h, 0.93)}" class="hl-hex" data-h="${id}"/>`);
+        out.push(`<g class="hl-hex" data-h="${id}"><polygon points="${this.hexPoints(board, h, 0.93)}" class="hl-hex-vis"/>`
+          + `<g transform="translate(${h.x + 0.5},${h.y + 0.18})" class="ghost">${ROBBER}</g></g>`);
       }
     }
     if (ui.edges) {
@@ -244,20 +255,25 @@ export class BoardView {
         const e = board.edges[id];
         const a = board.vertices[e.a];
         const b = board.vertices[e.b];
-        const [x1, y1, x2, y2] = this.shorten(a, b, 0.16);
-        out.push(`<g data-e="${id}" class="hl-edge"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="hl-edge-vis"/><line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="hl-hit"/></g>`);
+        const [x1, y1, x2, y2] = this.shorten(a, b, 0.13);
+        out.push(`<g data-e="${id}" class="hl-edge"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="hl-edge-vis"/>`
+          + `<g class="ghost"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="road-outline"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${gcol}" class="road-fill"/></g>`
+          + `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="hl-hit"/></g>`);
       }
     }
     if (ui.vertices) {
       for (const id of ui.vertices) {
         const v = board.vertices[id];
-        out.push(`<g transform="translate(${v.x},${v.y})" data-v="${id}" class="hl-vertex"><circle r="0.2" class="hl-vis"/><circle r="0.36" class="hl-hit"/></g>`);
+        const shape = ghost.kind === 'city' ? CITY : HOUSE;
+        out.push(`<g transform="translate(${v.x},${v.y})" data-v="${id}" class="hl-vertex"><circle r="0.17" class="hl-ring"/>`
+          + `<g class="ghost"><path d="${shape}" fill="${gcol}" class="bld-shape"/></g><circle r="0.38" class="hl-hit"/></g>`);
       }
     }
     out.push('</g>');
 
     this.world.innerHTML = out.join('');
     this.svg.classList.toggle('picking', !!(ui.vertices?.size || ui.edges?.size || ui.hexes?.size));
+    this.svg.dataset.ghost = ghost.kind || '';
   }
 
   hexPoints(board, h, scale) {
