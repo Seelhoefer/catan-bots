@@ -5,13 +5,13 @@ import {
 } from './assets.js';
 
 const TERRAIN = {
-  wood: { grad: ['#3f9467', '#256a47'] },
-  brick: { grad: ['#d27249', '#a24a2a'] },
-  sheep: { grad: ['#a9d696', '#76ad66'] },
-  wheat: { grad: ['#efcf62', '#d1a02c'] },
-  ore: { grad: ['#9eabc4', '#657592'] },
+  wood: { grad: ['#439165', '#2c6c4a'] },
+  brick: { grad: ['#d27649', '#aa502d'] },
+  sheep: { grad: ['#a3d08e', '#72a65f'] },
+  wheat: { grad: ['#ebca5c', '#cb9d2d'] },
+  ore: { grad: ['#a89f95', '#706862'] },
   desert: { grad: ['#ecdcab', '#d3bd86'] },
-  fog: { grad: ['#6c7d97', '#44546d'] },
+  fog: { grad: ['#c3cbe6', '#8c97bd'] },
 };
 
 const PIPCOUNT = { 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 8: 5, 9: 4, 10: 3, 11: 2, 12: 1 };
@@ -28,7 +28,8 @@ function pieceImage(kind, hex, vx, vy, extra = '') {
   const h = (b.h * b.target) / b.b;
   const x = vx - ((b.l + b.r) / 2 / b.w) * w;
   const y = vy + (kind === 'city' ? 0.26 : 0.22) - (b.b / b.h) * h;
-  return `<image href="${piece(COLOR_ID[hex] || 'blue', kind)}" x="${x.toFixed(3)}" y="${y.toFixed(3)}" width="${w.toFixed(3)}" height="${h.toFixed(3)}" class="piece-img" ${extra}/>`;
+  const shadow = `<ellipse cx="${vx.toFixed(3)}" cy="${(vy + 0.2).toFixed(3)}" rx="${(w * 0.34).toFixed(3)}" ry="${(w * 0.1).toFixed(3)}" class="piece-shadow"/>`;
+  return `${shadow}<image href="${piece(COLOR_ID[hex] || 'blue', kind)}" x="${x.toFixed(3)}" y="${y.toFixed(3)}" width="${w.toFixed(3)}" height="${h.toFixed(3)}" class="piece-img" ${extra}/>`;
 }
 
 /** Straße als gedrehter Balken, an die Kante (a→b) angepasst. */
@@ -44,9 +45,9 @@ function roadImage(hex, a, b, extra = '') {
   return `<image href="${piece(COLOR_ID[hex] || 'blue', 'road')}" transform="translate(${mx.toFixed(3)} ${my.toFixed(3)}) rotate(${rot.toFixed(1)})" x="${(-w / 2).toFixed(3)}" y="${(-h / 2).toFixed(3)}" width="${w.toFixed(3)}" height="${h.toFixed(3)}" class="piece-img road-img" ${extra}/>`;
 }
 
-const THIEF_W = 0.6;
+const THIEF_W = 0.54;
 function thiefImage(extra = '') {
-  return `<image href="${IMG.thief}" x="${-THIEF_W / 2}" y="${0.34 - THIEF_W * 1.024}" width="${THIEF_W}" height="${THIEF_W * 1.024}" class="piece-img" ${extra}/>`;
+  return `<image href="${IMG.thief}" x="${-THIEF_W / 2}" y="${-THIEF_W * 1.024}" width="${THIEF_W}" height="${THIEF_W * 1.024}" class="piece-img" ${extra}/>`;
 }
 
 export class BoardView {
@@ -62,6 +63,14 @@ export class BoardView {
           <linearGradient id="g-${k}" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stop-color="${t.grad[0]}"/><stop offset="1" stop-color="${t.grad[1]}"/>
           </linearGradient>`).join('')}
+        <radialGradient id="tokenGrad" cx="40%" cy="32%" r="75%"><stop offset="0" stop-color="#fffaea"/><stop offset="1" stop-color="#e6d6aa"/></radialGradient>
+        <radialGradient id="portGrad" cx="40%" cy="32%" r="75%"><stop offset="0" stop-color="#fff6dc"/><stop offset="1" stop-color="#ead9a6"/></radialGradient>
+        <radialGradient id="fogVeil" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+        <pattern id="grain" width=".5" height=".5" patternUnits="userSpaceOnUse">
+          <circle cx=".06" cy=".11" r=".012" fill="#000" opacity=".16"/><circle cx=".31" cy=".05" r=".010" fill="#fff" opacity=".22"/>
+          <circle cx=".19" cy=".29" r=".012" fill="#000" opacity=".12"/><circle cx=".44" cy=".34" r=".010" fill="#fff" opacity=".2"/>
+          <circle cx=".12" cy=".44" r=".010" fill="#fff" opacity=".16"/><circle cx=".37" cy=".47" r=".012" fill="#000" opacity=".14"/>
+        </pattern>
         <filter id="blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="0.14"/></filter>
         <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
           <feDropShadow dx="0" dy="0.05" stdDeviation="0.05" flood-color="#000" flood-opacity="0.55"/>
@@ -165,9 +174,9 @@ export class BoardView {
   fit(board = this.board) {
     if (!board) return;
     const b = board.bounds;
-    const pad = 1.9;
-    const top = 1.6;
-    const bottom = 3.0;
+    const pad = 1.5;
+    const top = 1.3;
+    const bottom = 2.7;
     const w = b.maxX - b.minX + pad * 2;
     const h = b.maxY - b.minY + top + bottom;
     this.setVB({ x: b.minX - pad, y: b.minY - top, w, h });
@@ -201,7 +210,7 @@ export class BoardView {
     for (const p of board.ports) {
       for (const vid of p.verts) {
         const v = board.vertices[vid];
-        out.push(`<line x1="${p.x}" y1="${p.y}" x2="${v.x}" y2="${v.y}" class="pier"/>`);
+        out.push(`<line x1="${p.x}" y1="${p.y}" x2="${v.x}" y2="${v.y}" class="pier"/><line x1="${p.x}" y1="${p.y}" x2="${v.x}" y2="${v.y}" class="pier-hi"/>`);
       }
     }
     out.push('</g>');
@@ -209,13 +218,18 @@ export class BoardView {
     // Felder
     out.push('<g class="hexes">');
     for (const h of board.hexes) {
-      const t = h.fog ? TERRAIN.fog : TERRAIN[h.type];
-      const fresh = ui.fresh?.hexes?.has(h.id) ? ' flip' : '';
+            const fresh = ui.fresh?.hexes?.has(h.id) ? ' flip' : '';
       const remap = ui.fresh?.remap ? ' remap' : '';
       out.push(`<g class="hex${fresh}${remap}${hitHexes.has(h.id) ? ' hit' : ''}" data-hid="${h.id}" style="--d:${(h.id % 7) * 40}ms">`);
-      out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#g-${h.fog ? 'fog' : h.type})" class="hexpoly" stroke="rgba(0,0,0,.28)" stroke-width="0.04"/>`);
+      out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#g-${h.fog ? 'fog' : h.type})" class="hexpoly" stroke="rgba(0,0,0,.3)" stroke-width="0.04"/>`);
+      out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#grain)" pointer-events="none"/>`);
+      if (h.fog) out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#fogVeil)" pointer-events="none"/>`);
+      // Abgeschrägter Rand: Licht oben links, Schatten unten rechts
+      const c = (k) => { const v = board.vertices[h.verts[k]]; return `${(h.x + (v.x - h.x) * 0.92).toFixed(3)},${(h.y + (v.y - h.y) * 0.92).toFixed(3)}`; };
+      out.push(`<polyline points="${c(3)} ${c(4)} ${c(5)} ${c(0)}" class="bevel-light"/><polyline points="${c(0)} ${c(1)} ${c(2)} ${c(3)}" class="bevel-dark"/>`);
+      const blocked = h.id === s.robber;
       if (h.fog) {
-        if (art.ok) out.push(`<image href="${IMG.wild}" x="${h.x - 0.55}" y="${h.y - 0.55}" width="1.1" height="1.1" class="hex-art" opacity=".92"/>`);
+        if (art.ok) out.push(`<image href="${IMG.wild}" x="${h.x - 0.55}" y="${h.y - 0.55}" width="1.1" height="1.1" class="hex-art" opacity=".95"/>`);
         else {
           out.push(`<use href="#i-cloud" x="${h.x - 0.5}" y="${h.y - 0.62}" width="1" height="1" class="hex-ico fogico"/>`);
           out.push(`<text x="${h.x}" y="${h.y + 0.62}" class="fog-q">?</text>`);
@@ -224,14 +238,16 @@ export class BoardView {
         if (art.ok) out.push(`<image href="${IMG.desert}" x="${h.x - 0.62}" y="${h.y - 0.5}" width="1.24" height="0.92" class="hex-art"/>`);
         else out.push(`<use href="#i-dune" x="${h.x - 0.5}" y="${h.y - 0.5}" width="1" height="1" class="hex-ico"/>`);
       } else {
-        if (art.ok) out.push(`<image href="${resImg(h.type)}" x="${h.x - 0.36}" y="${h.y - 0.97}" width="0.72" height="0.72" class="hex-art"/>`);
-        else out.push(`<use href="#i-${h.type}" x="${h.x - 0.28}" y="${h.y - 0.8}" width="0.56" height="0.56" class="hex-ico"/>`);
+        // Bild in der breiten Mitte der Kachel, Chip leicht überlappend darunter
+        if (art.ok) out.push(`<image href="${resImg(h.type)}" x="${h.x - 0.34}" y="${h.y - 0.71}" width="0.68" height="0.68" class="hex-art${blocked ? ' dim' : ''}"/>`);
+        else out.push(`<use href="#i-${h.type}" x="${h.x - 0.3}" y="${h.y - 0.7}" width="0.6" height="0.6" class="hex-ico"/>`);
         const red = h.num === 6 || h.num === 8;
-        out.push(`<g transform="translate(${h.x},${h.y + 0.17})" class="token"><circle r="0.36" fill="#f6efdc" stroke="#cdb27a" stroke-width="0.03"/>`);
-        out.push(`<text y="-0.04" class="num${red ? ' red' : ''}">${h.num}</text>`);
+        const two = h.num >= 10;
+        out.push(`<g transform="translate(${h.x},${h.y + 0.31})" class="token"><circle r="0.38" fill="url(#tokenGrad)" stroke="#b69a58" stroke-width="0.035"/><circle r="0.318" fill="none" stroke="rgba(120,90,40,.35)" stroke-width="0.016"/>`);
+        out.push(`<text y="-0.045" class="num${red ? ' red' : ''}${two ? ' two' : ''}">${h.num}</text>`);
         const n = PIPCOUNT[h.num];
         let dots = '';
-        for (let i = 0; i < n; i++) dots += `<circle cx="${(i - (n - 1) / 2) * 0.1}" cy="0.21" r="0.032" fill="${red ? '#c62828' : '#5a4a2c'}"/>`;
+        for (let i = 0; i < n; i++) dots += `<circle cx="${(i - (n - 1) / 2) * 0.102}" cy="0.215" r="0.034" fill="${red ? '#c62828' : '#5a4a2c'}"/>`;
         out.push(`${dots}</g>`);
       }
       out.push('</g>');
@@ -249,13 +265,13 @@ export class BoardView {
     out.push('<g class="portmarks">');
     for (const p of board.ports) {
       if (p.type === 'any' && art.ok) {
-        out.push(`<g transform="translate(${p.x},${p.y})" class="port any"><image href="${IMG.harbor}" x="-0.47" y="-0.465" width="0.94" height="0.93" class="port-img"/>`);
+        out.push(`<g transform="translate(${p.x},${p.y})" class="port any"><image href="${IMG.harbor}" x="-0.45" y="-0.445" width="0.9" height="0.89" class="port-img"/>`);
         out.push('</g>');
         continue;
       }
-      out.push(`<g transform="translate(${p.x},${p.y})" class="port"><circle r="0.4" class="port-bg"/>`);
-      if (p.type === 'any') out.push('<text y="0.11" class="port-ratio big">3:1</text>');
-      else if (art.ok) out.push(`<image href="${resImg(p.type)}" x="-0.22" y="-0.36" width="0.44" height="0.44"/><text y="0.27" class="port-ratio">2:1</text>`);
+      out.push(`<g transform="translate(${p.x},${p.y})" class="port"><circle r="0.45" class="port-bg"/><circle r="0.385" class="port-inner"/>`);
+      if (p.type === 'any') out.push('<text y="0.1" class="port-ratio big">3:1</text>');
+      else if (art.ok) out.push(`<image href="${resImg(p.type)}" x="-0.22" y="-0.34" width="0.44" height="0.44"/><text y="0.27" class="port-ratio">2:1</text>`);
       else out.push(`<use href="#i-${p.type}" x="-0.2" y="-0.31" width="0.4" height="0.4" class="port-ico"/><text y="0.27" class="port-ratio">2:1</text>`);
       out.push('</g>');
     }
@@ -287,7 +303,7 @@ export class BoardView {
 
     // Räuber
     const rh = board.hexes[s.robber];
-    out.push(`<g transform="translate(${rh.x + 0.5},${rh.y + 0.18})" class="robber"><g class="robber-in">${art.ok ? `<ellipse cx="0" cy="0.34" rx="0.22" ry="0.07" fill="rgba(0,0,0,.4)"/>${thiefImage()}` : ROBBER}</g></g>`);
+    out.push(`<g transform="translate(${rh.x + 0.5},${rh.y + 0.56})" class="robber"><g class="robber-in">${art.ok ? `<ellipse cx="0" cy="0" rx="0.24" ry="0.075" fill="rgba(0,0,0,.45)"/>${thiefImage()}` : `<g transform="translate(0,-.34)">${ROBBER}</g>`}</g></g>`);
 
     // Hervorhebungen (klickbar) – ruhig, mit Vorschau der Figur beim Darüberfahren
     const ghost = ui.ghost || {};
@@ -303,7 +319,7 @@ export class BoardView {
       for (const id of ui.hexes) {
         const h = board.hexes[id];
         out.push(`<g class="hl-hex" data-h="${id}"><polygon points="${this.hexPoints(board, h, 0.93)}" class="hl-hex-vis"/>`
-          + (ghost.hexKind === 'harvest' ? '' : `<g transform="translate(${h.x + 0.5},${h.y + 0.18})" class="ghost">${art.ok ? thiefImage() : ROBBER}</g>`) + '</g>');
+          + (ghost.hexKind === 'harvest' ? '' : `<g transform="translate(${h.x + 0.5},${h.y + 0.56})" class="ghost">${art.ok ? thiefImage() : `<g transform="translate(0,-.34)">${ROBBER}</g>`}</g>`) + '</g>');
       }
     }
     if (ui.edges) {

@@ -33,11 +33,11 @@ export const ICON_IMAGE = {
 
 // Sichtbarer Inhalt (Bildbereich ohne transparenten Rand), in Bildpixeln – für die Platzierung auf dem Brett.
 export const PIECE_BOX = {
-  settlement: { w: 191, h: 192, l: 14, r: 189, b: 185, target: 0.62 },
-  city: { w: 192, h: 192, l: 18, r: 184, b: 179, target: 0.8 },
+  settlement: { w: 191, h: 192, l: 14, r: 189, b: 185, target: 0.7 },
+  city: { w: 192, h: 192, l: 18, r: 184, b: 179, target: 0.9 },
 };
 // Die Straße ist ein schräger Balken (zugeschnitten, 288×188); Hauptachse im Bild: -26° (y nach unten), Länge ≈ 314 px
-export const ROAD_BOX = { w: 288, h: 188, axisDeg: -26, length: 314, target: 0.74 };
+export const ROAD_BOX = { w: 288, h: 188, axisDeg: -26, length: 314, target: 0.8 };
 
 function load(src) {
   return new Promise((resolve) => {

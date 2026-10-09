@@ -181,7 +181,7 @@ function placePorts(board, rng) {
     board.vertices[e.b].port = type;
     board.ports.push({
       id: board.ports.length, type, edge: e.id, verts: [e.a, e.b],
-      x: m.x + ((m.x - cx) / len) * 0.78, y: m.y + ((m.y - cy) / len) * 0.78,
+      x: m.x + ((m.x - cx) / len) * 0.76, y: m.y + ((m.y - cy) / len) * 0.76,
       ex: m.x, ey: m.y,
     });
   }

@@ -187,16 +187,19 @@ kbd { background: var(--surface-2); border-radius: 5px; padding: 1px 6px; font-s
 #board .hexes { filter: drop-shadow(0 .07px .12px rgba(0,0,0,.5)); transition: filter .25s; }
 #board.picking .hexes { filter: drop-shadow(0 .07px .12px rgba(0,0,0,.5)) brightness(.74) saturate(.85); }
 #board.picking .portmarks, #board.picking .shore { filter: brightness(.74) saturate(.85); }
-.pier { stroke: #e6d6a8; stroke-width: .06; stroke-dasharray: .1 .08; opacity: .8; }
+.pier { stroke: #5e3d22; stroke-width: .1; stroke-linecap: round; opacity: .95; }
+.pier-hi { stroke: #b88a58; stroke-width: .05; stroke-linecap: round; }
 .hex-ico { color: rgba(255, 255, 255, .55); }
 .hex-ico.fogico { color: rgba(255, 255, 255, .42); }
 .fog-q { font-size: .42px; text-anchor: middle; fill: rgba(255,255,255,.7); font-weight: 800; dominant-baseline: central; }
-.num { font-size: .36px; font-weight: 800; text-anchor: middle; dominant-baseline: central; fill: #3a2f1c; font-family: Georgia, serif; }
+.num { font-size: .38px; font-weight: 800; text-anchor: middle; dominant-baseline: central; fill: #3a2f1c; font-family: Inter, 'Segoe UI', system-ui, -apple-system, sans-serif; font-variant-numeric: lining-nums tabular-nums; letter-spacing: -.01em; }
+.num.two { font-size: .33px; letter-spacing: -.03em; }
 .num.red { fill: #c62828; }
-.token { filter: drop-shadow(0 .03px .03px rgba(0,0,0,.4)); }
-.port-bg { fill: #f3e9c9; stroke: #b99b55; stroke-width: .04; filter: drop-shadow(0 .04px .04px rgba(0,0,0,.45)); }
+.token { filter: drop-shadow(0 .035px .04px rgba(0,0,0,.45)); }
+.port-bg { fill: #e0b64f; stroke: #8a6a1f; stroke-width: .03; filter: drop-shadow(0 .05px .06px rgba(0,0,0,.5)); }
+.port-inner { fill: url(#portGrad); stroke: rgba(120,90,30,.5); stroke-width: .015; }
 .port-ico { color: #3b3425; }
-.port-ratio { font-size: .2px; font-weight: 800; text-anchor: middle; fill: #3a2f1c; dominant-baseline: central; }
+.port-ratio { font-size: .21px; font-family: Inter, 'Segoe UI', system-ui, sans-serif; font-weight: 800; text-anchor: middle; fill: #3a2f1c; dominant-baseline: central; }
 .port-ratio.big { font-size: .28px; }
 .road-outline { stroke: rgba(0,0,0,.6); stroke-width: .22; stroke-linecap: round; }
 .road-fill { stroke-width: .14; stroke-linecap: round; }
@@ -620,3 +623,9 @@ table.score tr.win td { background: var(--surface); font-weight: 700; }
 .avatar-svg.portrait img { position: absolute; left: -24%; top: 4%; width: 148%; height: auto; max-width: none; user-select: none; pointer-events: none; }
 #board { background: linear-gradient(rgba(6,28,48,.18), rgba(6,28,48,.32)), url('../assets/illustrated/ocean.webp') center / cover no-repeat, #0d3858; }
 #menu { background: linear-gradient(rgba(8,18,30,.55), rgba(8,18,30,.9) 78%), url('../assets/illustrated/ocean.webp') center / cover no-repeat fixed; }
+
+/* Kachel-Feinschliff */
+.bevel-light { fill: none; stroke: rgba(255,255,255,.34); stroke-width: .035; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.bevel-dark { fill: none; stroke: rgba(0,0,0,.26); stroke-width: .035; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.hex-art.dim { opacity: .5; filter: grayscale(.4) drop-shadow(0 .03px .04px rgba(0,0,0,.45)); }
+.piece-shadow { fill: rgba(0,0,0,.38); filter: blur(.02px); pointer-events: none; }
