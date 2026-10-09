@@ -1,0 +1,280 @@
+// SVG-Darstellung des Spielfelds inkl. Zoom/Pan und anklickbarer Positionen.
+import { RES_INFO } from '../engine/constants.js';
+
+const TERRAIN = {
+  wood: { grad: ['#3a9d63', '#1f6b43'], emoji: '🌲' },
+  brick: { grad: ['#e0794d', '#a94a28'], emoji: '🧱' },
+  sheep: { grad: ['#b6e6a0', '#79b866'], emoji: '🐑' },
+  wheat: { grad: ['#f6d767', '#d6a428'], emoji: '🌾' },
+  ore: { grad: ['#a3b0c7', '#667592'], emoji: '⛰️' },
+  desert: { grad: ['#efe0b0', '#d5bf84'], emoji: '🏜️' },
+  fog: { grad: ['#6d7f99', '#3f4f68'], emoji: '🌫️' },
+};
+
+const PIPCOUNT = { 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 8: 5, 9: 4, 10: 3, 11: 2, 12: 1 };
+
+const HOUSE = 'M-0.2,0.17 L-0.2,-0.05 L0,-0.25 L0.2,-0.05 L0.2,0.17 Z';
+const CITY = 'M-0.3,0.2 L-0.3,-0.06 L-0.1,-0.06 L-0.1,-0.26 L0.05,-0.4 L0.2,-0.26 L0.2,-0.02 L0.32,-0.02 L0.32,0.2 Z';
+
+export class BoardView {
+  constructor(svg, onPick) {
+    this.svg = svg;
+    this.onPick = onPick;
+    this.drag = null;
+    this.moved = false;
+    this.fitKey = null;
+    svg.innerHTML = `
+      <defs>
+        ${Object.entries(TERRAIN).map(([k, t]) => `
+          <linearGradient id="g-${k}" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="${t.grad[0]}"/><stop offset="1" stop-color="${t.grad[1]}"/>
+          </linearGradient>`).join('')}
+        <filter id="blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="0.14"/></filter>
+        <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+          <feDropShadow dx="0" dy="0.05" stdDeviation="0.05" flood-color="#000" flood-opacity="0.55"/>
+        </filter>
+      </defs>
+      <g id="world"></g>`;
+    this.world = svg.querySelector('#world');
+    this.bindEvents();
+  }
+
+  // ------------------------------------------------------------- Zoom & Pan
+  bindEvents() {
+    const svg = this.svg;
+    svg.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      this.zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 0.88 : 1.14);
+    }, { passive: false });
+
+    svg.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
+      this.drag = { x: e.clientX, y: e.clientY, vb: this.getVB(), id: e.pointerId };
+      this.moved = false;
+    });
+    svg.addEventListener('pointermove', (e) => {
+      if (!this.drag) return;
+      const dx = e.clientX - this.drag.x;
+      const dy = e.clientY - this.drag.y;
+      if (!this.moved && Math.hypot(dx, dy) < 6) return;
+      if (!this.moved) { this.moved = true; svg.classList.add('panning'); try { svg.setPointerCapture(e.pointerId); } catch { /* egal */ } }
+      const rect = svg.getBoundingClientRect();
+      const vb = this.drag.vb;
+      const k = Math.max(vb.w / rect.width, vb.h / rect.height);
+      this.setVB({ x: vb.x - dx * k, y: vb.y - dy * k, w: vb.w, h: vb.h });
+    });
+    const end = () => {
+      this.drag = null;
+      svg.classList.remove('panning');
+      setTimeout(() => { this.moved = false; }, 0);
+    };
+    svg.addEventListener('pointerup', end);
+    svg.addEventListener('pointercancel', end);
+
+    svg.addEventListener('click', (e) => {
+      if (this.moved) return;
+      const t = e.target.closest('[data-v],[data-e],[data-h]');
+      if (!t) return;
+      if (t.dataset.v !== undefined) this.onPick('vertex', Number(t.dataset.v));
+      else if (t.dataset.e !== undefined) this.onPick('edge', Number(t.dataset.e));
+      else if (t.dataset.h !== undefined) this.onPick('hex', Number(t.dataset.h));
+    });
+
+    // Pinch-Zoom für Touch
+    const pts = new Map();
+    let pinch = null;
+    svg.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') pts.set(e.pointerId, e); });
+    svg.addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'touch' || !pts.has(e.pointerId)) return;
+      pts.set(e.pointerId, e);
+      if (pts.size === 2) {
+        const [a, b] = [...pts.values()];
+        const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+        if (pinch) this.zoomAt((a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2, pinch / d);
+        pinch = d;
+        this.moved = true;
+      }
+    });
+    const up = (e) => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; };
+    svg.addEventListener('pointerup', up);
+    svg.addEventListener('pointercancel', up);
+  }
+
+  getVB() {
+    const [x, y, w, h] = this.svg.getAttribute('viewBox').split(' ').map(Number);
+    return { x, y, w, h };
+  }
+
+  setVB({ x, y, w, h }) {
+    this.svg.setAttribute('viewBox', `${x} ${y} ${w} ${h}`);
+  }
+
+  zoomAt(cx, cy, factor) {
+    const vb = this.getVB();
+    const rect = this.svg.getBoundingClientRect();
+    const k = Math.max(vb.w / rect.width, vb.h / rect.height);
+    // Mittelpunkt des sichtbaren Bereichs im Viewport (preserveAspectRatio = meet)
+    const offX = (rect.width - vb.w / k) / 2;
+    const offY = (rect.height - vb.h / k) / 2;
+    const px = vb.x + (cx - rect.left - offX) * k;
+    const py = vb.y + (cy - rect.top - offY) * k;
+    const nw = Math.min(Math.max(vb.w * factor, this.minW || 4), this.maxW || 80);
+    const f = nw / vb.w;
+    const nh = vb.h * f;
+    this.setVB({ x: px - (px - vb.x) * f, y: py - (py - vb.y) * f, w: nw, h: nh });
+  }
+
+  zoomBy(factor) {
+    const r = this.svg.getBoundingClientRect();
+    this.zoomAt(r.left + r.width / 2, r.top + r.height / 2, factor);
+  }
+
+  fit(board = this.board) {
+    if (!board) return;
+    const b = board.bounds;
+    const pad = 1.9;
+    const w = b.maxX - b.minX + pad * 2;
+    const h = b.maxY - b.minY + pad * 2;
+    this.setVB({ x: b.minX - pad, y: b.minY - pad, w, h });
+    this.minW = w * 0.18;
+    this.maxW = w * 1.8;
+  }
+
+  // ------------------------------------------------------------- Rendering
+  /**
+   * @param game   Game
+   * @param ui     { vertices:Set, edges:Set, hexes:Set, kind, fresh:{pieces:Set,hexes:Set,remap:boolean} }
+   */
+  render(game, ui = {}) {
+    const board = game.s.board;
+    const key = `${board.size}-${board.variant}-${board.hexes.length}-${board.bounds.maxX}`;
+    if (this.fitKey !== key) { this.board = board; this.fit(board); this.fitKey = key; }
+    this.board = board;
+    const s = game.s;
+    const out = [];
+
+    // Küste / Meer
+    out.push('<g class="shore">');
+    for (const h of board.hexes) out.push(`<polygon points="${this.hexPoints(board, h, 1.13)}" fill="#3aa3c2" opacity="0.5" filter="url(#blur)"/>`);
+    out.push('</g>');
+
+    // Häfen (unter den Feldern, damit die Stege nicht überdecken)
+    out.push('<g class="ports">');
+    for (const p of board.ports) {
+      for (const vid of p.verts) {
+        const v = board.vertices[vid];
+        out.push(`<line x1="${p.x}" y1="${p.y}" x2="${v.x}" y2="${v.y}" class="pier"/>`);
+      }
+    }
+    out.push('</g>');
+
+    // Felder
+    out.push('<g class="hexes">');
+    for (const h of board.hexes) {
+      const t = h.fog ? TERRAIN.fog : TERRAIN[h.type];
+      const fresh = ui.fresh?.hexes?.has(h.id) ? ' flip' : '';
+      const remap = ui.fresh?.remap ? ' remap' : '';
+      out.push(`<g class="hex${fresh}${remap}" data-hid="${h.id}" style="--d:${(h.id % 7) * 40}ms">`);
+      out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#g-${h.fog ? 'fog' : h.type})" class="hexpoly" stroke="rgba(0,0,0,.28)" stroke-width="0.04"/>`);
+      if (h.fog) {
+        out.push(`<text x="${h.x}" y="${h.y - 0.08}" class="hex-emoji big">🌫️</text>`);
+        out.push(`<text x="${h.x}" y="${h.y + 0.55}" class="fog-q">?</text>`);
+      } else if (h.type === 'desert') {
+        out.push(`<text x="${h.x}" y="${h.y + 0.05}" class="hex-emoji big">${t.emoji}</text>`);
+      } else {
+        out.push(`<text x="${h.x}" y="${h.y - 0.46}" class="hex-emoji">${t.emoji}</text>`);
+        const red = h.num === 6 || h.num === 8;
+        out.push(`<g transform="translate(${h.x},${h.y + 0.17})" class="token"><circle r="0.36" fill="#f8efd9" stroke="#caa86a" stroke-width="0.03"/>`);
+        out.push(`<text y="-0.04" class="num${red ? ' red' : ''}">${h.num}</text>`);
+        const n = PIPCOUNT[h.num];
+        let dots = '';
+        for (let i = 0; i < n; i++) dots += `<circle cx="${(i - (n - 1) / 2) * 0.1}" cy="0.21" r="0.032" fill="${red ? '#c62828' : '#5a4a2c'}"/>`;
+        out.push(`${dots}</g>`);
+      }
+      out.push('</g>');
+    }
+    out.push('</g>');
+
+    // Hafen-Marker
+    out.push('<g class="portmarks">');
+    for (const p of board.ports) {
+      const label = p.type === 'any' ? '3:1' : '2:1';
+      out.push(`<g transform="translate(${p.x},${p.y})" class="port"><circle r="0.4" class="port-bg"/>`);
+      if (p.type === 'any') out.push(`<text y="0.1" class="port-ratio big">3:1</text><text y="-0.18" class="port-icon small">?</text>`);
+      else out.push(`<text y="-0.1" class="port-icon">${RES_INFO[p.type].icon}</text><text y="0.25" class="port-ratio">${label}</text>`);
+      out.push('</g>');
+    }
+    out.push('</g>');
+
+    // Straßen
+    out.push('<g class="roads">');
+    for (const [eid, owner] of Object.entries(s.roads)) {
+      const e = board.edges[eid];
+      const a = board.vertices[e.a];
+      const b = board.vertices[e.b];
+      const [x1, y1, x2, y2] = this.shorten(a, b, 0.13);
+      const pop = ui.fresh?.pieces?.has(`e${eid}`) ? ' draw' : '';
+      out.push(`<g class="road${pop}"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="road-outline"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${s.players[owner].color}" class="road-fill"/></g>`);
+    }
+    out.push('</g>');
+
+    // Gebäude
+    out.push('<g class="buildings">');
+    for (const [vid, b] of Object.entries(s.buildings)) {
+      const v = board.vertices[vid];
+      const pop = ui.fresh?.pieces?.has(`v${vid}`) ? ' pop' : '';
+      out.push(`<g transform="translate(${v.x},${v.y})" filter="url(#shadow)"><g class="bld${pop}"><path d="${b.type === 'city' ? CITY : HOUSE}" fill="${s.players[b.owner].color}" class="bld-shape"/></g></g>`);
+    }
+    out.push('</g>');
+
+    // Räuber
+    const rh = board.hexes[s.robber];
+    out.push(`<g transform="translate(${rh.x + 0.5},${rh.y + 0.18})" class="robber"><g class="robber-in"><ellipse cx="0" cy="0.28" rx="0.2" ry="0.07" fill="rgba(0,0,0,.35)"/><path d="M-0.17,0.28 Q-0.2,-0.05 0,-0.12 Q0.2,-0.05 0.17,0.28 Z" fill="#20242c" stroke="#000" stroke-width="0.02"/><circle cx="0" cy="-0.2" r="0.11" fill="#20242c" stroke="#000" stroke-width="0.02"/></g></g>`);
+
+    // Hervorhebungen (klickbar)
+    out.push('<g class="hl">');
+    if (ui.hexes) {
+      for (const id of ui.hexes) {
+        const h = board.hexes[id];
+        out.push(`<polygon points="${this.hexPoints(board, h, 0.93)}" class="hl-hex" data-h="${id}"/>`);
+      }
+    }
+    if (ui.edges) {
+      for (const id of ui.edges) {
+        const e = board.edges[id];
+        const a = board.vertices[e.a];
+        const b = board.vertices[e.b];
+        const [x1, y1, x2, y2] = this.shorten(a, b, 0.16);
+        out.push(`<g data-e="${id}" class="hl-edge"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="hl-edge-vis"/><line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="hl-hit"/></g>`);
+      }
+    }
+    if (ui.vertices) {
+      for (const id of ui.vertices) {
+        const v = board.vertices[id];
+        out.push(`<g transform="translate(${v.x},${v.y})" data-v="${id}" class="hl-vertex"><circle r="0.2" class="hl-vis"/><circle r="0.36" class="hl-hit"/></g>`);
+      }
+    }
+    out.push('</g>');
+
+    this.world.innerHTML = out.join('');
+    this.svg.classList.toggle('picking', !!(ui.vertices?.size || ui.edges?.size || ui.hexes?.size));
+  }
+
+  hexPoints(board, h, scale) {
+    return h.verts
+      .map((vid) => {
+        const v = board.vertices[vid];
+        return `${(h.x + (v.x - h.x) * scale).toFixed(3)},${(h.y + (v.y - h.y) * scale).toFixed(3)}`;
+      })
+      .join(' ');
+  }
+
+  shorten(a, b, d) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    const ux = dx / len;
+    const uy = dy / len;
+    return [a.x + ux * d, a.y + uy * d, b.x - ux * d, b.y - uy * d];
+  }
+}

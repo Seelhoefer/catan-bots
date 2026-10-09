@@ -1,0 +1,15 @@
+{
+  "name": "catan-bots",
+  "version": "1.0.0",
+  "description": "Siedler von Catan im Browser – spielbar gegen Bots, mit Nebel-Variante, Weltenwandel-Karte, Anti-Pech-Markern und öffentlichen Missionen.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
