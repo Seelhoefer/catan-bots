@@ -167,7 +167,8 @@ export class BoardView {
     const narrow = window.innerWidth < 600 && window.innerHeight > window.innerWidth;
     const pad = narrow ? 1.1 : 1.5;
     const top = 1.3;
-    const bottom = narrow ? 3.2 : 2.7;
+    const footer = window.matchMedia('(min-width: 861px) and (min-height: 521px)').matches;
+    const bottom = footer ? 4.4 : narrow ? 3.2 : 2.7;
     const w = b.maxX - b.minX + pad * 2;
     const h = b.maxY - b.minY + top + bottom;
     this.setVB({ x: b.minX - pad, y: b.minY - top, w, h });

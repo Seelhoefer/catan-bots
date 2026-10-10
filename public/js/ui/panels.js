@@ -12,11 +12,11 @@ const HUMAN = 0;
 export const coarse = () => typeof matchMedia === 'function' && matchMedia('(hover: none) and (pointer: coarse)').matches;
 
 // ------------------------------------------------------------------ Kopfzeile: links (meine Hand)
-export function renderHand(g) {
+export function renderHand(g, inflight = {}) {
   const s = g.s;
   const p = s.players[HUMAN];
   const chips = RES.map((r) => {
-    const n = p.hand[r];
+    const n = Math.max(0, p.hand[r] - (inflight[r] || 0)); // Karten im Anflug zählen erst bei der Ankunft
     return `<div class="rchip ${n ? '' : 'zero'}" data-res="${r}" title="${RES_INFO[r].name}: ${n}">${resSq(r)}${n ? `<b>${n}</b>` : ''}</div>`;
   }).join('');
   let tokens = '';
@@ -31,8 +31,27 @@ export function renderHand(g) {
   return `${me}${vp}<span class="hud-sep"></span>${chips}${tokens}`;
 }
 
+/**
+ * Meine Rohstoffkarten als Fächer im Fuß des Bildschirms (nur Desktop/Tablet; am Handy zeigen die Chips oben die Hand).
+ * `inflight`: Karten, die noch zur Hand fliegen (belegen schon ihren Platz, bleiben aber unsichtbar).
+ * `landing`: je Rohstoff, wie viele der sichtbaren letzten Karten gerade ankommen (Aufpoppen).
+ */
+export function renderHandBar(g, inflight = {}, landing = {}) {
+  const p = g.s.players[HUMAN];
+  return RES.filter((r) => p.hand[r] > 0).map((r) => {
+    const n = p.hand[r];
+    const hidden = Math.min(inflight[r] || 0, n);
+    const visible = n - hidden;
+    const cards = Array.from({ length: n }, (_, i) => {
+      const cls = i >= visible ? ' incoming' : (landing[r] && i >= visible - landing[r] ? ' land' : '');
+      return `<div class="rcard r-${r}${cls}" style="--i:${i}"><span class="rc-mark">${ic(r)}</span><span class="rc-art">${ic(r)}</span><span class="rc-name">${RES_INFO[r].name}</span></div>`;
+    }).join('');
+    return `<div class="rgroup" data-res="${r}" title="${RES_INFO[r].name}: ${visible}">${cards}</div>`;
+  }).join('');
+}
+
 // ------------------------------------------------------------------ Kopfzeile: rechts (Gegner)
-export function renderOpps(g, busy = new Set()) {
+export function renderOpps(g, busy = new Set(), inflight = {}) {
   const s = g.s;
   return s.players.filter((p) => p.id !== HUMAN).map((p) => {
     const active = s.phase !== 'over' && s.turn === p.id;
@@ -48,7 +67,7 @@ export function renderOpps(g, busy = new Set()) {
         <div class="opp-body">
           <div class="opp-name">${esc(p.name)}${badges}</div>
           <div class="opp-stats">
-            <span title="Rohstoffkarten auf der Hand">${ic('cards', 'inline')}${g.handCount(p.id)}</span>
+            <span title="Rohstoffkarten auf der Hand">${ic('cards', 'inline')}${Math.max(0, g.handCount(p.id) - (inflight[p.id] || 0))}</span>
             <span title="Entwicklungskarten auf der Hand">${ic('card', 'inline')}${p.dev.length}</span>
           </div>
           <div class="opp-status">${status}</div>

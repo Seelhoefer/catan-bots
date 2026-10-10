@@ -352,13 +352,18 @@ export class Game {
     const s = this.s;
     const gains = s.players.map(() => emptyHand());
     const goldPick = {};
+    const src = s.players.map(() => []); // Herkunft der Erträge (Feld, Rohstoff, Menge) für die Animation
     for (const h of this.board.hexes) {
       if (h.num !== total || h.fog || h.id === s.robber) continue;
       for (const vid of h.verts) {
         const b = s.buildings[vid];
         if (!b) continue;
         if (h.type === 'gold') goldPick[b.owner] = (goldPick[b.owner] || 0) + (b.type === 'city' ? 2 : 1);
-        else gains[b.owner][h.type] += b.type === 'city' ? 2 : 1;
+        else {
+          const n = b.type === 'city' ? 2 : 1;
+          gains[b.owner][h.type] += n;
+          src[b.owner].push({ hex: h.id, res: h.type, n });
+        }
       }
     }
     const received = s.players.map(() => 0);
@@ -393,7 +398,14 @@ export class Game {
     for (const p of s.players) {
       if (received[p.id] > 0 && RES.some((r) => gains[p.id][r] > 0)) {
         this.log(`${p.name} erhält ${this.fmtHand(gains[p.id])}.`, p.id);
-        this.emit({ type: 'gain', pi: p.id, hand: gains[p.id] });
+        // Herkunft an die tatsächlich erhaltenen Mengen anpassen (Bank kann zu wenig haben)
+        const left = { ...gains[p.id] };
+        const from = [];
+        for (const e of src[p.id]) {
+          const n = Math.min(e.n, left[e.res]);
+          if (n > 0) { from.push({ hex: e.hex, res: e.res, n }); left[e.res] -= n; }
+        }
+        this.emit({ type: 'gain', pi: p.id, hand: gains[p.id], src: from, roll: true });
       } else if (received[p.id] > 0) {
         // nur Wahlfeld-Ertrag: kein Marker
       } else if (s.settings.antiBad) {

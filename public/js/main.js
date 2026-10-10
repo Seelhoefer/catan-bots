@@ -10,12 +10,12 @@ import {
 import { installIcons } from './ui/icons.js';
 import { renderMenu, rememberLast } from './ui/menu.js';
 import {
-  renderHand, renderOpps, renderTurn, renderDock, renderDice, renderMissionBox, renderLogBox, renderHeroRoll,
+  renderHand, renderHandBar, renderOpps, renderTurn, renderDock, renderDice, renderMissionBox, renderLogBox, renderHeroRoll,
 } from './ui/panels.js';
 import { renderMarket, suggestTrade } from './ui/market.js';
 import { sfx } from './ui/sfx.js';
 import {
-  floatGain, flyCards, showDiceHero, showCardHero,
+  floatGain, flyCards, showDiceHero, showCardHero, produceFx, bumpPlayer,
 } from './ui/fx.js';
 import { preloadArt } from './ui/assets.js';
 import {
@@ -26,7 +26,8 @@ import {
 const SAVE_KEY = 'catan-save-v1';
 const SPEED_KEY = 'catan-speed';
 const HUMAN = 0;
-const SPEEDS = { slow: ['Langsam', 1300, 1.3, 25000], normal: ['Normal', 650, 1, 18000], fast: ['Schnell', 110, 0.4, 9000] };
+// [Name, Pause zwischen Bot-Aktionen (ms), Animationsfaktor, Wartezeit auf deine Antwort (ms)]
+const SPEEDS = { slow: ['Langsam', 2100, 1.35, 25000], normal: ['Normal', 1300, 1, 18000], fast: ['Schnell', 420, 0.5, 9000] };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const sum = (o) => RES.reduce((a, r) => a + (o[r] || 0), 0);
 
@@ -51,6 +52,11 @@ class App {
     this.diceRevealAt = 0;
     this.rollPauseUntil = 0;
     this.market = this.freshMarket();
+    this.inflightH = {};
+    this.inflightO = {};
+    this.landing = {};
+    this.heroEnd = 0;
+    this.fxOffset = 0;
     this.speed = 'normal';
     try { this.speed = localStorage.getItem(SPEED_KEY) || 'normal'; } catch { /* egal */ }
     if (!SPEEDS[this.speed]) this.speed = 'normal';
@@ -113,6 +119,10 @@ class App {
     this.closePopover();
     this.game = game;
     this.lastVp = undefined;
+    this.inflightH = {};
+    this.inflightO = {};
+    this.landing = {};
+    this.hbHtml = null;
     this.mode = null;
     this.pending = null;
     this.auto = {};
@@ -160,15 +170,20 @@ class App {
         const dur = showDiceHero(e.dice, e.pi === HUMAN ? 'Du' : name(e.pi), this.sf);
         const reveal = 750 * this.sf;
         this.diceRevealAt = Date.now() + reveal + 150;
+        this.heroEnd = Date.now() + dur; // danach folgt der Ertrag: Felder leuchten, Karten fliegen
+        this.fxOffset = 0;
         this.rollPauseUntil = Date.now() + dur;
+        sfx.play('diceLand', { delay: reveal, total });
         setTimeout(() => { this.rolling = false; this.queueRender(); }, 650);
         if (total !== 7) {
-          setTimeout(() => this.flash(g.s.board.hexes.filter((h) => h.num === total && !h.fog).map((h) => h.id), 2600), reveal);
+          setTimeout(() => this.flash(g.s.board.hexes.filter((h) => h.num === total && !h.fog).map((h) => h.id), 2200), Math.max(0, dur - 350));
         }
         break;
       }
       case 'gain':
-        if (g.s.phase === 'main') {
+        if (g.s.phase !== 'main') break;
+        if (e.src?.length) this.playProduce(e);
+        else {
           const wait = Math.max(0, this.diceRevealAt - Date.now());
           floatGain(e.pi, e.hand, wait);
           if (e.pi === HUMAN) sfx.play('gain', { delay: wait + 100 });
@@ -223,6 +238,52 @@ class App {
       }
       default: break;
     }
+  }
+
+  /**
+   * Ertrag einer Würfelrunde: Karten fliegen vom Feld zur Hand. Bis zur Ankunft zählen sie weder im Fächer
+   * noch in den Zählern der Gegner (`inflight`), damit Zahl und Karte genau beim Eintreffen erscheinen.
+   */
+  playProduce(e) {
+    const g = this.game;
+    const pid = e.pi;
+    const mine = pid === HUMAN;
+    const n = e.src.reduce((a, x) => a + x.n, 0);
+    for (const x of e.src) {
+      if (mine) this.inflightH[x.res] = (this.inflightH[x.res] || 0) + x.n;
+      else this.inflightO[pid] = (this.inflightO[pid] || 0) + x.n;
+    }
+    const stagger = Math.max(70, Math.min(150, 1400 / Math.max(1, n))) * (0.6 + 0.4 * this.sf);
+    const delay = Math.max(0, this.heroEnd - Date.now()) + 380 + (this.fxOffset || 0);
+    this.fxOffset = (this.fxOffset || 0) + n * stagger + 160;
+    const done = {};
+    const dur = produceFx({
+      pid,
+      src: e.src,
+      delay,
+      stagger,
+      onLaunch: (i) => sfx.play('deal', { pitch: 1 + Math.min(i, 8) * 0.07, vol: mine ? 1 : 0.55 }),
+      onArrive: (res, last) => {
+        done[res] = (done[res] || 0) + 1;
+        if (mine) {
+          this.inflightH[res] = Math.max(0, (this.inflightH[res] || 0) - 1);
+          this.landing[res] = (this.landing[res] || 0) + 1;
+          setTimeout(() => { this.landing[res] = Math.max(0, (this.landing[res] || 1) - 1); }, 700);
+        } else this.inflightO[pid] = Math.max(0, (this.inflightO[pid] || 0) - 1);
+        sfx.play('land', { pitch: 1 + Math.min(done[res], 6) * 0.08, vol: mine ? 1 : 0.5 });
+        bumpPlayer(pid, res);
+        if (last) floatGain(pid, { [res]: e.hand[res] }, 0);
+        this.queueRender();
+      },
+    });
+    if (mine && n >= 3) sfx.play('jackpot', { delay: delay + dur - 600 });
+    this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + dur + 300);
+    // Sicherheitsnetz: nichts bleibt dauerhaft „im Anflug“
+    setTimeout(() => {
+      if (this.game !== g) return;
+      if (mine) for (const x of e.src) this.inflightH[x.res] = 0; else this.inflightO[pid] = 0;
+      this.queueRender();
+    }, dur + 1500);
   }
 
   // ------------------------------------------------------------- Aktionen des Menschen
@@ -546,8 +607,11 @@ class App {
     this.view.render(g, this.highlights());
     this.fresh = { pieces: new Set(), hexes: new Set(), remap: false };
 
-    $('#hudHand').innerHTML = renderHand(g);
-    $('#hudOpps').innerHTML = renderOpps(g, this.busy);
+    $('#hudHand').innerHTML = renderHand(g, this.inflightH);
+    $('#hudOpps').innerHTML = renderOpps(g, this.busy, this.inflightO);
+    const fan = renderHandBar(g, this.inflightH, this.landing);
+    if (fan !== this.hbHtml) { this.hbHtml = fan; $('#handFan').innerHTML = fan; }
+    this.fitHand();
     const turn = renderTurn(g, this.mode);
     const hudTurn = $('#hudTurn');
     hudTurn.innerHTML = turn.html;
@@ -574,6 +638,20 @@ class App {
   }
 
   /** Handels-Pop-up: nur neu zeichnen, wenn sich etwas geändert hat; Einblend-Animation nur beim Erscheinen. */
+  /** Kartenfächer unten: Überlappung so wählen, dass alle Karten in die Breite passen. */
+  fitHand() {
+    const fan = $('#handFan');
+    if (!fan || !fan.firstElementChild) return;
+    const groups = [...fan.children];
+    const cw = parseFloat(getComputedStyle(fan).getPropertyValue('--cw')) || 64;
+    const gap = parseFloat(getComputedStyle(fan).getPropertyValue('--gap')) || 18;
+    const avail = fan.parentElement.clientWidth - 32;
+    const extra = groups.reduce((a, g2) => a + g2.children.length - 1, 0);
+    const fixed = groups.length * cw + (groups.length - 1) * gap;
+    const step = extra > 0 ? Math.max(9, Math.min(cw * 0.5, (avail - fixed) / extra)) : cw * 0.5;
+    fan.style.setProperty('--step', `${step.toFixed(1)}px`);
+  }
+
   renderMarketLayer() {
     const host = $('#market');
     const { html, key } = renderMarket(this);
@@ -712,6 +790,7 @@ class App {
         lastW = window.innerWidth;
         lastLandscape = landscape;
         this.measure();
+        this.fitHand();
       }, 200);
     });
     document.addEventListener('keydown', (e) => {

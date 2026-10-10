@@ -132,12 +132,31 @@ const SOUNDS = {
   dice: (t) => {
     // Würfel rasseln, werden langsamer und bleiben liegen
     let at = t;
-    for (let i = 0; i < 12; i += 1) {
-      noise(at, { dur: 0.035, f: 2200 + Math.random() * 2500, q: 3, gain: 0.22 * (1 - i / 16) });
+    for (let i = 0; i < 9; i += 1) {
+      noise(at, { dur: 0.035, f: 2200 + Math.random() * 2500, q: 3, gain: 0.22 * (1 - i / 14) });
       tone(at, { f: 160 + Math.random() * 90, dur: 0.04, gain: 0.07 });
-      at += 0.035 + i * 0.012 + Math.random() * 0.02;
+      at += 0.03 + i * 0.01 + Math.random() * 0.02;
     }
-    knock(at + 0.02, { pitch: 260, gain: 0.45 });
+  },
+  deal: (t, o) => { // Karte löst sich vom Feld
+    const k = o.pitch || 1;
+    noise(t, { dur: 0.1, f: 900 * k, sweep: 3600 * k, q: 0.9, gain: 0.22 });
+    tone(t + 0.02, { f: 700 * k, to: 1100 * k, dur: 0.06, gain: 0.04, type: 'triangle' });
+  },
+  land: (t, o) => { // Karte kommt an: weiches Plopp mit kleinem Funkeln
+    const k = o.pitch || 1;
+    tone(t, { f: 420 * k, to: 300 * k, dur: 0.09, gain: 0.3 });
+    tone(t, { f: 1260 * k, dur: 0.14, gain: 0.07, type: 'triangle' });
+  },
+  jackpot: (t) => { [79, 84, 88, 91, 96].forEach((n, i) => bell(t + i * 0.06, N(n), { gain: 0.1, dur: 0.7 })); coin(t + 0.25, 2637, 0.1); },
+  diceLand: (t, o) => { // Würfel bleiben liegen; Ton richtet sich nach der Augensumme
+    knock(t, { pitch: 240, gain: 0.5 });
+    const total = o.total || 7;
+    if (total === 7) { tone(t + 0.05, { f: 98, to: 55, dur: 0.6, gain: 0.45 }); tone(t + 0.05, { f: 104, to: 58, dur: 0.6, gain: 0.25, type: 'triangle' }); return; }
+    const hot = total === 6 || total === 8;
+    const base = 60 + (total - 2) * 1.1;
+    bell(t + 0.08, N(base + 12), { gain: hot ? 0.2 : 0.12, dur: hot ? 0.9 : 0.5 });
+    if (hot) bell(t + 0.16, N(base + 19), { gain: 0.14, dur: 0.9 });
   },
   gain: (t) => { tone(t, { f: 660, to: 990, dur: 0.09, gain: 0.1, type: 'triangle' }); tone(t + 0.07, { f: 1320, dur: 0.1, gain: 0.06, type: 'triangle' }); },
   token: (t) => { [84, 88, 91, 96].forEach((n, i) => tone(t + i * 0.05, { f: N(n), dur: 0.25, gain: 0.07 })); },
@@ -168,7 +187,7 @@ const SOUNDS = {
 // Feinabgleich der Lautstärke je Klang (Messung: Spitzenpegel der synthetisierten Klänge)
 const BOOST = {
   tick: 1.8, select: 2.2, error: 2.2, gain: 2.4, token: 1.8, card: 3, cardplay: 1.8, harvest: 1.6,
-  steal: 2.4, turn: 2.2, remap: 1.6, monopoly: 1.5, vpOther: 2, trade: 1.2, lose: 1.5, offer: 1.4, robber: 0.9,
+  steal: 2.4, deal: 1.8, land: 1.4, turn: 2.2, remap: 1.6, monopoly: 1.5, vpOther: 2, trade: 1.2, lose: 1.5, offer: 1.4, robber: 0.9,
 };
 
 // ------------------------------------------------------------------ API
@@ -198,7 +217,7 @@ export const sfx = {
         s.buffer = files[name];
         s.connect(master);
         s.start(t);
-      } else SOUNDS[name](t);
+      } else SOUNDS[name](t, opts);
     } finally {
       master = prev;
     }

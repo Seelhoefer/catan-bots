@@ -819,3 +819,48 @@ button, .tool, .btn, .icon-btn, .res-pick, .seg button { touch-action: manipulat
   .hud-left .rchip { padding: 2px 6px 2px 2px; }
   .hud-left .rchip.vp small, .hud-left .me { display: none; }
 }
+
+/* ==========================================================================
+   Rohstoffkarten als Fächer im Fuß (Desktop/Tablet) + Ertrags-Inszenierung
+   ========================================================================== */
+.handbar { display: none; }
+.rcard, .flycard.fc {
+  --cw: 64px;
+  position: relative; width: var(--cw); height: 92px; border-radius: 10px; flex: none;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--rc) 70%, #fff 30%) 0%, var(--rc) 48%, color-mix(in srgb, var(--rc) 68%, #000 32%) 100%);
+  border: 2px solid rgba(255, 252, 240, .92);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, .42), inset 0 0 0 1px rgba(0, 0, 0, .18);
+  color: #fff; user-select: none;
+}
+.rcard::before { content: ''; position: absolute; inset: 4px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, .32); pointer-events: none; }
+.rcard::after { content: ''; position: absolute; inset: 0; border-radius: 8px; background: linear-gradient(120deg, rgba(255,255,255,.28), transparent 38%); pointer-events: none; }
+.rc-mark { position: absolute; top: 6px; left: 6px; width: 16px; height: 16px; display: grid; place-items: center; z-index: 1; }
+.rc-mark .ic { width: 16px; height: 16px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.4)); }
+.rc-art { position: absolute; inset: 0 0 14px; display: grid; place-items: center; }
+.rc-art .ic { width: 44px; height: 44px; filter: drop-shadow(0 3px 3px rgba(0,0,0,.4)); }
+.rc-name { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.92); text-shadow: 0 1px 1px rgba(0,0,0,.4); }
+
+.flycard.fc { position: fixed; --cw: 46px; width: 46px; height: 66px; border-radius: 7px; border-width: 1.5px; left: 0; top: 0; z-index: 61; box-shadow: 0 0 16px color-mix(in srgb, var(--rc) 80%, #fff 20%), 0 6px 12px rgba(0,0,0,.4); will-change: transform, opacity; }
+.flycard.fc .rc-art { inset: 0; }
+.flycard.fc .rc-art .ic { width: 32px; height: 32px; }
+.flycard.fc.ghost { filter: blur(1.5px); box-shadow: none; }
+
+.ripple { position: fixed; width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--c); box-shadow: 0 0 22px var(--c), inset 0 0 18px color-mix(in srgb, var(--c) 55%, transparent); pointer-events: none; z-index: 59; }
+
+.bump { animation: bumpUp .5s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes bumpUp { 35% { transform: scale(1.14); filter: brightness(1.25); } }
+
+@media (min-width: 861px) and (min-height: 521px) {
+  .handbar { display: block; position: absolute; left: 16px; right: 76px; bottom: -6px; height: 100px; z-index: 3; pointer-events: none; }
+  .hand-fan { --cw: 64px; --gap: 20px; --step: 30px; height: 100%; display: flex; justify-content: center; align-items: flex-end; gap: var(--gap); }
+  .rgroup { display: flex; align-items: flex-end; pointer-events: auto; }
+  .rcard { transform-origin: 50% 120%; transform: rotate(calc((var(--i) - 1) * 1.6deg)); transition: transform .18s ease-out, filter .18s; }
+  .rcard + .rcard { margin-left: calc(var(--step) - var(--cw)); }
+  .rcard:hover { transform: translateY(-22px) rotate(0deg); z-index: 5; filter: brightness(1.06); }
+  .rcard.incoming { visibility: hidden; }
+  .rcard.land { animation: cardLand .5s cubic-bezier(.2, 1.4, .4, 1); }
+  .dock { bottom: 96px; }
+  .zoom { bottom: 96px; }
+  .hud-left .rchip[data-res], .hud-left .hud-sep { display: none; }
+}
+@keyframes cardLand { 0% { transform: translateY(-30px) scale(1.3); filter: brightness(1.7); } 100% { transform: none; filter: none; } }

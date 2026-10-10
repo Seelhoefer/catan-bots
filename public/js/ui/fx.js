@@ -1,15 +1,22 @@
 // Kleine Inszenierungen: Würfel-Moment, aufpoppende Erträge, fliegende Karten beim Handel.
-import { RES } from '../engine/constants.js';
+import { RES, RES_INFO } from '../engine/constants.js';
 import { ic, resSq, dieHTML } from './dom.js';
 import { cardHTML } from './cards.js';
 
 const layer = () => document.getElementById('fx');
 
+const shown = (el) => !!el && el.getClientRects().length > 0;
+
+/** Wo liegt die Hand eines Spielers auf dem Bildschirm? Ich: Kartenfächer (Desktop) oder Chip (Handy); Gegner: Portrait. */
 function rectOfPlayer(pid, res = null) {
   let node = null;
-  if (pid === 0 && res) node = document.querySelector(`.rchip[data-res="${res}"]`);
-  if (!node) node = document.querySelector(`[data-pid="${pid}"]`);
-  return node ? node.getBoundingClientRect() : null;
+  if (pid === 0 && res) {
+    node = document.querySelector(`.rgroup[data-res="${res}"]`);
+    if (!shown(node)) node = document.querySelector(`.rchip[data-res="${res}"]`);
+  }
+  if (!shown(node) && pid !== 0) node = document.querySelector(`.opp[data-pid="${pid}"] .opp-av`);
+  if (!shown(node)) node = document.querySelector(`[data-pid="${pid}"]`);
+  return shown(node) ? node.getBoundingClientRect() : null;
 }
 
 function place(node, rect, dx = 0, dy = 0) {
@@ -25,7 +32,8 @@ export function floatGain(pid, hand, delay = 0) {
     const n = document.createElement('div');
     n.className = 'floater';
     n.innerHTML = `+${hand[r]}${ic(r, 'inline')}`;
-    place(n, rect, pid === 0 ? 0 : (i - 1) * 34, pid === 0 ? 34 : 30);
+    const footer = pid === 0 && rect.top > window.innerHeight * 0.6;
+    place(n, rect, pid === 0 ? 0 : (i - 1) * 34, footer ? -rect.height / 2 - 150 : pid === 0 ? 34 : 30);
     n.style.animationDelay = `${delay + i * 120}ms`;
     layer().append(n);
     setTimeout(() => n.remove(), delay + i * 120 + 1900);
@@ -72,7 +80,7 @@ export function showDiceHero(dice, who, speedFactor = 1) {
       <div class="dh-total ${total === 7 ? 'seven' : ''}"><span>${total}</span>${total === 7 ? '<small>Der Räuber kommt!</small>' : ''}</div>
     </div>`;
   const reveal = 750 * speedFactor;
-  const hold = 1500 * speedFactor;
+  const hold = 950 * speedFactor;
   setTimeout(() => { box.querySelector('.dh-dice')?.classList.add('settled'); box.querySelectorAll('.die').forEach((d) => d.classList.remove('rolling')); box.querySelector('.dh-total')?.classList.add('in'); box.querySelector('.dh-who').textContent = `${who} würfelt ${total}`; }, reveal);
   setTimeout(() => box.classList.add('out'), reveal + hold);
   setTimeout(() => { box.className = 'dicehero'; box.innerHTML = ''; }, reveal + hold + 400);
@@ -91,4 +99,116 @@ export function showCardHero(type, caption, ms = 2300) {
   setTimeout(() => box.classList.add('out'), ms - 350);
   setTimeout(() => box.remove(), ms);
   return ms;
+}
+
+// ------------------------------------------------------------------ Ertrag: Karten fliegen vom Feld zur Hand
+const hexRect = (id) => {
+  const el = document.querySelector(`.hex[data-hid="${id}"]`);
+  return shown(el) ? el.getBoundingClientRect() : null;
+};
+
+/** Ring, der sich vom Feld ausbreitet. */
+function ripple(rect, color, delay) {
+  const n = document.createElement('div');
+  n.className = 'ripple';
+  n.style.setProperty('--c', color);
+  n.style.left = `${rect.left + rect.width / 2}px`;
+  n.style.top = `${rect.top + rect.height / 2}px`;
+  layer().append(n);
+  const a = n.animate([
+    { transform: 'translate(-50%, -50%) scale(.3)', opacity: 0.9 },
+    { transform: 'translate(-50%, -50%) scale(1.5)', opacity: 0 },
+  ], { duration: 800, delay, easing: 'ease-out', fill: 'both' });
+  a.onfinish = () => n.remove();
+}
+
+/** Quadratischer Bézier-Bogen als Keyframes (mit Ease-in-out entlang der Strecke). */
+function arcFrames(p0, p1, lift, size) {
+  const ctrl = { x: (p0.x + p1.x) / 2, y: Math.min(p0.y, p1.y) - lift };
+  const frames = [];
+  const steps = 14;
+  const rot = (Math.random() - 0.5) * 30;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const e = t * t * (3 - 2 * t);
+    const x = (1 - e) ** 2 * p0.x + 2 * (1 - e) * e * ctrl.x + e ** 2 * p1.x;
+    const y = (1 - e) ** 2 * p0.y + 2 * (1 - e) * e * ctrl.y + e ** 2 * p1.y;
+    const sc = t < 0.2 ? 0.2 + (t / 0.2) * 0.95 : 1.15 - Math.min(1, (t - 0.2) / 0.8) * 0.55;
+    const op = t < 0.08 ? t / 0.08 : t > 0.94 ? (1 - t) / 0.06 : 1;
+    frames.push({ transform: `translate(${x - size.w / 2}px, ${y - size.h / 2}px) rotate(${rot * Math.sin(t * Math.PI)}deg) scale(${sc})`, opacity: op, offset: t });
+  }
+  return frames;
+}
+
+/**
+ * Inszenierung des Ertrags: Ring auf dem Feld, dann fliegen die Karten im Bogen zur Hand des Empfängers.
+ * @param {{pid:number, src:{hex:number,res:string,n:number}[], delay?:number, stagger?:number, slot?:(res:string)=>number,
+ *   onLaunch?:(i:number,res:string)=>void, onArrive:(res:string, last:boolean)=>void}} o  Gibt die Gesamtdauer (ms) zurück.
+ */
+export function produceFx(o) {
+  const { pid, src, delay = 0, stagger = 120 } = o;
+  const seenHex = new Set();
+  const perRes = {};
+  const total = {};
+  for (const e of src) total[e.res] = (total[e.res] || 0) + e.n;
+  let k = 0;
+  const FLY = 900;
+  for (const e of src) {
+    const from = hexRect(e.hex);
+    for (let j = 0; j < e.n; j++) {
+      const idx = k++;
+      const at = delay + idx * stagger;
+      const slot = perRes[e.res] || 0;
+      perRes[e.res] = slot + 1;
+      if (from && !seenHex.has(e.hex)) { seenHex.add(e.hex); ripple(from, RES_INFO[e.res].color, Math.max(0, at - 200)); }
+      setTimeout(() => {
+        const to = destRect(pid, e.res, slot);
+        if (!from || !to) { o.onArrive(e.res, slot === total[e.res] - 1); return; }
+        o.onLaunch?.(idx, e.res);
+        const card = document.createElement('div');
+        card.className = `flycard fc r-${e.res}`;
+        card.innerHTML = `<span class="rc-art">${ic(e.res)}</span>`;
+        layer().append(card);
+        const size = { w: 46, h: 66 };
+        const p0 = { x: from.left + from.width / 2, y: from.top + from.height / 2 };
+        const p1 = { x: to.left + to.width / 2, y: to.top + to.height / 2 };
+        const lift = 70 + Math.random() * 50;
+        const frames = arcFrames(p0, p1, lift, size);
+        // Bewegungsspur: zwei blasse Kopien hinterher
+        [60, 120].forEach((lag, ti) => {
+          const ghost = card.cloneNode(true);
+          ghost.classList.add('ghost');
+          ghost.style.opacity = 0;
+          layer().append(ghost);
+          const ga = ghost.animate(frames.map((f) => ({ ...f, opacity: f.opacity * (ti === 0 ? 0.5 : 0.28) })), { duration: FLY, delay: lag, easing: 'linear', fill: 'both' });
+          ga.onfinish = () => ghost.remove();
+        });
+        const anim = card.animate(frames, { duration: FLY, easing: 'linear', fill: 'both' });
+        anim.onfinish = () => { card.remove(); o.onArrive(e.res, slot === total[e.res] - 1, p1); };
+      }, at);
+    }
+  }
+  return delay + Math.max(0, k - 1) * stagger + FLY + 150;
+}
+
+/** Zielposition der k-ten ankommenden Karte (eine unsichtbar reservierte Karte im Fächer, sonst die Gruppe/der Chip/das Portrait). */
+function destRect(pid, res, slot) {
+  if (pid === 0) {
+    const cards = document.querySelectorAll(`.rgroup[data-res="${res}"] .rcard.incoming`);
+    const c = cards[Math.min(slot, cards.length - 1)];
+    if (shown(c)) return c.getBoundingClientRect();
+  }
+  return rectOfPlayer(pid, res);
+}
+
+/** Zähler kurz anschwellen lassen (Ankunft). */
+export function bumpPlayer(pid, res = null) {
+  const node = pid === 0
+    ? (document.querySelector(`.rgroup[data-res="${res}"]`) && shown(document.querySelector(`.rgroup[data-res="${res}"]`)) ? document.querySelector(`.rgroup[data-res="${res}"]`) : document.querySelector(`.rchip[data-res="${res}"]`))
+    : document.querySelector(`.opp[data-pid="${pid}"]`);
+  if (!node) return;
+  node.classList.remove('bump');
+  void node.offsetWidth;
+  node.classList.add('bump');
+  setTimeout(() => node.classList.remove('bump'), 600);
 }

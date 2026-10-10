@@ -52,8 +52,12 @@ kleines − zum Entfernen) und an alle senden. Bots antworten sichtbar mit Zusag
 **🟣 Wahlfeld:** Ein violettes Feld mit freier Rohstoffwahl (wie in Erweiterungen). Wird seine Zahl gewürfelt, suchst du dir
 pro angrenzender Siedlung (Stadt = 2) einen beliebigen Rohstoff aus. Abschaltbar im Regeln-Schritt.
 
-**🎲 Würfeln als Hero-Moment:** Großer Würfeln-Button in der Mitte, animierte Würfel mit großer Augenzahl,
-leuchtende Treffer-Felder und aufpoppende Erträge an den Spielerkarten.
+**🎲 Würfeln & Ertrag:** Großer Würfeln-Button, rasselnde Würfel mit Augensumme (Klang je nach Zahl: 6/8 glänzen, 7 grollt). Danach leuchten
+die Treffer-Felder auf, ein Ring breitet sich aus und die Rohstoffkarten fliegen im Bogen mit Bewegungsspur vom Feld zum Empfänger –
+zu deinem Kartenfächer unten (am Handy zu den Chips oben) oder zum Portrait des Gegners. Zähler und Karten erscheinen erst bei der Ankunft,
+begleitet von „+N“-Plaketten, Aufpoppen und Klängen. Bots lassen sich dabei mehr Zeit (Tempo im Menü: Langsam / Normal / Schnell).
+
+**🃏 Rohstoffkarten:** Am Desktop liegt deine Hand als Kartenfächer im Fuß (nach Rohstoff gruppiert, Karten am Mauszeiger heben sich).
 
 **🙂 Charaktere:** Die Bots haben illustrierte Portraits (du ein generiertes Avatar-Gesicht). Sie haben Namen, Eigenschaft und Spielstil
 (Fritz expandiert, Greta handelt fair, Otto baut Straßen, Mira spart auf Städte, Lea liebt Ritter, Amir zieht Karten).
