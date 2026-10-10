@@ -87,6 +87,13 @@ linken Panel sichtbar.
 Eine epische, generative Hintergrundmusik (Orgelpunkt, Streicher-Ostinato, Hörner mit Heldenmotiv, Chor, Pauken, Becken-Crescendo) steigert sich über 16 Takte vom ruhigen Intro bis zum Finale und beginnt dann neu.
 Ein/Aus über das Musiksymbol im Kopf (oder ⋯ → Musik). Eigene frei lizenzierte Stücke lassen sich über `public/assets/music/manifest.json` einbinden.
 
+## Animationen & Bibliotheken
+
+Würfel (echte 3D-Würfel mit Wurf, Aufprall und natürlichem Nachhüpfen), fliegende Rohstoffkarten, Zoom-Übergänge und Kartenauftritte laufen mit
+[GSAP](https://gsap.com) (inkl. MotionPath); Siegpunkte und der Sieg bekommen Konfetti ([canvas-confetti](https://github.com/catdad-experiments/canvas-confetti)).
+Beide liegen unverändert in `public/vendor/` (Lizenzen siehe `public/vendor/README.md`) – es ist weiterhin kein Build-Schritt nötig.
+Zoomen per Mausrad, Pinch oder +/− ist weich animiert; ⌖ zentriert das Brett.
+
 ## Sound
 
 Straße, Siedlung und Stadt klopfen unterschiedlich auf Holz, Würfel rasseln, Handel klimpert, ein Siegpunkt gibt ein kleines Glockenspiel,

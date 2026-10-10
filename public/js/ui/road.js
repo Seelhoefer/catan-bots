@@ -64,6 +64,7 @@ export function drawRoad(o) {
   // Maserung: zwei feine, leicht versetzte Linien entlang der Länge
   const grain = [-0.28, 0.2].map((k, i) => `<path d="M${(-l * (0.78 - i * 0.12)).toFixed(3)} ${(w * k).toFixed(3)}H${(l * (0.62 + i * 0.2)).toFixed(3)}" stroke="${p.grain}" stroke-opacity=".28" stroke-width="${(width * 0.055).toFixed(3)}" stroke-linecap="round"/>`).join('');
   return `<g class="road-vec${o.cls ? ` ${o.cls}` : ''}" transform="translate(${o.x.toFixed(3)} ${o.y.toFixed(3)}) rotate(${angle.toFixed(2)})">
+    <rect x="${-l + 0.01}" y="${(-w + 0.028).toFixed(3)}" width="${length - 0.02}" height="${width}" rx="${rx.toFixed(3)}" class="road-shadow"/>
     <rect x="${-l}" y="${-w}" width="${length}" height="${width}" rx="${rx.toFixed(3)}" fill="url(#${o.ns || 'rd'}-${id})" stroke="${p.dark}" stroke-opacity=".55" stroke-width="${(width * 0.035).toFixed(3)}"/>
     ${grain}
     <path d="M${(-l + rx).toFixed(3)} ${(-w * 0.55).toFixed(3)}H${(l - rx).toFixed(3)}" stroke="#fff" stroke-opacity=".28" stroke-width="${(width * 0.07).toFixed(3)}" stroke-linecap="round"/>

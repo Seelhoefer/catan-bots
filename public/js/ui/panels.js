@@ -156,8 +156,6 @@ export function renderTurn(g, mode) {
     key: `${g.s.phase}-${g.s.turn}`,
     html: `<div class="turn" style="--pc:${t.color}">
       <div class="turn-who">${avatarSVG(g.s.players[t.pid ?? g.s.turn].face, t.color, 32)}${esc(t.who)}</div>
-      ${t.what ? `<div class="turn-what">${esc(t.what)}</div>` : ''}
-      ${t.next ? `<div class="turn-next">${esc(t.next)}</div>` : ''}
     </div>`,
   };
 }

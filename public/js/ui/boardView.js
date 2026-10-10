@@ -81,6 +81,7 @@ export class BoardView {
 
     svg.addEventListener('pointerdown', (e) => {
       if (e.button !== 0 && e.pointerType === 'mouse') return;
+      this.stopZoom();
       this.drag = { x: e.clientX, y: e.clientY, vb: this.getVB(), id: e.pointerId };
       this.moved = false;
     });
@@ -122,7 +123,7 @@ export class BoardView {
       if (pts.size === 2) {
         const [a, b] = [...pts.values()];
         const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-        if (pinch) this.zoomAt((a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2, pinch / d);
+        if (pinch) this.zoomAt((a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2, pinch / d, false);
         pinch = d;
         this.moved = true;
       }
@@ -141,8 +142,9 @@ export class BoardView {
     this.svg.setAttribute('viewBox', `${x} ${y} ${w} ${h}`);
   }
 
-  zoomAt(cx, cy, factor) {
-    const vb = this.getVB();
+  /** Zoom um den Punkt (cx, cy); mit GSAP weich animiert (Folge-Impulse, z. B. Mausrad, bauen auf dem Ziel auf). */
+  zoomAt(cx, cy, factor, animate = true) {
+    const vb = (animate && this.zoomTarget) || this.getVB();
     const rect = this.svg.getBoundingClientRect();
     const k = Math.max(vb.w / rect.width, vb.h / rect.height);
     // Mittelpunkt des sichtbaren Bereichs im Viewport (preserveAspectRatio = meet)
@@ -153,7 +155,34 @@ export class BoardView {
     const nw = Math.min(Math.max(vb.w * factor, this.minW || 4), this.maxW || 80);
     const f = nw / vb.w;
     const nh = vb.h * f;
-    this.setVB({ x: px - (px - vb.x) * f, y: py - (py - vb.y) * f, w: nw, h: nh });
+    const target = { x: px - (px - vb.x) * f, y: py - (py - vb.y) * f, w: nw, h: nh };
+    const g = window.gsap;
+    if (!animate || !g) { this.stopZoom(); this.setVB(target); return; }
+    this.zoomTarget = target;
+    const cur = { ...this.getVB() };
+    if (this.zoomTween) this.zoomTween.kill();
+    this.zoomTween = g.to(cur, {
+      x: target.x, y: target.y, w: target.w, h: target.h, duration: 0.32, ease: 'power3.out',
+      onUpdate: () => this.setVB(cur),
+      onComplete: () => { this.zoomTarget = null; this.zoomTween = null; },
+    });
+  }
+
+  animateTo(target) {
+    const cur = { ...this.getVB() };
+    if (this.zoomTween) this.zoomTween.kill();
+    this.zoomTarget = target;
+    this.zoomTween = window.gsap.to(cur, {
+      ...target, duration: 0.55, ease: 'power3.inOut',
+      onUpdate: () => this.setVB(cur),
+      onComplete: () => { this.zoomTarget = null; this.zoomTween = null; },
+    });
+  }
+
+  stopZoom() {
+    if (this.zoomTween) this.zoomTween.kill();
+    this.zoomTween = null;
+    this.zoomTarget = null;
   }
 
   zoomBy(factor) {
@@ -161,7 +190,7 @@ export class BoardView {
     this.zoomAt(r.left + r.width / 2, r.top + r.height / 2, factor);
   }
 
-  fit(board = this.board) {
+  fit(board = this.board, animate = false) {
     if (!board) return;
     const b = board.bounds;
     const narrow = window.innerWidth < 600 && window.innerHeight > window.innerWidth;
@@ -171,8 +200,9 @@ export class BoardView {
     const bottom = footer ? 4.4 : narrow ? 3.2 : 2.7;
     const w = b.maxX - b.minX + pad * 2;
     const h = b.maxY - b.minY + top + bottom;
-    this.setVB({ x: b.minX - pad, y: b.minY - top, w, h });
-    this.minW = w * 0.18;
+    this.minW = w * 0.1;
+    const target = { x: b.minX - pad, y: b.minY - top, w, h };
+    if (animate && window.gsap) this.animateTo(target); else { this.stopZoom(); this.setVB(target); }
     this.maxW = w * 1.8;
   }
 
@@ -189,12 +219,13 @@ export class BoardView {
     const s = game.s;
     const out = [];
     const hitHexes = ui.hitHexes || new Set();
+    const picking = !!(ui.vertices?.size || ui.edges?.size || ui.hexes?.size);
     const hitVerts = new Set();
     for (const id of hitHexes) for (const v of board.hexes[id].verts) hitVerts.add(v);
 
     // Küste / Meer
     out.push('<g class="shore">');
-    for (const h of board.hexes) out.push(`<polygon points="${this.hexPoints(board, h, 1.13)}" fill="#3aa3c2" opacity="0.5" filter="url(#blur)"/>`);
+    for (const h of board.hexes) for (const [sc, op] of [[1.2, 0.1], [1.14, 0.14], [1.08, 0.18]]) out.push(`<polygon points="${this.hexPoints(board, h, sc)}" fill="#3aa3c2" opacity="${op}"/>`);
     out.push('</g>');
 
     // Häfen (unter den Feldern, damit die Stege nicht überdecken)
@@ -218,14 +249,16 @@ export class BoardView {
       const blocked = h.id === s.robber;
       if (tile) {
         // Komplettes Feld-Hintergrundbild (Sechseck samt Rand); die Zahl liegt mittig darauf
+        out.push(`<polygon points="${this.hexPoints(board, h, 1.02)}" transform="translate(0.02 0.05)" class="tile-shadow"/>`);
         out.push(`<image href="${tile}" x="${(h.x - 0.866).toFixed(3)}" y="${(h.y - 1).toFixed(3)}" width="1.732" height="2" preserveAspectRatio="none" class="hex-img${blocked ? ' dim' : ''}" pointer-events="none"/>`);
+        if (blocked) out.push(`<polygon points="${this.hexPoints(board, h, 1)}" class="blocked-dim"/>`);
         if (h.num) {
           const red = h.num === 6 || h.num === 8;
           const two = h.num >= 10;
           const n = PIPCOUNT[h.num];
           let dots = '';
           for (let i = 0; i < n; i++) dots += `<circle cx="${((i - (n - 1) / 2) * 0.096).toFixed(3)}" cy="0.2" r="0.032" fill="${red ? '#c62828' : '#5a4a2c'}"/>`;
-          out.push(`<g transform="translate(${h.x},${h.y}) scale(1.1)" class="token${blocked ? ' dim' : ''}"><circle r="0.36" fill="url(#tokenGrad)" stroke="#b69a58" stroke-width="0.035"/><circle r="0.3" fill="none" stroke="rgba(120,90,40,.35)" stroke-width="0.016"/><text y="-0.045" class="num${red ? ' red' : ''}${two ? ' two' : ''}">${h.num}</text>${dots}</g>`);
+          out.push(`<g transform="translate(${h.x},${h.y}) scale(1.1)" class="token${blocked ? ' dim' : ''}"><circle r="0.36" cy="0.035" class="token-shadow"/><circle r="0.36" fill="url(#tokenGrad)" stroke="#b69a58" stroke-width="0.035"/><circle r="0.3" fill="none" stroke="rgba(120,90,40,.35)" stroke-width="0.016"/><text y="-0.045" class="num${red ? ' red' : ''}${two ? ' two' : ''}">${h.num}</text>${dots}</g>`);
           if (h.type === 'gold') out.push(`<text x="${h.x}" y="${(h.y + 0.62).toFixed(3)}" class="gold-label big">WAHL</text>`);
         }
       } else {
@@ -264,7 +297,7 @@ export class BoardView {
           else out.push(`<use href="#i-${h.type === 'gold' ? 'coin' : h.type}" x="${h.x - 0.6}" y="${h.y - 0.3}" width="0.56" height="0.56" class="hex-ico"/>`);
           const red = h.num === 6 || h.num === 8;
           const two = h.num >= 10;
-          out.push(`<g transform="translate(${h.x + 0.33},${h.y + 0.02})" class="token${blocked ? ' dim' : ''}"><circle r="0.36" fill="url(#tokenGrad)" stroke="#b69a58" stroke-width="0.035"/><circle r="0.3" fill="none" stroke="rgba(120,90,40,.35)" stroke-width="0.016"/>`);
+          out.push(`<g transform="translate(${h.x + 0.33},${h.y + 0.02})" class="token${blocked ? ' dim' : ''}"><circle r="0.36" cy="0.035" class="token-shadow"/><circle r="0.36" fill="url(#tokenGrad)" stroke="#b69a58" stroke-width="0.035"/><circle r="0.3" fill="none" stroke="rgba(120,90,40,.35)" stroke-width="0.016"/>`);
           out.push(`<text y="-0.045" class="num${red ? ' red' : ''}${two ? ' two' : ''}">${h.num}</text>`);
           const n = PIPCOUNT[h.num];
           let dots = '';
@@ -273,6 +306,7 @@ export class BoardView {
         }
 
       }
+      if (picking) out.push(`<polygon points="${this.hexPoints(board, h, 1)}" class="pick-dim"/>`);
       out.push('</g>');
     }
     out.push('</g>');
@@ -289,7 +323,7 @@ export class BoardView {
     for (const p of board.ports) {
       const hb = art.ok ? harborImg(p.type) : null;
       if (hb) {
-        out.push(`<g transform="translate(${p.x},${p.y})" class="port${p.type === 'any' ? ' any' : ''}"><image href="${hb}" x="-0.47" y="-0.47" width="0.94" height="0.94" class="port-img"/></g>`);
+        out.push(`<g transform="translate(${p.x},${p.y})" class="port${p.type === 'any' ? ' any' : ''}"><circle r="0.45" cy="0.05" class="port-shadow"/><image href="${hb}" x="-0.47" y="-0.47" width="0.94" height="0.94" class="port-img"/></g>`);
         continue;
       }
       out.push(`<g transform="translate(${p.x},${p.y})" class="port"><circle r="0.45" class="port-bg"/><circle r="0.385" class="port-inner"/>`);
@@ -370,7 +404,7 @@ export class BoardView {
     out.push('</g>');
 
     this.world.innerHTML = out.join('');
-    this.svg.classList.toggle('picking', !!(ui.vertices?.size || ui.edges?.size || ui.hexes?.size));
+    this.svg.classList.toggle('picking', picking);
     this.svg.dataset.ghost = ghost.kind || '';
   }
 

@@ -184,9 +184,11 @@ kbd { background: var(--surface-2); border-radius: 5px; padding: 1px 6px; font-s
 #board { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; user-select: none;
   background: repeating-linear-gradient(115deg, rgba(255,255,255,.025) 0 2px, transparent 2px 22px), radial-gradient(circle at 50% 45%, #1d6d90 0%, #145176 48%, #0d3858 100%); }
 #board.panning { cursor: grabbing; }
-#board .hexes { filter: drop-shadow(0 .07px .12px rgba(0,0,0,.5)); transition: filter .25s; }
-#board.picking .hexes { filter: drop-shadow(0 .07px .12px rgba(0,0,0,.5)) brightness(.74) saturate(.85); }
-#board.picking .portmarks, #board.picking .shore { filter: brightness(.74) saturate(.85); }
+/* Keine CSS-Filter auf Brett-Gruppen: beim Hineinzoomen werden die Filterflächen riesig und die Bilder verschwinden. Schatten/Abdunkeln sind echte Formen. */
+.pick-dim { fill: rgba(4, 12, 22, .26); pointer-events: none; }
+.blocked-dim { fill: rgba(4, 12, 22, .32); pointer-events: none; }
+.tile-shadow { fill: rgba(0, 0, 0, .28); pointer-events: none; }
+.token-shadow, .port-shadow { fill: rgba(0, 0, 0, .3); pointer-events: none; }
 .pier { stroke: #5e3d22; stroke-width: .1; stroke-linecap: round; opacity: .95; }
 .pier-hi { stroke: #b88a58; stroke-width: .05; stroke-linecap: round; }
 .hex-ico { color: rgba(255, 255, 255, .55); }
@@ -195,8 +197,8 @@ kbd { background: var(--surface-2); border-radius: 5px; padding: 1px 6px; font-s
 .num { font-size: .36px; font-weight: 800; text-anchor: middle; dominant-baseline: central; fill: #3a2f1c; font-family: Inter, 'Segoe UI', system-ui, -apple-system, sans-serif; font-variant-numeric: lining-nums tabular-nums; letter-spacing: -.01em; }
 .num.two { font-size: .31px; letter-spacing: -.03em; }
 .num.red { fill: #c62828; }
-.token { filter: drop-shadow(0 .035px .04px rgba(0,0,0,.45)); }
-.port-bg { fill: #e0b64f; stroke: #8a6a1f; stroke-width: .03; filter: drop-shadow(0 .05px .06px rgba(0,0,0,.5)); }
+.token { }
+.port-bg { fill: #e0b64f; stroke: #8a6a1f; stroke-width: .03; }
 .port-inner { fill: url(#portGrad); stroke: rgba(120,90,30,.5); stroke-width: .015; }
 .port-ico { color: #3b3425; }
 .port-ratio { font-size: .21px; font-family: Inter, 'Segoe UI', system-ui, sans-serif; font-weight: 800; text-anchor: middle; fill: #3a2f1c; dominant-baseline: central; }
@@ -204,7 +206,7 @@ kbd { background: var(--surface-2); border-radius: 5px; padding: 1px 6px; font-s
 .road-outline { stroke: rgba(0,0,0,.6); stroke-width: .22; stroke-linecap: round; }
 .road-fill { stroke-width: .14; stroke-linecap: round; }
 .bld-shape { stroke: rgba(0,0,0,.7); stroke-width: .05; stroke-linejoin: round; }
-.robber-in { filter: drop-shadow(0 .03px .04px rgba(0,0,0,.6)); }
+.robber-in { }
 
 /* Bauplätze: ruhig, klar klickbar, Vorschau beim Darüberfahren */
 .hl-ring { fill: rgba(244, 239, 227, .2); stroke: var(--ivory); stroke-width: .05; transition: fill .12s; }
@@ -217,7 +219,7 @@ kbd { background: var(--surface-2); border-radius: 5px; padding: 1px 6px; font-s
 .hl-edge:hover .hl-edge-vis { opacity: 0; }
 .hl-hex-vis { fill: transparent; stroke: none; }
 .hl-hex:hover .hl-hex-vis { fill: rgba(244, 239, 227, .12); }
-.sel-ring { fill: none; stroke: var(--ivory); stroke-width: .05; filter: drop-shadow(0 0 .08px rgba(244,239,227,.9)); pointer-events: none; }
+.sel-ring { fill: none; stroke: var(--ivory); stroke-width: .05; pointer-events: none; }
 
 .bld.pop { animation: pop .45s cubic-bezier(.2, 1.5, .4, 1); transform-box: fill-box; transform-origin: 50% 100%; }
 @keyframes pop { from { transform: scale(0) translateY(-.5px); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -430,19 +432,19 @@ table.score tr.win td { background: var(--surface); font-weight: 700; }
 .dh .die { width: 96px; height: 96px; border-radius: 22px; padding: 13px; box-shadow: inset 0 -5px 0 rgba(0,0,0,.14), 0 14px 34px rgba(0,0,0,.5); }
 .dh .die i { margin: 3px; }
 .dh .die.rolling { animation-duration: .75s; }
-.dh-total { font-size: 96px; font-weight: 800; line-height: 1; margin-top: 14px; opacity: 0; transform: scale(.5); text-shadow: 0 6px 24px rgba(0,0,0,.6); }
+.dh-total { font-size: 96px; font-weight: 800; line-height: 1; margin-top: 14px; opacity: 0; text-shadow: 0 6px 24px rgba(0,0,0,.6); }
 .dh-total.in { opacity: 1; transform: scale(1); transition: all .4s cubic-bezier(.2,1.6,.4,1); }
 .dh-total.seven { color: var(--gold); }
 .dh-total small { display: block; font-size: 17px; font-weight: 600; color: var(--text); margin-top: 4px; }
 
 /* Treffer des Wurfs */
-.hit-ring { fill: rgba(244,239,227,.13); stroke: var(--ivory); stroke-width: .12; filter: drop-shadow(0 0 .22px rgba(244,239,227,.95)); animation: hitIn .45s ease-out; pointer-events: none; }
+.hit-ring { fill: rgba(244,239,227,.13); stroke: var(--ivory); stroke-width: .12; animation: hitIn .45s ease-out; pointer-events: none; }
 @keyframes hitIn { from { opacity: 0; } }
-.bld.hit { transform-box: fill-box; transform-origin: 50% 100%; transform: scale(1.22); filter: drop-shadow(0 0 .16px #ffe9a8); transition: transform .3s; }
+.bld.hit { transform-box: fill-box; transform-origin: 50% 100%; transform: scale(1.22); transition: transform .3s; }
 
 /* Effekte */
 .fx { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; }
-.floater { position: fixed; font-weight: 800; font-size: 17px; color: var(--ivory); display: flex; align-items: center; gap: 3px; background: var(--glass); padding: 2px 10px; border-radius: 99px; border: 1px solid var(--line); animation: floatUp 1.8s ease-out both; box-shadow: var(--shadow); }
+.floater { position: fixed; z-index: 62; font-weight: 800; font-size: 17px; color: var(--ivory); display: flex; align-items: center; gap: 3px; background: var(--glass); padding: 2px 10px; border-radius: 99px; border: 1px solid var(--line); box-shadow: var(--shadow); }
 @keyframes floatUp { 0% { opacity: 0; transform: translate(-50%, -20%) scale(.7); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -170%); } }
 .flycard { position: fixed; left: 0; top: 0; }
 .rchip.bump { animation: bump .5s ease-out; }
@@ -537,8 +539,8 @@ table.score tr.win td { background: var(--surface); font-weight: 700; }
 .rsq .ic.img, .rsq.lg .ic.img { width: 86%; height: 86%; filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
 .rchip.vp .ic.img { width: 26px; height: 26px; }
 .vp-big .ic.img { width: 56px; height: 56px; }
-.piece-img { filter: drop-shadow(0 .035px .045px rgba(0,0,0,.55)); }
-.hex-art { filter: drop-shadow(0 .03px .04px rgba(0,0,0,.45)); pointer-events: none; }
+.piece-img { }
+.hex-art { pointer-events: none; }
 .hex.flip .hex-art { animation: flip .8s ease-out; transform-box: fill-box; transform-origin: center; }
 .hex.remap .hex-art { animation: remap 1s ease-in-out var(--d); transform-box: fill-box; transform-origin: center; }
 
@@ -567,7 +569,7 @@ table.score tr.win td { background: var(--surface); font-weight: 700; }
 .modal-art.trophy { width: 130px; }
 
 /* v2-Assets: Hafen-Marker, Straßen */
-.port-img { filter: drop-shadow(0 .05px .07px rgba(0,0,0,.55)); }
+.port-img { }
 
 /* Illustrierte Bot-Portraits (Ausschnitt auf das Gesicht) und Meer-Hintergrund */
 .avatar-svg.portrait { position: relative; overflow: hidden; display: block; flex: none; }
@@ -578,8 +580,8 @@ table.score tr.win td { background: var(--surface); font-weight: 700; }
 /* Kachel-Feinschliff */
 .bevel-light { fill: none; stroke: rgba(255,255,255,.34); stroke-width: .035; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .bevel-dark { fill: none; stroke: rgba(0,0,0,.26); stroke-width: .035; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
-.hex-art.dim { opacity: .5; filter: grayscale(.4) drop-shadow(0 .03px .04px rgba(0,0,0,.45)); }
-.piece-shadow { fill: rgba(0,0,0,.38); filter: blur(.02px); pointer-events: none; }
+.hex-art.dim { opacity: .5; }
+.piece-shadow { fill: rgba(0,0,0,.34); pointer-events: none; }
 .token.dim { opacity: .62; }
 
 /* ==========================================================================
@@ -690,8 +692,7 @@ button, .tool, .btn, .icon-btn, .res-pick, .seg button { touch-action: manipulat
 .opp-name { font-size: 14px; }
 
 /* Straßen als Vektorformen */
-.road-vec { filter: drop-shadow(0 .018px .025px rgba(0,0,0,.45)); }
-.ghost .road-vec { filter: none; }
+.road-shadow { fill: rgba(0, 0, 0, .3); }
 .road-icon { height: 30px; width: 46px; overflow: visible; filter: drop-shadow(0 1px 1px rgba(0,0,0,.45)); }
 
 .dock-note { display: flex; flex-direction: column; line-height: 1.2; }
@@ -845,7 +846,7 @@ button, .tool, .btn, .icon-btn, .res-pick, .seg button { touch-action: manipulat
 .flycard.fc .rc-art .ic { width: 32px; height: 32px; }
 .flycard.fc.ghost { filter: blur(1.5px); box-shadow: none; }
 
-.ripple { position: fixed; width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--c); box-shadow: 0 0 22px var(--c), inset 0 0 18px color-mix(in srgb, var(--c) 55%, transparent); pointer-events: none; z-index: 59; }
+.ripple { position: fixed; left: 0; top: 0; width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--c); box-shadow: 0 0 22px var(--c), inset 0 0 18px color-mix(in srgb, var(--c) 55%, transparent); pointer-events: none; z-index: 59; }
 
 .bump { animation: bumpUp .5s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes bumpUp { 35% { transform: scale(1.14); filter: brightness(1.25); } }
@@ -885,7 +886,9 @@ td.who { display: flex; align-items: center; gap: 8px; }
 /* Würfel-Moment: echte 3D-Würfel */
 .dh-dice { display: flex; gap: 60px; justify-content: center; align-items: flex-end; perspective: 900px; height: 190px; }
 .d3 { --ds: 92px; --half: 46px; position: relative; width: var(--ds); height: var(--ds); }
-.d3-fly, .cube { position: absolute; inset: 0; transform-style: preserve-3d; }
+.d3-fly, .d3-tilt, .d3-spin, .d3-orient, .cube { position: absolute; inset: 0; transform-style: preserve-3d; }
+.d3-tilt { transform: rotateX(-26deg) rotateY(-30deg); }
+.d3-fly, .d3-spin { will-change: transform; }
 .dface { position: absolute; inset: 0; background: linear-gradient(145deg, #fffdf4, #e6dcc2); border-radius: 17%; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 14%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.1), inset 0 -5px 9px rgba(0,0,0,.08); backface-visibility: hidden; }
 .dface i { margin: 12%; border-radius: 50%; }
 .dface i.on { background: radial-gradient(circle at 35% 30%, #404a5e, #131a27); box-shadow: inset 0 1px 2px rgba(0,0,0,.6); }
@@ -932,8 +935,8 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .hl-vertex.pending .hl-pulse, .hl-edge.pending .hl-pulse { animation: none; opacity: 0; }
 
 /* Feld-Hintergrundbilder */
-.hex-img { filter: drop-shadow(0 .02px .05px rgba(0,0,0,.35)); }
-.hex-img.dim { filter: brightness(.68) saturate(.75); }
+.hex-img { }
+.hex-img.dim { }
 .gold-label.big { font-size: .2px; stroke-width: .045; }
 
 /* Musik-Schalter im Kopf, Gesichtsauswahl */

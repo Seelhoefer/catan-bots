@@ -17,7 +17,7 @@ import { sfx } from './ui/sfx.js';
 import { music } from './ui/music.js';
 import { avatarSVG } from './ui/avatars.js';
 import {
-  floatGain, flyCards, showDiceHero, showCardHero, DICE_REVEAL, produceFx, bumpPlayer,
+  floatGain, flyCards, showDiceHero, showCardHero, DICE_REVEAL, celebrate, produceFx, bumpPlayer,
 } from './ui/fx.js';
 import { preloadArt, ART_STYLES, artStyle, setArtStyle } from './ui/assets.js';
 import {
@@ -236,6 +236,7 @@ class App {
         break;
       case 'win':
         sfx.play(e.pi === HUMAN ? 'win' : 'lose', { delay: 300 });
+        if (e.pi === HUMAN) celebrate('win');
         setTimeout(() => this.showGameOver(), 700);
         break;
       case 'robber': sfx.play('robber'); break;
@@ -243,7 +244,7 @@ class App {
       case 'turn': if (e.pi === HUMAN) sfx.play('turn', { delay: 250 }); break;
       case 'change': {
         const vp = g.vp(HUMAN);
-        if (this.lastVp !== undefined && vp > this.lastVp) sfx.play('vp', { delay: 200 });
+        if (this.lastVp !== undefined && vp > this.lastVp) { sfx.play('vp', { delay: 200 }); setTimeout(celebrate, 250); }
         this.lastVp = vp;
         this.queueRender();
         break;
@@ -814,7 +815,7 @@ class App {
     });
     $('#zoomIn').addEventListener('click', () => this.view.zoomBy(0.8));
     $('#zoomOut').addEventListener('click', () => this.view.zoomBy(1.25));
-    $('#zoomFit').addEventListener('click', () => this.view.fit());
+    $('#zoomFit').addEventListener('click', () => this.view.fit(undefined, true));
     let lastW = window.innerWidth;
     let lastLandscape = window.innerWidth > window.innerHeight;
     let resizeTimer = null;
