@@ -1,6 +1,6 @@
 // Handel: abgedunkelter Bildschirm, Rohstoffe als Kreise, Angebot → Antworten der Gegner → Bestätigung.
 import { RES, RES_INFO, COSTS } from '../engine/constants.js';
-import { esc, ic, handHTML } from './dom.js';
+import { esc, ic } from './dom.js';
 import { avatarSVG } from './avatars.js';
 
 const HUMAN = 0;
@@ -46,20 +46,20 @@ const circRow = (app, side, hand, capped) => `<div class="rc-row">${RES.map((r) 
 function stepBar(app, sides) {
   const m = app.market;
   const sel = m.sel && sides.includes(m.sel.side) ? m.sel : null;
-  if (!sel) return '<div class="tp-step idle"><span>Tippe einen Rohstoff an, dann mit − und + die Menge ändern</span></div>';
+  if (!sel) return '<div class="tp-step idle"></div>';
   const n = storeOf(m, sel.side)[sel.res] || 0;
   const hand = app.game.s.players[HUMAN].hand;
   const cap = sel.side === 'give' || sel.side === 'cgive' ? hand[sel.res] : 9;
   const btn = (d, label, off) => `<button class="step-btn" data-act="mk-step" data-side="${sel.side}" data-res="${sel.res}" data-d="${d}" aria-label="${d > 0 ? 'mehr' : 'weniger'}" ${off ? 'disabled' : ''}>${label}</button>`;
-  return `<div class="tp-step">${btn(-1, ic('minus'), n <= 0)}<div class="step-mid"><b>${n}</b><span>${RES_INFO[sel.res].name}</span></div>${btn(1, ic('plus'), n >= cap)}</div>`;
+  return `<div class="tp-step">${btn(-1, ic('minus'), n <= 0)}<b class="step-n">${n}</b>${btn(1, ic('plus'), n >= cap)}</div>`;
 }
 
-const chips = (h) => `<span class="tp-hand">${handHTML(h)}</span>`;
+const chips = (h) => `<span class="tp-hand">${RES.filter((r) => h[r] > 0).map((r) => `<span class="rcirc static r-${r}">${ic(r)}<b class="rc-n">${h[r]}</b></span>`).join('')}</span>`;
 
 function terms(leftLabel, left, rightLabel, right) {
   return `<div class="tp-terms">
     <div><span class="tp-lbl">${leftLabel}</span>${chips(left)}</div>
-    <span class="tp-arrow">⇄</span>
+    <span class="tp-arrow">${ic('trade')}</span>
     <div><span class="tp-lbl">${rightLabel}</span>${chips(right)}</div>
   </div>`;
 }
@@ -83,17 +83,17 @@ function incomingView(app, offer) {
   const m = app.market;
 
   if (myResp) {
-    return `<div class="tp-body">${who(from, 'prüft deinen Gegenvorschlag …')}
-      ${terms('Du gibst', myResp.get, 'Du erhältst', myResp.give)}<div class="tp-wait"><i></i><i></i><i></i></div></div>`;
+    return `<div class="tp-body">${who(from, 'überlegt …')}
+      ${terms('Gebe', myResp.get, 'Erhalte', myResp.give)}<div class="tp-wait"><i></i><i></i><i></i></div></div>`;
   }
 
   if (m.counterFor === offer.id) {
     const c = m.counter;
     const ready = sum(c.give) > 0 && sum(c.get) > 0 && !g.validTradeShape(c.give, c.get);
-    return `<div class="tp-body">${who(from, 'Dein Gegenvorschlag')}
-      <div class="tp-lbl">Du gibst</div>${circRow(app, 'cgive', me.hand, true)}
+    return `<div class="tp-body">${who(from, 'Gegenangebot')}
+      <div class="tp-lbl">Gebe</div>${circRow(app, 'cgive', me.hand, true)}
       <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
-      <div class="tp-lbl">Du möchtest</div>${circRow(app, 'cget', me.hand, false)}
+      <div class="tp-lbl">Erhalte</div>${circRow(app, 'cget', me.hand, false)}
       ${stepBar(app, ['cgive', 'cget'])}
       <div class="tp-actions"><button class="btn quiet" data-act="mk-counter-cancel">Zurück</button>
       <button class="btn solid grow" data-act="mk-counter-send" data-id="${offer.id}" ${ready ? '' : 'disabled'}>Gegenvorschlag senden</button></div></div>`;
@@ -101,8 +101,8 @@ function incomingView(app, offer) {
 
   const can = g.canAcceptOffer(HUMAN, offer);
   const timer = app.waitingOffer === offer.id ? `<div class="tp-timer"><i style="animation-duration:${app.offerWaitMs}ms"></i></div>` : '';
-  return `<div class="tp-body">${who(from, 'möchte tauschen')}
-    ${terms('Du erhältst', offer.give, 'Du gibst', offer.get)}
+  return `<div class="tp-body">${who(from, 'bietet')}
+    ${terms('Erhalte', offer.give, 'Gebe', offer.get)}
     ${can ? '' : `<div class="tp-hint">Dir fehlt: ${missingText(me.hand, offer.get)}</div>`}
     <div class="tp-actions">
       <button class="btn quiet" data-act="mk-decline" data-id="${offer.id}">Ablehnen</button>
@@ -119,9 +119,9 @@ function composeView(app) {
   const m = app.market;
   const valid = sum(m.give) > 0 && sum(m.get) > 0 && !g.validTradeShape(m.give, m.get) && RES.every((r) => (m.give[r] || 0) <= me.hand[r]);
   return `<div class="tp-body">
-    <div class="tp-lbl">Ich gebe</div>${circRow(app, 'give', me.hand, true)}
+    <div class="tp-lbl">Gebe</div>${circRow(app, 'give', me.hand, true)}
     <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
-    <div class="tp-lbl">Ich möchte</div>${circRow(app, 'get', me.hand, false)}
+    <div class="tp-lbl">Erhalte</div>${circRow(app, 'get', me.hand, false)}
     ${stepBar(app, ['give', 'get'])}
     <div class="tp-actions"><button class="btn solid grow" data-act="mk-send" ${valid ? '' : 'disabled'}>An alle senden</button></div></div>`;
 }
@@ -136,10 +136,10 @@ function bankView(app) {
   const ok = give && get && give !== get;
   const pick = (act, sel, r, dis, tag, have) => `<div class="rc-wrap"><button class="rcirc r-${r} ${sel ? 'sel' : ''}" data-act="${act}" data-res="${r}" aria-label="${RES_INFO[r].name}" ${dis ? 'disabled' : ''}>${ic(r)}${tag}</button><small>${have}</small></div>`;
   return `<div class="tp-body">
-    <div class="tp-lbl">Ich gebe</div>
+    <div class="tp-lbl">Gebe</div>
     <div class="rc-row">${RES.map((r, i) => pick('bank-give', give === r, r, me.hand[r] < ports[i], `<b class="rc-n ratio">${ports[i]}:1</b>`, me.hand[r])).join('')}</div>
     <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
-    <div class="tp-lbl">Ich erhalte</div>
+    <div class="tp-lbl">Erhalte</div>
     <div class="rc-row">${RES.map((r) => pick('bank-get', get === r, r, !give || r === give || g.s.bank[r] < 1, '', '')).join('')}</div>
     <div class="tp-actions"><button class="btn solid grow" data-act="bank-do" ${ok ? '' : 'disabled'}>${ok ? `${ports[RES.indexOf(give)]} ${RES_INFO[give].name} → 1 ${RES_INFO[get].name}` : 'Mit der Bank tauschen'}</button></div></div>`;
 }
@@ -168,9 +168,9 @@ function awaitView(app, offer) {
       <span class="aw-av">${avatarSVG(p.face, p.color, 76)}${badge}</span><b>${esc(p.name)}</b><small>${esc(label)}</small></button>`;
   };
   return `<div class="aw">
-    <div class="aw-offer">${terms('Du gibst', offer.give, 'Du möchtest', offer.get)}</div>
+    <div class="aw-offer">${terms('Gebe', offer.give, 'Erhalte', offer.get)}</div>
     <div class="aw-row">${others.map(card).join('')}</div>
-    <div class="aw-msg">${!finished ? 'Die Spieler überlegen …' : actionable ? 'Tippe auf einen Spieler, um den Handel zu bestätigen.' : 'Niemand möchte zu diesen Bedingungen tauschen.'}</div>
+    ${finished && !actionable ? '<div class="aw-msg">Niemand tauscht zu diesen Bedingungen.</div>' : ''}
     <div class="aw-actions">${finished && !actionable
     ? '<button class="btn" data-act="mk-retry">Angebot ändern</button><button class="btn quiet" data-act="mk-withdraw-close">Schließen</button>'
     : `<button class="btn quiet" data-act="mk-withdraw" data-id="${offer.id}">Angebot zurückziehen</button>`}</div>
@@ -186,8 +186,8 @@ function confirmView(app, offer, pid) {
   const counter = r.type === 'counter';
   const give = counter ? r.give : offer.give; // Gegenangebote stehen aus Sicht des Anbieters (= du)
   const get = counter ? r.get : offer.get;
-  return `<div class="tp-body">${who(p, counter ? 'macht dir ein Gegenangebot' : 'ist einverstanden')}
-    ${terms('Du gibst', give, 'Du erhältst', get)}
+  return `<div class="tp-body">${who(p, counter ? 'Gegenangebot' : 'einverstanden')}
+    ${terms('Gebe', give, 'Erhalte', get)}
     <div class="tp-actions"><button class="btn quiet" data-act="mk-confirm-cancel">Zurück</button>
     <button class="btn solid grow" data-act="mk-confirm" data-id="${offer.id}" data-pid="${pid}">${counter ? 'Gegenangebot annehmen' : 'Handel bestätigen'}</button></div></div>`;
 }
@@ -227,7 +227,7 @@ export function renderMarket(app) {
 
   const tab = m.tab === 'bank' ? 'bank' : 'players';
   return {
-    html: `<div class="tp-back" data-act="mk-close"></div>
+    html: `<div class="tp-back dark" data-act="mk-close"></div>
       <div class="tp own" role="dialog" aria-label="Handel">
         <div class="tp-top">
           <div class="seg tiny"><button class="${tab === 'players' ? 'on' : ''}" data-act="mk-tab" data-tab="players">Spieler</button><button class="${tab === 'bank' ? 'on' : ''}" data-act="mk-tab" data-tab="bank">Bank</button></div>

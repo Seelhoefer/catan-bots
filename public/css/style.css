@@ -1201,3 +1201,88 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .fab-item.dis .fi-text { opacity: .6; }
 .fab-item .fi-state { display: none; }
 .fab-item .fi-ico .tool-piece { height: 32px; }
+
+/* ==========================================================================
+   v4: zentrierte Spielerkarten, Knöpfe direkt an den Karten, Handel ohne Kachel/Karte
+   ========================================================================== */
+.bottombar { display: contents; }
+@media (min-width: 861px) and (min-height: 521px) {
+  .hdr { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; }
+  .hdr-left { justify-self: start; }
+  .hdr-players { justify-self: center; overflow: visible; }
+  .hdr-btns { justify-self: end; }
+  .bottombar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; display: flex; justify-content: center; align-items: flex-end; gap: 28px; padding: 0 16px 12px; pointer-events: none; }
+  .bottombar > * { pointer-events: auto; }
+  .bottombar .fab, .bottombar .nextwrap { position: static; }
+  .bottombar .nextwrap { align-self: flex-end; margin-bottom: 6px; }
+  .bottombar .fab { margin-bottom: 0; }
+  .bottombar .handbar { position: relative; left: auto; right: auto; bottom: auto; height: 100px; flex: 0 1 auto; display: block; pointer-events: none; margin-bottom: -18px; }
+  .bottombar .hand-fan { justify-content: center; }
+  .bottombar .hand-fan:empty { width: 120px; }
+  .zoom { bottom: 16px; }
+}
+
+/* Handel: kein Kartenfenster – große Kreise direkt auf dem abgedunkelten Spiel */
+.tp-layer { display: flex; align-items: center; justify-content: center; }
+.tp-layer .tp, .tp-layer .tp.own, .tp-layer .tp.in, .tp-layer .tp.conf { position: relative; left: auto; right: auto; top: auto; bottom: auto; transform: none; width: min(640px, 100%); max-height: 100%; background: none; border: 0; box-shadow: none; border-radius: 0; padding: 0; overflow: visible; z-index: 3; }
+.tp-layer .tp.enter, .tp-layer .tp.own.enter, .tp-layer .tp.in.enter, .tp-layer .tp.conf.enter { animation: tpFade .28s ease-out; }
+@keyframes tpFade { from { opacity: 0; transform: scale(.94); } }
+.tp-layer .tp-back { z-index: 1; }
+.tp-layer .tp-back.dark { background: rgba(3, 8, 16, .8); backdrop-filter: blur(5px); }
+.tp-layer .tp-back.dark.light { background: rgba(3, 8, 16, .55); backdrop-filter: none; }
+.tp-layer .aw, .tp-layer .aw-dim { z-index: 2; }
+.tp-top { justify-content: center; padding: 0 0 6px; position: relative; }
+.tp-top .seg { flex: 0 1 260px; background: rgba(255, 255, 255, .08); }
+.tp-top .icon-btn { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+.tp-body { padding: 8px; gap: 18px; align-items: center; }
+.tp-lbl { font-size: 11px; letter-spacing: .14em; color: var(--muted); text-align: center; }
+.tp-terms { background: none; padding: 0; gap: 22px; }
+.tp-terms > div { gap: 10px; }
+.tp-hand { gap: 10px; }
+.tp-arrow { color: var(--muted); }
+.tp-arrow .ic { width: 26px; height: 26px; }
+.tp-who { justify-content: center; }
+.tp-divider { width: min(420px, 80%); }
+.tp-actions { width: min(460px, 100%); }
+.tp-actions .btn { padding: 15px 18px; font-size: 16px; border-radius: 999px; }
+.tp-step { background: none; min-height: 0; gap: 26px; padding: 0; }
+.tp-step.idle { min-height: 64px; }
+.step-btn { width: 60px; height: 60px; border: 2px solid rgba(255, 255, 255, .28); background: rgba(255, 255, 255, .08); }
+.step-btn .ic { width: 24px; height: 24px; }
+.step-n { font-size: 40px; min-width: 56px; text-align: center; }
+
+/* Kreise: groß, mit passendem Rahmen */
+.rc-row { gap: 18px; }
+.rcirc { width: 84px; height: 84px; border: 5px solid color-mix(in srgb, var(--rc) 55%, #1a1204 45%); opacity: .62;
+  background: radial-gradient(circle at 34% 26%, color-mix(in srgb, var(--rc) 60%, #fff 40%), var(--rc) 52%, color-mix(in srgb, var(--rc) 62%, #000 38%));
+  box-shadow: 0 0 0 3px #d9b45a, 0 0 0 5px rgba(60, 40, 8, .9), 0 10px 20px rgba(0, 0, 0, .5), inset 0 3px 8px rgba(255, 255, 255, .28), inset 0 -6px 12px rgba(0, 0, 0, .3); }
+.rcirc .ic { width: 52px; height: 52px; }
+.rcirc.sel { border-color: #fff5d6; box-shadow: 0 0 0 3px #f6d675, 0 0 0 5px rgba(60, 40, 8, .9), 0 0 28px rgba(246, 214, 117, .55), 0 10px 20px rgba(0, 0, 0, .5), inset 0 3px 8px rgba(255, 255, 255, .28); transform: scale(1.08); }
+.rcirc.static { opacity: 1; width: 70px; height: 70px; cursor: default; }
+.rcirc.static .ic { width: 42px; height: 42px; }
+.rcirc.static:hover { transform: none; }
+.rc-n { top: -8px; right: -8px; min-width: 30px; height: 30px; font-size: 16px; border: 2px solid #d9b45a; }
+.rc-n.ratio { font-size: 12px; }
+.rc-wrap small { font-size: 12px; }
+.aw-av .avatar-svg { width: 88px !important; height: 88px !important; }
+.aw-offer .tp-terms { background: none; border: 0; box-shadow: none; }
+
+@media (max-width: 860px) {
+  .rcirc { width: 62px; height: 62px; border-width: 4px; }
+  .rcirc .ic { width: 38px; height: 38px; }
+  .rc-row { gap: 10px; }
+  .rcirc.static { width: 58px; height: 58px; }
+  .rc-n { min-width: 26px; height: 26px; font-size: 14px; }
+  .step-btn { width: 54px; height: 54px; }
+  .tp-actions { flex-wrap: wrap; }
+  .aw-av .avatar-svg { width: 70px !important; height: 70px !important; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .rcirc { width: 52px; height: 52px; border-width: 3px; }
+  .rcirc .ic { width: 32px; height: 32px; }
+  .rc-row { gap: 8px; }
+  .tp-body { gap: 8px; }
+  .step-btn { width: 44px; height: 44px; }
+  .step-n { font-size: 30px; }
+  .tp-actions .btn { padding: 10px 14px; }
+}

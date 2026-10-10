@@ -10,7 +10,7 @@ import {
 import { installIcons } from './ui/icons.js';
 import { renderMenu, rememberLast } from './ui/menu.js';
 import {
-  renderHand, renderHandBar, renderPlayers, renderFab, renderNext, renderDice, renderMissionBox, renderLogBox, renderHeroRoll,
+  renderHand, renderHandBar, renderPlayers, renderFab, renderNext, renderDice, renderMissionBox, renderHeroRoll,
 } from './ui/panels.js';
 import { renderMarket, suggestTrade } from './ui/market.js';
 import { sfx } from './ui/sfx.js';
@@ -405,8 +405,7 @@ class App {
       case 'trade': this.mode = null; this.ui.fabOpen = false; this.openMarket(); break;
       case 'dev': this.modal = devModal(this); break;
       case 'tokens': this.modal = tokensModal(this); break;
-      case 'toggle-missions': this.ui.missionsOpen = !this.ui.missionsOpen; this.ui.logOpen = false; this.queueRender(); break;
-      case 'toggle-log': this.ui.logOpen = !this.ui.logOpen; this.ui.missionsOpen = false; this.queueRender(); break;
+      case 'toggle-missions': this.ui.missionsOpen = !this.ui.missionsOpen; this.queueRender(); break;
       default: break;
     }
   }
@@ -671,9 +670,6 @@ class App {
     $('#diceBox').innerHTML = renderDice(g, this.rolling);
     this.renderMarketLayer();
     $('#missionBox').innerHTML = renderMissionBox(g, this.ui.missionsOpen);
-    $('#logBox').innerHTML = renderLogBox(g, this.ui.logOpen);
-    const ll = $('#logBox .loglist');
-    if (ll) ll.scrollTop = ll.scrollHeight;
 
     if (s.phase === 'main' && s.sub === 'discard' && s.discard[HUMAN] !== undefined) this.ensure('discard', () => discardModal(this, s.discard[HUMAN]));
     if (s.phase === 'main' && s.sub === 'gold' && s.gold[HUMAN]) this.ensure('gold', () => goldModal(this, s.gold[HUMAN]));
@@ -717,7 +713,7 @@ class App {
     const groups = [...fan.children].filter((c) => c.classList.contains('rgroup') || c.classList.contains('dgroup'));
     const cw = parseFloat(getComputedStyle(fan).getPropertyValue('--cw')) || 64;
     const gap = parseFloat(getComputedStyle(fan).getPropertyValue('--gap')) || 18;
-    const avail = fan.parentElement.clientWidth - 32;
+    const avail = Math.max(240, window.innerWidth - 660);
     const extra = groups.reduce((a, g2) => a + g2.children.length - 1, 0);
     const fixed = groups.length * cw + (groups.length - 1) * gap;
     const step = extra > 0 ? Math.max(9, Math.min(cw * 0.5, (avail - fixed) / extra)) : cw * 0.5;

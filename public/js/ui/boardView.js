@@ -26,15 +26,15 @@ const CITY = 'M-0.3,0.2 L-0.3,-0.06 L-0.1,-0.06 L-0.1,-0.26 L0.05,-0.4 L0.2,-0.2
 /** Illustrierte Siedlung/Stadt: Boden des sichtbaren Inhalts sitzt knapp unter der Ecke. */
 function pieceImage(kind, hex, vx, vy, extra = '') {
   const b = PIECE_BOX[kind];
-  const w = (b.w * b.target) / b.b;
-  const h = (b.h * b.target) / b.b;
+  const w = (b.w * b.target) / (b.r - b.l);
+  const h = (b.h * b.target) / (b.r - b.l);
   const x = vx - ((b.l + b.r) / 2 / b.w) * w;
   const y = vy + (kind === 'city' ? 0.26 : 0.22) - (b.b / b.h) * h;
-  const shadow = `<ellipse cx="${vx.toFixed(3)}" cy="${(vy + 0.2).toFixed(3)}" rx="${(w * 0.34).toFixed(3)}" ry="${(w * 0.1).toFixed(3)}" class="piece-shadow"/>`;
+  const shadow = `<ellipse cx="${vx.toFixed(3)}" cy="${(vy + 0.2).toFixed(3)}" rx="${(w * 0.4).toFixed(3)}" ry="${(w * 0.11).toFixed(3)}" class="piece-shadow"/>`;
   return `${shadow}<image href="${piece(COLOR_ID[hex] || 'blue', kind)}" x="${x.toFixed(3)}" y="${y.toFixed(3)}" width="${w.toFixed(3)}" height="${h.toFixed(3)}" class="piece-img" ${extra}/>`;
 }
 
-const THIEF_W = 0.64;
+const THIEF_W = 0.86;
 function thiefImage(extra = '') {
   return `<image href="${IMG.thief}" x="${-THIEF_W / 2}" y="${-THIEF_W * 1.024}" width="${THIEF_W}" height="${THIEF_W * 1.024}" class="piece-img" ${extra}/>`;
 }
@@ -351,7 +351,7 @@ export class BoardView {
 
     // Räuber
     const rh = board.hexes[s.robber];
-    out.push(`<g transform="translate(${rh.x},${rh.y + 0.8})" class="robber"><g class="robber-in">${art.ok ? `<ellipse cx="0" cy="0" rx="0.3" ry="0.09" fill="rgba(0,0,0,.45)"/>${thiefImage()}` : `<g transform="translate(0,-.34)">${ROBBER}</g>`}</g></g>`);
+    out.push(`<g transform="translate(${rh.x},${rh.y + 0.8})" class="robber"><g class="robber-in">${art.ok ? `<ellipse cx="0" cy="0" rx="0.4" ry="0.115" fill="rgba(0,0,0,.4)"/>${thiefImage()}` : `<g transform="translate(0,-.34)">${ROBBER}</g>`}</g></g>`);
 
     // Hervorhebungen (klickbar) – ruhig, mit Vorschau der Figur beim Darüberfahren
     const ghost = ui.ghost || {};
