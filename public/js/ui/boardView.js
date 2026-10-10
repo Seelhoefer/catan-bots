@@ -336,6 +336,7 @@ export class BoardView {
         const [x1, y1, x2, y2] = this.shorten(a, b, 0.13);
         const pend = ui.pending && ui.pending.kind === 'edge' && ui.pending.id === id;
         out.push(`<g data-e="${id}" class="hl-edge${pend ? ' pending' : ''}"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="hl-edge-vis"/>`
+          + `<circle cx="${((a.x + b.x) / 2).toFixed(3)}" cy="${((a.y + b.y) / 2).toFixed(3)}" r="0.15" class="hl-pulse ep"/><circle cx="${((a.x + b.x) / 2).toFixed(3)}" cy="${((a.y + b.y) / 2).toFixed(3)}" r="0.15" class="hl-pulse ep p2"/><circle cx="${((a.x + b.x) / 2).toFixed(3)}" cy="${((a.y + b.y) / 2).toFixed(3)}" r="0.06" class="hl-dot"/>`
           + `<g class="ghost${pend ? ' on' : ''}">${roadOnEdge(a, b, gcol)}</g>`
           + `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="hl-hit"/></g>`);
       }
@@ -345,7 +346,7 @@ export class BoardView {
         const v = board.vertices[id];
         const shape = ghost.kind === 'city' ? CITY : HOUSE;
         const pend = ui.pending && ui.pending.kind === 'vertex' && ui.pending.id === id;
-        out.push(`<g transform="translate(${v.x},${v.y})" data-v="${id}" class="hl-vertex${pend ? ' pending' : ''}"><circle r="0.17" class="hl-ring"/>`
+        out.push(`<g transform="translate(${v.x},${v.y})" data-v="${id}" class="hl-vertex${pend ? ' pending' : ''}"><circle r="0.17" class="hl-pulse vp"/><circle r="0.17" class="hl-pulse vp p2"/><circle r="0.17" class="hl-ring"/>`
           + (art.ok ? `<g class="ghost${pend ? ' on' : ''}">${pieceImage(ghost.kind === 'city' ? 'city' : 'settlement', gcol, 0, 0)}</g>` : `<g class="ghost${pend ? ' on' : ''}"><path d="${shape}" fill="${gcol}" class="bld-shape"/></g>`) + '<circle r="0.38" class="hl-hit"/></g>');
       }
     }

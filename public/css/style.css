@@ -213,7 +213,7 @@ kbd { background: var(--surface-2); border-radius: 5px; padding: 1px 6px; font-s
 .ghost { opacity: 0; transition: opacity .12s; pointer-events: none; }
 .hl-vertex:hover .ghost, .hl-edge:hover .ghost, .hl-hex:hover .ghost { opacity: .9; }
 .hl-vertex:hover .hl-ring { fill: rgba(244, 239, 227, .55); }
-.hl-edge-vis { stroke: var(--ivory); stroke-width: .09; stroke-linecap: round; stroke-dasharray: .001 .17; opacity: .95; transition: opacity .12s; }
+.hl-edge-vis { stroke: var(--ivory); stroke-width: .05; stroke-linecap: round; opacity: .3; transition: opacity .12s; }
 .hl-edge:hover .hl-edge-vis { opacity: 0; }
 .hl-hex-vis { fill: transparent; stroke: none; }
 .hl-hex:hover .hl-hex-vis { fill: rgba(244, 239, 227, .12); }
@@ -922,3 +922,11 @@ td.who { display: flex; align-items: center; gap: 8px; }
 @keyframes goldShine { 0%, 100% { opacity: .15; } 50% { opacity: .85; } }
 .avatar-svg.portrait .pi { position: absolute; inset: 0; display: grid; place-items: center; font-size: 45%; font-weight: 800; color: rgba(255,255,255,.9); }
 .avatar-svg.portrait img { z-index: 1; }
+
+/* Siedlung/Stadt/Straße setzen: wählbare Punkte und Kanten pulsieren als Kreise */
+.hl-pulse.vp { stroke-width: .05; }
+.hl-pulse.ep { stroke-width: .045; }
+@keyframes vertexPulse { 0% { transform: scale(.7); opacity: .95; } 100% { transform: scale(2.1); opacity: 0; } }
+.hl-pulse.vp, .hl-pulse.ep { animation-name: vertexPulse; }
+.hl-vertex:hover .hl-pulse, .hl-edge:hover .hl-pulse { animation: none; transform: scale(1.5); fill: rgba(244,239,227,.3); }
+.hl-vertex.pending .hl-pulse, .hl-edge.pending .hl-pulse { animation: none; opacity: 0; }
