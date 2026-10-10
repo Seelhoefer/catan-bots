@@ -187,7 +187,7 @@ const SOUNDS = {
 // Feinabgleich der Lautstärke je Klang (Messung: Spitzenpegel der synthetisierten Klänge)
 const BOOST = {
   tick: 1.8, select: 2.2, error: 2.2, gain: 2.4, token: 1.8, card: 3, cardplay: 1.8, harvest: 1.6,
-  steal: 2.4, deal: 1.8, land: 1.4, turn: 2.2, remap: 1.6, monopoly: 1.5, vpOther: 2, trade: 1.2, lose: 1.5, offer: 1.4, robber: 0.9,
+  steal: 2.4, deal: 2.6, land: 2.2, dice: 2.4, turn: 2.2, remap: 1.6, monopoly: 1.5, vpOther: 2, trade: 1.2, lose: 1.5, offer: 1.4, robber: 0.9,
 };
 
 // ------------------------------------------------------------------ API
