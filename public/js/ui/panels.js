@@ -213,11 +213,7 @@ const anyPlayable = (g) => ['knight', 'roadbuilding', 'plenty', 'monopoly', 'rem
 export function renderDock(g, mode, pending = null) {
   const s = g.s;
   const p = s.players[HUMAN];
-  if (pending && s.turn === HUMAN && s.phase !== 'over') {
-    return `<span class="dock-note"><b>${esc(pending.label)}</b><small>Erneut antippen oder bestätigen</small></span>
-      <button class="btn quiet" data-act="pick-cancel">Abbrechen</button>
-      <button class="btn solid xl" data-act="pick-confirm">Bestätigen</button>`;
-  }
+  // Vorwählen und Bauen laufen allein über das Brett: erster Klick = Vorschau, zweiter Klick auf denselben Platz = bauen (keine Bestätigungsleiste)
   if (s.phase !== 'main' || s.turn !== HUMAN) return '';
 
   if (s.roadBuildingLeft > 0) {
