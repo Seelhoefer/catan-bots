@@ -930,3 +930,15 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .hl-pulse.vp, .hl-pulse.ep { animation-name: vertexPulse; }
 .hl-vertex:hover .hl-pulse, .hl-edge:hover .hl-pulse { animation: none; transform: scale(1.5); fill: rgba(244,239,227,.3); }
 .hl-vertex.pending .hl-pulse, .hl-edge.pending .hl-pulse { animation: none; opacity: 0; }
+
+/* Feld-Hintergrundbilder */
+.hex-img { filter: drop-shadow(0 .02px .05px rgba(0,0,0,.35)); }
+.hex-img.dim { filter: brightness(.68) saturate(.75); }
+.gold-label.big { font-size: .2px; stroke-width: .045; }
+
+/* Musik-Schalter im Kopf, Gesichtsauswahl */
+#btnMusic.off { color: var(--muted); }
+#btnMusic.off .ic { opacity: .8; }
+@media (max-width: 860px) and (orientation: portrait) { #btnMusic { position: absolute; top: 8px; right: 54px; } }
+.you-faces .face.portrait { padding: 2px; }
+.char.you { opacity: .4; }

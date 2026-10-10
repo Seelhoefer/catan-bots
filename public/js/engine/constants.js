@@ -80,6 +80,7 @@ export const HUMAN_FACES = [
 export const DEFAULT_SETTINGS = {
   playerName: 'Du',
   avatar: 0,
+  avatarPortrait: null, // BOT_ROSTER-ID: der Mensch spielt mit einem der Bot-Gesichter (dieser Bot ist dann nicht dabei)
   botIds: null, // Liste von BOT_ROSTER-IDs oder null = die ersten N
   bots: 3,
   difficulty: 'normal', // easy | normal | hard

@@ -33,8 +33,9 @@ export class Game {
 
     const n = settings.bots + 1;
     const roster = [];
-    for (const id of settings.botIds || []) { const b = BOT_ROSTER.find((x) => x.id === id); if (b && !roster.includes(b)) roster.push(b); }
-    for (const b of BOT_ROSTER) { if (roster.length >= settings.bots) break; if (!roster.includes(b)) roster.push(b); }
+    const mine = BOT_ROSTER.find((x) => x.id === settings.avatarPortrait) || null; // gewähltes Bot-Gesicht des Menschen
+    for (const id of settings.botIds || []) { const b = BOT_ROSTER.find((x) => x.id === id); if (b && b !== mine && !roster.includes(b)) roster.push(b); }
+    for (const b of BOT_ROSTER) { if (roster.length >= settings.bots) break; if (b !== mine && !roster.includes(b)) roster.push(b); }
     const players = [];
     for (let i = 0; i < n; i++) {
       const bot = i === 0 ? null : roster[i - 1];
@@ -43,7 +44,7 @@ export class Game {
         name: i === 0 ? (settings.playerName || 'Du') : bot.name,
         trait: bot ? bot.trait : null,
         tagline: bot ? bot.tagline : '',
-        face: bot ? bot.face : HUMAN_FACES[(settings.avatar || 0) % HUMAN_FACES.length],
+        face: bot ? bot.face : (mine ? mine.face : HUMAN_FACES[(settings.avatar || 0) % HUMAN_FACES.length]),
         isBot: i !== 0,
         color: PLAYER_COLORS[i].hex,
         hand: emptyHand(),

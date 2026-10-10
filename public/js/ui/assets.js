@@ -29,18 +29,21 @@ export const ART_STYLES = {
     res: (r) => `assets/art-v2/resources/${r}.webp`,
     harbor: (t) => `assets/art-v2/harbors/${harborName(t)}.webp`,
     fog: 'assets/art-v2/fog/fog-hex.webp',
+    tile: (t) => `assets/hexbg/${t}.webp`, // komplette Feld-Hintergründe (Zahl liegt mittig darauf, keine Icons nötig)
   },
   vector: {
     label: 'Vektor',
     res: (r) => `assets/vector-svg/resources/${r}.svg`,
     harbor: (t) => `assets/vector-svg/harbors/${harborName(t)}.svg`,
     fog: 'assets/vector-svg/fog/fog-hex.svg',
+    tile: null,
   },
   classic: {
     label: 'Klassisch',
     res: (r) => `${BASE}resources/${r}.webp`,
     harbor: (t) => (t === 'any' ? IMG.harbor : null), // 2:1-Häfen setzt das Brett aus Rohstoffbild + Schrift zusammen
     fog: null,
+    tile: null,
   },
 };
 const STYLE_KEY = 'catan-art';
@@ -53,6 +56,8 @@ export const resImg = (r) => ART_STYLES[styleId].res(r);
 export const harborImg = (type) => ART_STYLES[styleId].harbor(type);
 /** Nebelkachel als Bild über dem Sechseck (null = Platzhalter-Symbol). */
 export const fogImg = () => ART_STYLES[styleId].fog;
+/** Komplettes Feld-Hintergrundbild (null = Farbverlauf + Rohstoff-Icon). */
+export const tileImg = (type) => (ART_STYLES[styleId].tile ? ART_STYLES[styleId].tile(type) : null);
 
 /** Bilder, die an Stelle flacher Sprite-Icons verwendet werden, sobald `art.ok` gilt. */
 export const ICON_IMAGE = {};
@@ -69,6 +74,7 @@ const styleList = (id) => {
     ...['wood', 'brick', 'sheep', 'wheat', 'ore'].map(st.res),
     ...['any', 'wood', 'brick', 'sheep', 'wheat', 'ore'].map(st.harbor).filter(Boolean),
     ...(st.fog ? [st.fog] : []),
+    ...(st.tile ? ['wood', 'brick', 'sheep', 'wheat', 'ore', 'desert', 'gold'].map(st.tile) : []),
   ];
 };
 

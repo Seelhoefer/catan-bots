@@ -31,7 +31,7 @@ Entwicklungskarten (Ritter, Straßenbau, Erfindung, Monopol, Siegpunkte), Längs
 Größte Rittermacht, Sieg bei Erreichen der Siegpunktzahl in deinem Zug.
 
 **Einstellungen vor der Partie**
-- Einstieg als Assistent in 3 Schritten: Karte → Spieler (Avatar, Gegner, Stärke) → Regeln & Siegpunkte
+- Einstieg als Assistent in 3 Schritten: Karte → Spieler (Avatar oder eines der Bot-Gesichter, Gegner, Stärke) → Regeln & Siegpunkte
 - Spielfeldgröße: Klein (19 Felder, klassisch), Groß (37), Riesig (61)
 - Siegpunkte: 5–20 (Standard 10) – die Anzahl der Spielfiguren wächst automatisch mit
 - Spielvariante: Klassisch oder **Nebel** (wie *Seefahrer*)
@@ -85,7 +85,7 @@ linken Panel sichtbar.
 ## Musik
 
 Eine epische, generative Hintergrundmusik (Orgelpunkt, Streicher-Ostinato, Hörner mit Heldenmotiv, Chor, Pauken, Becken-Crescendo) steigert sich über 16 Takte vom ruhigen Intro bis zum Finale und beginnt dann neu.
-Ein/Aus im Menü (⋯ → Musik). Eigene frei lizenzierte Stücke lassen sich über `public/assets/music/manifest.json` einbinden.
+Ein/Aus über das Musiksymbol im Kopf (oder ⋯ → Musik). Eigene frei lizenzierte Stücke lassen sich über `public/assets/music/manifest.json` einbinden.
 
 ## Sound
 
@@ -102,7 +102,7 @@ Ein/Aus im Menü (⋯ → Sound). Echte Aufnahmen lassen sich optional einhänge
 
 ## Grafiken
 
-Drei umschaltbare **Grafikstile** (Menü ⋯ → Grafik): *Illustriert* (neu, Standard), *Vektor* (reine SVG-Pfade) und *Klassisch*.
+Im Stil *Illustriert* sind die Felder komplette Hintergrundbilder mit mittig liegendem Zahlenchip. Drei umschaltbare **Grafikstile** (Menü ⋯ → Grafik): *Illustriert* (neu, Standard), *Vektor* (reine SVG-Pfade) und *Klassisch*.
 
 Siedlungen und Städte, Rohstoffe, Räuber-Dieb, Pokal und die Entwicklungskarten sind illustriert (siehe `public/assets/README.md`). **Straßen** sind keine Bilder, sondern flache Vektor-Holzmarker
 (`public/js/ui/road.js`, `drawRoad({x, y, orientation, color, length, width})`) in sechs Spielerfarben.

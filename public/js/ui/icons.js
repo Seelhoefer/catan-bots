@@ -37,6 +37,8 @@ const ICONS = {
   plus: '<path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>',
   minus: '<path d="M5 11h14v2H5z"/>',
   target: '<path d="M11 2h2v5h-2z M11 17h2v5h-2z M2 11h5v2H2z M17 11h5v2h-5z"/><circle cx="12" cy="12" r="3"/>',
+  music: '<path d="M9 3l11 2.4v11.2a3.4 3.4 0 1 1-2-3.1V8.2L11 9.6v9.1a3.4 3.4 0 1 1-2-3.1z"/>',
+  'music-off': '<path d="M9 3l11 2.4v11.2a3.4 3.4 0 1 1-2-3.1V8.2L11 9.6v9.1a3.4 3.4 0 1 1-2-3.1z" opacity=".45"/><path d="M3.2 4.6 4.6 3.200 20.800 19.400 19.400 20.800z"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.400 3.600-7 8-7s8 2.600 8 7z"/>',
 };
 

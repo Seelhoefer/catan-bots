@@ -76,9 +76,11 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
 
   const maxBots = () => SIZES[settings.size].maxPlayers - 1;
   const ensureCast = () => {
-    const ids = (settings.botIds && settings.botIds.length ? settings.botIds : BOT_ROSTER.slice(0, settings.bots).map((b) => b.id)).filter((id) => BOT_ROSTER.some((b) => b.id === id));
+    if (settings.avatarPortrait && !BOT_ROSTER.some((b) => b.id === settings.avatarPortrait)) settings.avatarPortrait = null;
+    const others = BOT_ROSTER.filter((b) => b.id !== settings.avatarPortrait); // das eigene Gesicht spielt nicht als Gegner mit
+    const ids = (settings.botIds && settings.botIds.length ? settings.botIds : others.slice(0, settings.bots).map((b) => b.id)).filter((id) => others.some((b) => b.id === id));
     settings.botIds = ids.slice(0, maxBots());
-    if (!settings.botIds.length) settings.botIds = [BOT_ROSTER[0].id];
+    if (!settings.botIds.length) settings.botIds = [others[0].id];
     settings.bots = settings.botIds.length;
   };
 
@@ -137,13 +139,26 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
     ensureCast();
     const sel = new Set(settings.botIds);
     const max = maxBots();
-    const preset = (n) => { settings.botIds = BOT_ROSTER.slice(0, Math.min(n - 1, max)).map((b) => b.id); ensureCast(); draw(); };
+    const preset = (n) => { settings.botIds = BOT_ROSTER.filter((b) => b.id !== settings.avatarPortrait).slice(0, Math.min(n - 1, max)).map((b) => b.id); ensureCast(); draw(); };
     return el('div', { class: 'wz-body' },
       el('h2', {}, 'Wer spielt mit?'),
       el('div', { class: 'you' },
-        el('div', { class: 'you-faces' }, HUMAN_FACES.map((f, i) => el('button', {
-          type: 'button', class: `face ${settings.avatar === i ? 'on' : ''}`, 'aria-label': `Avatar ${i + 1}`, onclick: () => { settings.avatar = i; draw(); }, html: avatarSVG(f, PLAYER_COLORS[0].hex, 44),
-        }))),
+        el('div', { class: 'you-faces' },
+          BOT_ROSTER.map((b) => el('button', {
+            type: 'button', class: `face portrait ${settings.avatarPortrait === b.id ? 'on' : ''}`, title: b.name, 'aria-label': `Gesicht ${b.name}`,
+            onclick: () => {
+              const before = (settings.botIds || []).length;
+              settings.avatarPortrait = b.id;
+              const ids = (settings.botIds || []).filter((id) => id !== b.id);
+              // gleiche Spielerzahl behalten: für das gewählte Gesicht rückt der nächste freie Bot nach
+              for (const o of BOT_ROSTER) { if (ids.length >= before) break; if (o.id !== b.id && !ids.includes(o.id)) ids.push(o.id); }
+              settings.botIds = BOT_ROSTER.map((x) => x.id).filter((id) => ids.includes(id));
+              draw();
+            }, html: avatarSVG(b.face, PLAYER_COLORS[0].hex, 48),
+          })),
+          HUMAN_FACES.map((f, i) => el('button', {
+            type: 'button', class: `face ${!settings.avatarPortrait && settings.avatar === i ? 'on' : ''}`, 'aria-label': `Avatar ${i + 1}`, onclick: () => { settings.avatarPortrait = null; settings.avatar = i; draw(); }, html: avatarSVG(f, PLAYER_COLORS[0].hex, 48),
+          }))),
         el('label', { class: 'field' }, el('span', {}, 'Dein Name'),
           el('input', { type: 'text', value: settings.playerName === 'Du' ? '' : settings.playerName, placeholder: 'Du', maxlength: 14, oninput: (e) => { settings.playerName = e.target.value.trim() || 'Du'; saveSettings(settings); } }))),
       el('div', { class: 'wz-row' },
@@ -152,12 +167,13 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
           el('button', { type: 'button', class: `btn small ${settings.bots === 3 ? 'solid' : ''}`, onclick: () => preset(4) }, '4 Spieler'),
           el('button', { type: 'button', class: `btn small ${settings.bots === 5 ? 'solid' : ''}`, disabled: max < 5 || undefined, title: max < 5 ? 'Für 6 Spieler brauchst du eine größere Insel' : '', onclick: () => preset(6) }, '6 Spieler'))),
       el('div', { class: 'roster' }, BOT_ROSTER.map((b, i) => {
-        const on = sel.has(b.id);
+        const you = settings.avatarPortrait === b.id;
+        const on = sel.has(b.id) && !you;
         const full = !on && sel.size >= max;
         return el('button', {
-          type: 'button', class: `char ${on ? 'on' : ''}`, disabled: full || undefined,
+          type: 'button', class: `char ${on ? 'on' : ''} ${you ? 'you' : ''}`, disabled: full || you || undefined, title: you ? 'Dieses Gesicht hast du gewählt' : undefined,
           onclick: () => { if (on) { if (sel.size > 1) sel.delete(b.id); } else sel.add(b.id); settings.botIds = BOT_ROSTER.map((x) => x.id).filter((id) => sel.has(id)); ensureCast(); draw(); },
-          html: `${avatarSVG(b.face, PLAYER_COLORS[(i + 1) % 6].hex, 52)}<b>${b.name}</b><small>${b.tagline}</small>`,
+          html: `${avatarSVG(b.face, PLAYER_COLORS[(i + 1) % 6].hex, 52)}<b>${b.name}</b><small>${you ? 'Das bist du' : b.tagline}</small>`,
         });
       })),
       el('div', { class: 'field' }, el('span', {}, 'Stärke der Bots'),

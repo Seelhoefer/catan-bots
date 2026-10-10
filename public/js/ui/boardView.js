@@ -1,7 +1,7 @@
 // SVG-Darstellung des Spielfelds inkl. Zoom/Pan und anklickbarer Positionen.
 import { RES_INFO } from '../engine/constants.js';
 import {
-  art, COLOR_ID, piece, resImg, harborImg, fogImg, IMG, PIECE_BOX,
+  art, COLOR_ID, piece, resImg, harborImg, fogImg, tileImg, IMG, PIECE_BOX,
 } from './assets.js';
 import { roadDefs, roadOnEdge } from './road.js';
 
@@ -214,47 +214,64 @@ export class BoardView {
       const remap = ui.fresh?.remap ? ' remap' : '';
       out.push(`<g class="hex${fresh}${remap}${hitHexes.has(h.id) ? ' hit' : ''}" data-hid="${h.id}" style="--d:${(h.id % 7) * 40}ms">`);
       out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#g-${h.fog ? 'fog' : h.type})" class="hexpoly" stroke="rgba(0,0,0,.3)" stroke-width="0.04"/>`);
-      out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#grain)" pointer-events="none"/>`);
-      if (h.fog) out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#fogVeil)" pointer-events="none"/>`);
-      if (h.type === 'gold' && !h.fog) out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#fogVeil)" class="gold-shine" pointer-events="none"/>`);
-      // Abgeschrägter Rand: Licht oben links, Schatten unten rechts
-      const c = (k) => { const v = board.vertices[h.verts[k]]; return `${(h.x + (v.x - h.x) * 0.92).toFixed(3)},${(h.y + (v.y - h.y) * 0.92).toFixed(3)}`; };
-      out.push(`<polyline points="${c(3)} ${c(4)} ${c(5)} ${c(0)}" class="bevel-light"/><polyline points="${c(0)} ${c(1)} ${c(2)} ${c(3)}" class="bevel-dark"/>`);
+      const tile = art.ok && !h.fog ? tileImg(h.type) : null;
       const blocked = h.id === s.robber;
-      if (h.fog) {
-        if (art.ok && fogImg()) out.push(`<image href="${fogImg()}" x="${(h.x - 0.836).toFixed(3)}" y="${(h.y - 0.965).toFixed(3)}" width="1.672" height="1.93" preserveAspectRatio="none" pointer-events="none"/>`);
-        else if (art.ok) out.push(`<image href="${IMG.wild}" x="${h.x - 0.55}" y="${h.y - 0.55}" width="1.1" height="1.1" class="hex-art" opacity=".95"/>`);
-        else {
-          out.push(`<use href="#i-cloud" x="${h.x - 0.5}" y="${h.y - 0.62}" width="1" height="1" class="hex-ico fogico"/>`);
-          out.push(`<text x="${h.x}" y="${h.y + 0.62}" class="fog-q">?</text>`);
+      if (tile) {
+        // Komplettes Feld-Hintergrundbild (Sechseck samt Rand); die Zahl liegt mittig darauf
+        out.push(`<image href="${tile}" x="${(h.x - 0.866).toFixed(3)}" y="${(h.y - 1).toFixed(3)}" width="1.732" height="2" preserveAspectRatio="none" class="hex-img${blocked ? ' dim' : ''}" pointer-events="none"/>`);
+        if (h.num) {
+          const red = h.num === 6 || h.num === 8;
+          const two = h.num >= 10;
+          const n = PIPCOUNT[h.num];
+          let dots = '';
+          for (let i = 0; i < n; i++) dots += `<circle cx="${((i - (n - 1) / 2) * 0.096).toFixed(3)}" cy="0.2" r="0.032" fill="${red ? '#c62828' : '#5a4a2c'}"/>`;
+          out.push(`<g transform="translate(${h.x},${h.y}) scale(1.1)" class="token${blocked ? ' dim' : ''}"><circle r="0.36" fill="url(#tokenGrad)" stroke="#b69a58" stroke-width="0.035"/><circle r="0.3" fill="none" stroke="rgba(120,90,40,.35)" stroke-width="0.016"/><text y="-0.045" class="num${red ? ' red' : ''}${two ? ' two' : ''}">${h.num}</text>${dots}</g>`);
+          if (h.type === 'gold') out.push(`<text x="${h.x}" y="${(h.y + 0.62).toFixed(3)}" class="gold-label big">WAHL</text>`);
         }
-      } else if (h.type === 'desert') {
-        if (art.ok) out.push(`<image href="${IMG.desert}" x="${h.x - 0.62}" y="${h.y - 0.5}" width="1.24" height="0.92" class="hex-art"/>`);
-        else out.push(`<use href="#i-dune" x="${h.x - 0.5}" y="${h.y - 0.5}" width="1" height="1" class="hex-ico"/>`);
       } else {
-        // Bild in der breiten Mitte der Kachel, Chip leicht überlappend darunter
-        if (art.ok && h.type === 'gold') {
-          // Wahlfeld: alle fünf Rohstoffe im Kreis = „such dir einen aus“
-          const cx = h.x - 0.4;
-          const cy = h.y - 0.1;
-          const five = ['wood', 'brick', 'sheep', 'wheat', 'ore'].map((r, i) => {
-            const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-            // doppelt so groß zeichnen und halbieren: sehr kleine SVG-Bilder werden von manchen Browsern sonst nicht gerendert
-            return `<image href="${resImg(r)}" x="-0.34" y="-0.34" width="0.68" height="0.68" transform="translate(${(cx + Math.cos(a) * 0.27).toFixed(3)} ${(cy + Math.sin(a) * 0.27).toFixed(3)}) scale(.5)"/>`;
-          }).join('');
-          out.push(`<g class="hex-art gold-emblem${blocked ? ' dim' : ''}"><circle cx="${cx}" cy="${cy}" r="0.5" class="gold-ring"/>${five}<text x="${cx}" y="${(h.y + 0.62).toFixed(3)}" class="gold-label">WAHL</text></g>`);
-        } else if (art.ok) {
-          out.push(`<image href="${resImg(h.type)}" x="${(h.x - 0.63).toFixed(3)}" y="${(h.y - 0.33).toFixed(3)}" width="0.62" height="0.62" class="hex-art${blocked ? ' dim' : ''}"/>`);
+        out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#grain)" pointer-events="none"/>`);
+        if (h.fog) out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#fogVeil)" pointer-events="none"/>`);
+        if (h.type === 'gold' && !h.fog) out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#fogVeil)" class="gold-shine" pointer-events="none"/>`);
+        // Abgeschrägter Rand: Licht oben links, Schatten unten rechts
+        const c = (k) => { const v = board.vertices[h.verts[k]]; return `${(h.x + (v.x - h.x) * 0.92).toFixed(3)},${(h.y + (v.y - h.y) * 0.92).toFixed(3)}`; };
+        out.push(`<polyline points="${c(3)} ${c(4)} ${c(5)} ${c(0)}" class="bevel-light"/><polyline points="${c(0)} ${c(1)} ${c(2)} ${c(3)}" class="bevel-dark"/>`);
+        const blocked = h.id === s.robber;
+        if (h.fog) {
+          if (art.ok && fogImg()) out.push(`<image href="${fogImg()}" x="${(h.x - 0.836).toFixed(3)}" y="${(h.y - 0.965).toFixed(3)}" width="1.672" height="1.93" preserveAspectRatio="none" pointer-events="none"/>`);
+          else if (art.ok) out.push(`<image href="${IMG.wild}" x="${h.x - 0.55}" y="${h.y - 0.55}" width="1.1" height="1.1" class="hex-art" opacity=".95"/>`);
+          else {
+            out.push(`<use href="#i-cloud" x="${h.x - 0.5}" y="${h.y - 0.62}" width="1" height="1" class="hex-ico fogico"/>`);
+            out.push(`<text x="${h.x}" y="${h.y + 0.62}" class="fog-q">?</text>`);
+          }
+        } else if (h.type === 'desert') {
+          if (art.ok) out.push(`<image href="${IMG.desert}" x="${h.x - 0.62}" y="${h.y - 0.5}" width="1.24" height="0.92" class="hex-art"/>`);
+          else out.push(`<use href="#i-dune" x="${h.x - 0.5}" y="${h.y - 0.5}" width="1" height="1" class="hex-ico"/>`);
+        } else {
+          // Bild in der breiten Mitte der Kachel, Chip leicht überlappend darunter
+          if (art.ok && h.type === 'gold') {
+            // Wahlfeld: alle fünf Rohstoffe im Kreis = „such dir einen aus“
+            const cx = h.x - 0.4;
+            const cy = h.y - 0.1;
+            const five = ['wood', 'brick', 'sheep', 'wheat', 'ore'].map((r, i) => {
+              const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+              // doppelt so groß zeichnen und halbieren: sehr kleine SVG-Bilder werden von manchen Browsern sonst nicht gerendert
+              return `<image href="${resImg(r)}" x="-0.34" y="-0.34" width="0.68" height="0.68" transform="translate(${(cx + Math.cos(a) * 0.27).toFixed(3)} ${(cy + Math.sin(a) * 0.27).toFixed(3)}) scale(.5)"/>`;
+            }).join('');
+            out.push(`<g class="hex-art gold-emblem${blocked ? ' dim' : ''}"><circle cx="${cx}" cy="${cy}" r="0.5" class="gold-ring"/>${five}<text x="${cx}" y="${(h.y + 0.62).toFixed(3)}" class="gold-label">WAHL</text></g>`);
+          } else if (art.ok) {
+            out.push(`<image href="${resImg(h.type)}" x="${(h.x - 0.63).toFixed(3)}" y="${(h.y - 0.33).toFixed(3)}" width="0.62" height="0.62" class="hex-art${blocked ? ' dim' : ''}"/>`);
+          }
+          else out.push(`<use href="#i-${h.type === 'gold' ? 'coin' : h.type}" x="${h.x - 0.6}" y="${h.y - 0.3}" width="0.56" height="0.56" class="hex-ico"/>`);
+          const red = h.num === 6 || h.num === 8;
+          const two = h.num >= 10;
+          out.push(`<g transform="translate(${h.x + 0.33},${h.y + 0.02})" class="token${blocked ? ' dim' : ''}"><circle r="0.36" fill="url(#tokenGrad)" stroke="#b69a58" stroke-width="0.035"/><circle r="0.3" fill="none" stroke="rgba(120,90,40,.35)" stroke-width="0.016"/>`);
+          out.push(`<text y="-0.045" class="num${red ? ' red' : ''}${two ? ' two' : ''}">${h.num}</text>`);
+          const n = PIPCOUNT[h.num];
+          let dots = '';
+          for (let i = 0; i < n; i++) dots += `<circle cx="${(i - (n - 1) / 2) * 0.096}" cy="0.2" r="0.032" fill="${red ? '#c62828' : '#5a4a2c'}"/>`;
+          out.push(`${dots}</g>`);
         }
-        else out.push(`<use href="#i-${h.type === 'gold' ? 'coin' : h.type}" x="${h.x - 0.6}" y="${h.y - 0.3}" width="0.56" height="0.56" class="hex-ico"/>`);
-        const red = h.num === 6 || h.num === 8;
-        const two = h.num >= 10;
-        out.push(`<g transform="translate(${h.x + 0.33},${h.y + 0.02})" class="token${blocked ? ' dim' : ''}"><circle r="0.36" fill="url(#tokenGrad)" stroke="#b69a58" stroke-width="0.035"/><circle r="0.3" fill="none" stroke="rgba(120,90,40,.35)" stroke-width="0.016"/>`);
-        out.push(`<text y="-0.045" class="num${red ? ' red' : ''}${two ? ' two' : ''}">${h.num}</text>`);
-        const n = PIPCOUNT[h.num];
-        let dots = '';
-        for (let i = 0; i < n; i++) dots += `<circle cx="${(i - (n - 1) / 2) * 0.096}" cy="0.2" r="0.032" fill="${red ? '#c62828' : '#5a4a2c'}"/>`;
-        out.push(`${dots}</g>`);
+
       }
       out.push('</g>');
     }

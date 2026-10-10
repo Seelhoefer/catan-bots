@@ -64,11 +64,21 @@ class App {
     if (!SPEEDS[this.speed]) this.speed = 'normal';
     this.view = new BoardView($('#board'), (k, id) => this.onPick(k, id));
     $('#btnMenu').innerHTML = ic('menu');
+    this.syncMusicBtn();
     $('#zoomIn').innerHTML = ic('plus');
     $('#zoomOut').innerHTML = ic('minus');
     $('#zoomFit').innerHTML = ic('target');
     this.bindUI();
     this.showMenu();
+  }
+
+  /** Musik-Schalter im Kopf: Symbol und Zustand. */
+  syncMusicBtn() {
+    const b = $('#btnMusic');
+    if (!b) return;
+    b.innerHTML = ic(music.enabled ? 'music' : 'music-off');
+    b.setAttribute('aria-pressed', String(music.enabled));
+    b.classList.toggle('off', !music.enabled);
   }
 
   freshMarket() {
@@ -757,6 +767,7 @@ class App {
     if (what === 'music') {
       music.setEnabled(!music.enabled);
       $('#menuPop .mus').textContent = music.enabled ? 'An' : 'Aus';
+      this.syncMusicBtn();
       return;
     }
     if (what === 'sound') {
@@ -791,6 +802,7 @@ class App {
       const pop = e.target.closest('[data-pop]');
       if (pop) { this.onPopover(pop.dataset.pop); return; }
       if (e.target.closest('#btnMenu')) { this.togglePopover(); return; }
+      if (e.target.closest('#btnMusic')) { music.setEnabled(!music.enabled); this.syncMusicBtn(); return; }
       if (!e.target.closest('#menuPop')) this.closePopover();
       const b = e.target.closest('[data-act]');
       if (b) {
