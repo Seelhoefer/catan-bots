@@ -434,12 +434,14 @@ class App {
       case 'mk-open': m.open = true; break;
       case 'mk-close': m.open = false; m.counterFor = null; m.sel = null; m.confirm = null; break;
       case 'mk-tab': m.tab = d.tab; m.sel = null; break;
-      case 'mk-sel': {
+      case 'mk-inc': case 'mk-clear': {
         const side = d.side;
         const store = { give: m.give, get: m.get, cgive: m.counter.give, cget: m.counter.get }[side];
         const opposite = { give: m.get, get: m.give, cgive: m.counter.get, cget: m.counter.give }[side];
-        m.sel = { side, res: d.res };
-        if (!(store[d.res] > 0)) { store[d.res] = 1; opposite[d.res] = 0; }
+        const isGive = side === 'give' || side === 'cgive';
+        const cap = isGive ? hand[d.res] : 9;
+        if (act === 'mk-clear') store[d.res] = 0;
+        else if ((store[d.res] || 0) < cap) { store[d.res] = (store[d.res] || 0) + 1; opposite[d.res] = 0; }
         break;
       }
       case 'mk-step': {
@@ -722,7 +724,9 @@ class App {
 
   renderMarketLayer() {
     const host = $('#market');
-    const { html, key } = renderMarket(this);
+    const { html, key, dim, closeOnBack } = renderMarket(this);
+    host.classList.toggle('dim', !!dim);
+    if (closeOnBack) host.dataset.act = 'mk-close'; else delete host.dataset.act;
     if (html !== this.mkHtml) {
       const scroll = host.querySelector('.tp')?.scrollTop || 0;
       host.innerHTML = html;
@@ -859,7 +863,8 @@ class App {
       if (e.target.closest('#btnMenu')) { this.togglePopover(); return; }
       if (e.target.closest('#btnMusic')) { music.setEnabled(!music.enabled); this.syncMusicBtn(); return; }
       if (!e.target.closest('#menuPop')) this.closePopover();
-      const b = e.target.closest('[data-act]');
+      let b = e.target.closest('[data-act]');
+      if (b && b.id === 'market' && e.target !== b) b = null; // Klick ins Handelsfenster schließt es nicht
       if (b) {
         if (/^(build-|fab-|mk-(step|tab|counter-open)|bank-(give|get)|toggle-)/.test(b.dataset.act)) sfx.play('tick');
         this.handleAct(b.dataset.act, b);

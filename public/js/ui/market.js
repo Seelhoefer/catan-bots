@@ -27,32 +27,20 @@ function missingText(hand, need) {
 // ------------------------------------------------------------------ Bausteine
 const storeOf = (m, side) => ({ give: m.give, get: m.get, cgive: m.counter.give, cget: m.counter.get })[side];
 
-/** Rohstoff als Kreis: antippen wählt ihn aus (dann mit − / + ändern); Zahl oben rechts. */
+/** Rohstoff als Kreis: jeder Klick erhöht die Menge; das kleine × setzt sie zurück. */
 function circ(app, side, r, cap, have) {
   const m = app.market;
   const n = storeOf(m, side)[r] || 0;
-  const selected = m.sel && m.sel.side === side && m.sel.res === r;
   return `<div class="rc-wrap">
-    <button class="rcirc r-${r} ${selected ? 'sel' : ''} ${n ? 'has' : ''}" data-act="mk-sel" data-side="${side}" data-res="${r}" data-cap="${cap}" aria-label="${RES_INFO[r].name}" ${cap <= 0 ? 'disabled' : ''}>
+    <button class="rcirc r-${r} ${n ? 'has' : ''}" data-act="mk-inc" data-side="${side}" data-res="${r}" aria-label="${RES_INFO[r].name}: ${n}" ${cap <= 0 ? 'disabled' : ''}>
       ${ic(r)}${n ? `<b class="rc-n">${n}</b>` : ''}
     </button>
+    ${n ? `<button class="rc-x" data-act="mk-clear" data-side="${side}" data-res="${r}" aria-label="${RES_INFO[r].name} zurücksetzen">${ic('close')}</button>` : ''}
     <small>${have === null ? '' : have}</small>
   </div>`;
 }
 
 const circRow = (app, side, hand, capped) => `<div class="rc-row">${RES.map((r) => circ(app, side, r, capped ? hand[r] : 9, capped ? hand[r] : null)).join('')}</div>`;
-
-/** Plus/Minus für den gewählten Rohstoff. */
-function stepBar(app, sides) {
-  const m = app.market;
-  const sel = m.sel && sides.includes(m.sel.side) ? m.sel : null;
-  if (!sel) return '<div class="tp-step idle"></div>';
-  const n = storeOf(m, sel.side)[sel.res] || 0;
-  const hand = app.game.s.players[HUMAN].hand;
-  const cap = sel.side === 'give' || sel.side === 'cgive' ? hand[sel.res] : 9;
-  const btn = (d, label, off) => `<button class="step-btn" data-act="mk-step" data-side="${sel.side}" data-res="${sel.res}" data-d="${d}" aria-label="${d > 0 ? 'mehr' : 'weniger'}" ${off ? 'disabled' : ''}>${label}</button>`;
-  return `<div class="tp-step">${btn(-1, ic('minus'), n <= 0)}<b class="step-n">${n}</b>${btn(1, ic('plus'), n >= cap)}</div>`;
-}
 
 const chips = (h) => `<span class="tp-hand">${RES.filter((r) => h[r] > 0).map((r) => `<span class="rcirc static r-${r}">${ic(r)}<b class="rc-n">${h[r]}</b></span>`).join('')}</span>`;
 
@@ -94,7 +82,6 @@ function incomingView(app, offer) {
       <div class="tp-lbl">Gebe</div>${circRow(app, 'cgive', me.hand, true)}
       <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
       <div class="tp-lbl">Erhalte</div>${circRow(app, 'cget', me.hand, false)}
-      ${stepBar(app, ['cgive', 'cget'])}
       <div class="tp-actions"><button class="btn quiet" data-act="mk-counter-cancel">Zurück</button>
       <button class="btn solid grow" data-act="mk-counter-send" data-id="${offer.id}" ${ready ? '' : 'disabled'}>Gegenvorschlag senden</button></div></div>`;
   }
@@ -122,7 +109,6 @@ function composeView(app) {
     <div class="tp-lbl">Gebe</div>${circRow(app, 'give', me.hand, true)}
     <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
     <div class="tp-lbl">Erhalte</div>${circRow(app, 'get', me.hand, false)}
-    ${stepBar(app, ['give', 'get'])}
     <div class="tp-actions"><button class="btn solid grow" data-act="mk-send" ${valid ? '' : 'disabled'}>An alle senden</button></div></div>`;
 }
 
@@ -194,41 +180,42 @@ function confirmView(app, offer, pid) {
 
 // ------------------------------------------------------------------ Einstieg
 
-/** Liefert { html, key }: `key` ändert sich nur, wenn eine andere Ansicht erscheint (für die Einblend-Animation). */
+/** Liefert { html, key, dim, closeOnBack }: `key` ändert sich nur, wenn eine andere Ansicht erscheint (für die Einblend-Animation). */
 export function renderMarket(app) {
   const g = app.game;
   const s = g.s;
   const m = app.market;
-  if (s.phase !== 'main') return { html: '', key: '' };
+  if (s.phase !== 'main') return { html: '', key: '', dim: false };
 
   const offer = incomingOffer(app);
   if (offer) {
     const view = offer.responses[HUMAN] ? 'wait' : m.counterFor === offer.id ? 'counter' : 'decide';
     return {
-      html: `<div class="tp-back dark"></div><div class="tp in" role="dialog" aria-label="Handelsangebot">${incomingView(app, offer)}</div>`,
+      html: `<div class="tp in" role="dialog" aria-label="Handelsangebot">${incomingView(app, offer)}</div>`,
       key: `in-${offer.id}-${view}`,
+      dim: true,
     };
   }
 
   const myTurn = s.turn === HUMAN && s.sub === 'actions';
-  if (!m.open || !myTurn) return { html: '', key: '' };
+  if (!m.open || !myTurn) return { html: '', key: '', dim: false };
 
   const mine = g.openOfferOf(HUMAN);
   if (mine && m.tab !== 'bank') {
     if (m.confirm !== null && mine.responses[m.confirm]) {
       return {
-        html: `<div class="tp-back dark"></div><div class="aw-dim">${awaitView(app, mine)}</div><div class="tp-back dark light"></div><div class="tp conf" role="dialog" aria-label="Handel bestätigen">${confirmView(app, mine, m.confirm)}</div>`,
+        html: `<div class="aw-dim">${awaitView(app, mine)}</div><div class="tp conf" role="dialog" aria-label="Handel bestätigen">${confirmView(app, mine, m.confirm)}</div>`,
         key: `conf-${mine.id}-${m.confirm}`,
+        dim: true,
       };
     }
     const fin = s.players.filter((p) => p.id !== HUMAN).every((p) => mine.responses[p.id]);
-    return { html: `<div class="tp-back dark"></div>${awaitView(app, mine)}`, key: `aw-${mine.id}-${fin ? 'fin' : 'run'}` };
+    return { html: awaitView(app, mine), key: `aw-${mine.id}-${fin ? 'fin' : 'run'}`, dim: true };
   }
 
   const tab = m.tab === 'bank' ? 'bank' : 'players';
   return {
-    html: `<div class="tp-back dark" data-act="mk-close"></div>
-      <div class="tp own" role="dialog" aria-label="Handel">
+    html: `<div class="tp own" role="dialog" aria-label="Handel">
         <div class="tp-top">
           <div class="seg tiny"><button class="${tab === 'players' ? 'on' : ''}" data-act="mk-tab" data-tab="players">Spieler</button><button class="${tab === 'bank' ? 'on' : ''}" data-act="mk-tab" data-tab="bank">Bank</button></div>
           <button class="icon-btn small" data-act="mk-close" aria-label="Schließen">${ic('close')}</button>
@@ -236,5 +223,7 @@ export function renderMarket(app) {
         ${tab === 'bank' ? bankView(app) : composeView(app)}
       </div>`,
     key: `own-${tab}`,
+    dim: true,
+    closeOnBack: true,
   };
 }
