@@ -78,7 +78,8 @@ linken Panel sichtbar.
 - Leuchtende Punkte / Linien / Felder auf dem Spielbrett zeigen, wohin du klicken kannst. **Zwei Schritte:** erst anklicken (Vorschau),
   dann dasselbe nochmal anklicken – oder unten „Bestätigen“ – zum Bauen. `Esc` bricht ab, `R` würfelt.
 - Mausrad zoomt, Ziehen verschiebt das Spielfeld, ⌖ zentriert es wieder.
-- Unten: deine Rohstoffe und die Aktionsleiste (Bauen, Handeln, Karten, Anti-Pech-Marker, Zug beenden).
+- Oben rechts stehen alle Spieler als Karten in Zugreihenfolge (auch du) mit Siegpunkten, Handkarten und Entwicklungskarten; wer dran ist, leuchtet in seiner Farbe. Daneben Musik und Einstellungen (⚙).
+- Unten links: runder **Bau-Knopf** – klappt Straße, Siedlung, Stadt und Entwicklungskarte übereinander auf (gold, wenn du die Rohstoffe hast, fehlende Rohstoffe rot) – und daneben **Handeln**. Unten rechts: **Zug beenden**.
 - Die Partie wird automatisch im Browser gespeichert und kann im Menü fortgesetzt werden.
 - Bot-Tempo (🐢 / 🚶 / ⚡) oben rechts einstellbar.
 

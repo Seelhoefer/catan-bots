@@ -197,7 +197,7 @@ export class BoardView {
     const pad = narrow ? 1.1 : 1.5;
     const top = 1.3;
     const footer = window.matchMedia('(min-width: 861px) and (min-height: 521px)').matches;
-    const bottom = footer ? 4.4 : narrow ? 3.2 : 2.7;
+    const bottom = footer ? 4.4 : narrow ? 2.6 : 2.2;
     const w = b.maxX - b.minX + pad * 2;
     const h = b.maxY - b.minY + top + bottom;
     this.minW = w * 0.1;
@@ -255,10 +255,7 @@ export class BoardView {
         if (h.num) {
           const red = h.num === 6 || h.num === 8;
           const two = h.num >= 10;
-          const n = PIPCOUNT[h.num];
-          let dots = '';
-          for (let i = 0; i < n; i++) dots += `<circle cx="${((i - (n - 1) / 2) * 0.096).toFixed(3)}" cy="0.2" r="0.032" fill="${red ? '#c62828' : '#5a4a2c'}"/>`;
-          out.push(`<g transform="translate(${h.x},${h.y}) scale(1.1)" class="token${blocked ? ' dim' : ''}"><circle r="0.36" cy="0.035" class="token-shadow"/><circle r="0.36" fill="url(#tokenGrad)" stroke="#b69a58" stroke-width="0.035"/><circle r="0.3" fill="none" stroke="rgba(120,90,40,.35)" stroke-width="0.016"/><text y="-0.045" class="num${red ? ' red' : ''}${two ? ' two' : ''}">${h.num}</text>${dots}</g>`);
+          out.push(`<g transform="translate(${h.x},${h.y}) scale(1.1)" class="token${blocked ? ' dim' : ''}"><circle r="0.36" cy="0.035" class="token-shadow"/><circle r="0.36" fill="url(#tokenGrad)" stroke="#b69a58" stroke-width="0.035"/><circle r="0.3" fill="none" stroke="rgba(120,90,40,.35)" stroke-width="0.016"/><text y="0.012" class="num${red ? ' red' : ''}${two ? ' two' : ''}">${h.num}</text></g>`);
           if (h.type === 'gold') out.push(`<text x="${h.x}" y="${(h.y + 0.62).toFixed(3)}" class="gold-label big">WAHL</text>`);
         }
       } else {
@@ -298,11 +295,7 @@ export class BoardView {
           const red = h.num === 6 || h.num === 8;
           const two = h.num >= 10;
           out.push(`<g transform="translate(${h.x + 0.33},${h.y + 0.02})" class="token${blocked ? ' dim' : ''}"><circle r="0.36" cy="0.035" class="token-shadow"/><circle r="0.36" fill="url(#tokenGrad)" stroke="#b69a58" stroke-width="0.035"/><circle r="0.3" fill="none" stroke="rgba(120,90,40,.35)" stroke-width="0.016"/>`);
-          out.push(`<text y="-0.045" class="num${red ? ' red' : ''}${two ? ' two' : ''}">${h.num}</text>`);
-          const n = PIPCOUNT[h.num];
-          let dots = '';
-          for (let i = 0; i < n; i++) dots += `<circle cx="${(i - (n - 1) / 2) * 0.096}" cy="0.2" r="0.032" fill="${red ? '#c62828' : '#5a4a2c'}"/>`;
-          out.push(`${dots}</g>`);
+          out.push(`<text y="0.012" class="num${red ? ' red' : ''}${two ? ' two' : ''}">${h.num}</text></g>`);
         }
 
       }

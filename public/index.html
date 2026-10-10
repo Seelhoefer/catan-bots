@@ -19,14 +19,13 @@
   <div id="menu" class="screen"></div>
 
   <div id="game" class="screen hidden" data-phase="setup">
-    <header class="topbar">
-      <div class="hud hud-left" id="hudHand"></div>
-      <div class="hud hud-center" id="hudTurn"></div>
-      <div class="hud hud-right">
-        <div class="opps" id="hudOpps"></div>
-        <button id="btnMusic" class="icon-btn" aria-label="Musik an/aus" title="Musik an/aus"></button>
+    <header class="hdr">
+      <div class="hdr-left" id="hudHand"></div>
+      <div class="hdr-players" id="hudOpps"></div>
+      <div class="hdr-btns">
+        <button id="btnMusic" class="hbtn" aria-label="Musik an/aus" title="Musik an/aus"></button>
         <div class="menu-wrap-btn">
-          <button id="btnMenu" class="icon-btn" aria-label="Menü" aria-haspopup="true"></button>
+          <button id="btnMenu" class="hbtn" aria-label="Einstellungen" title="Einstellungen" aria-haspopup="true"></button>
           <div id="menuPop" class="popover hidden" role="menu"></div>
         </div>
       </div>
@@ -43,7 +42,8 @@
       <div id="diceHero" class="dicehero"></div>
       <div id="heroRoll" class="heroroll"></div>
       <aside id="market" class="tp-layer"></aside>
-      <div id="dock" class="dock"></div>
+      <div id="fab" class="fab"></div>
+      <div id="nextWrap" class="nextwrap"></div>
       <div id="handBar" class="handbar"><div id="handFan" class="hand-fan" aria-label="Deine Rohstoffkarten"></div></div>
 
       <div class="zoom">

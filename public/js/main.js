@@ -10,7 +10,7 @@ import {
 import { installIcons } from './ui/icons.js';
 import { renderMenu, rememberLast } from './ui/menu.js';
 import {
-  renderHand, renderHandBar, renderOpps, renderTurn, renderDock, renderDice, renderMissionBox, renderLogBox, renderHeroRoll,
+  renderHand, renderHandBar, renderPlayers, renderFab, renderNext, renderDice, renderMissionBox, renderLogBox, renderHeroRoll,
 } from './ui/panels.js';
 import { renderMarket, suggestTrade } from './ui/market.js';
 import { sfx } from './ui/sfx.js';
@@ -63,7 +63,7 @@ class App {
     try { this.speed = localStorage.getItem(SPEED_KEY) || 'normal'; } catch { /* egal */ }
     if (!SPEEDS[this.speed]) this.speed = 'normal';
     this.view = new BoardView($('#board'), (k, id) => this.onPick(k, id));
-    $('#btnMenu').innerHTML = ic('menu');
+    $('#btnMenu').innerHTML = ic('gear');
     this.syncMusicBtn();
     $('#zoomIn').innerHTML = ic('plus');
     $('#zoomOut').innerHTML = ic('minus');
@@ -135,6 +135,9 @@ class App {
     this.inflightO = {};
     this.landing = {};
     this.hbHtml = null;
+    this.fabHtml = null;
+    this.nextHtml = null;
+    this.fabWasOpen = false;
     this.mode = null;
     this.pending = null;
     this.auto = {};
@@ -371,14 +374,21 @@ class App {
     switch (act) {
       case 'roll': this.act('rollDice', HUMAN); break;
       case 'end-turn': this.mode = null; this.act('endTurn', HUMAN); break;
+      case 'fab-toggle':
+        if (this.mode) { this.mode = null; this.ui.fabOpen = false; } else this.ui.fabOpen = !this.ui.fabOpen;
+        this.pending = null;
+        this.queueRender();
+        break;
       case 'build-road': case 'build-settlement': case 'build-city': {
         const k = act.slice(6);
+        this.ui.fabOpen = false;
         this.pending = null;
         this.mode = this.mode === k ? null : k;
         this.queueRender();
         break;
       }
       case 'buy-dev': {
+        this.ui.fabOpen = false;
         this.mode = null;
         this.act('buyDevCard', HUMAN);
         break;
@@ -392,7 +402,7 @@ class App {
         this.queueRender();
         break;
       }
-      case 'trade': this.mode = null; this.openMarket(); break;
+      case 'trade': this.mode = null; this.ui.fabOpen = false; this.openMarket(); break;
       case 'dev': this.modal = devModal(this); break;
       case 'tokens': this.modal = tokensModal(this); break;
       case 'toggle-missions': this.ui.missionsOpen = !this.ui.missionsOpen; this.ui.logOpen = false; this.queueRender(); break;
@@ -623,18 +633,11 @@ class App {
     this.fresh = { pieces: new Set(), hexes: new Set(), remap: false };
 
     $('#hudHand').innerHTML = renderHand(g, this.inflightH);
-    $('#hudOpps').innerHTML = renderOpps(g, this.busy, this.inflightO);
+    $('#hudOpps').innerHTML = renderPlayers(g, this.busy, this.inflightO);
     const fan = renderHandBar(g, this.inflightH, this.landing);
     if (fan !== this.hbHtml) { this.hbHtml = fan; $('#handFan').innerHTML = fan; }
     this.fitHand();
-    const turn = renderTurn(g, this.mode);
-    const hudTurn = $('#hudTurn');
-    hudTurn.innerHTML = turn.html;
-    if (this.ui.turnKey !== turn.key) {
-      this.ui.turnKey = turn.key;
-      hudTurn.firstElementChild.classList.add('enter');
-    }
-    $('#dock').innerHTML = renderDock(g, this.mode, this.pending ? { ...this.pending, label: this.pendingLabel() } : null);
+    this.renderControls();
     $('#heroRoll').innerHTML = renderHeroRoll(g);
     $('#diceBox').innerHTML = renderDice(g, this.rolling);
     this.renderMarketLayer();
@@ -653,6 +656,31 @@ class App {
   }
 
   /** Handels-Pop-up: nur neu zeichnen, wenn sich etwas geändert hat; Einblend-Animation nur beim Erscheinen. */
+  /** Bau-Menü (links unten) und Weiter-Knopf (rechts unten). Neu gezeichnet wird nur bei Änderungen; das Aufklappen wird per GSAP animiert. */
+  renderControls() {
+    const g = this.game;
+    const open = !!this.ui.fabOpen;
+    const fab = renderFab(g, this.mode, open);
+    const next = renderNext(g);
+    const key = `${fab}|${open}`;
+    if (key !== this.fabHtml) {
+      const wasOpen = this.fabWasOpen;
+      this.fabHtml = key;
+      $('#fab').innerHTML = fab;
+      if (open && !wasOpen && window.gsap) {
+        const items = [...document.querySelectorAll('#fab .fab-item')];
+        window.gsap.from(items.reverse(), { y: 26, opacity: 0, scale: 0.86, duration: 0.38, stagger: 0.055, ease: 'back.out(1.7)', clearProps: 'transform,opacity' });
+      }
+      this.fabWasOpen = open;
+    }
+    if (next !== this.nextHtml) {
+      this.nextHtml = next;
+      $('#nextWrap').innerHTML = next;
+      const b = $('#nextWrap .next-btn');
+      if (b && window.gsap) window.gsap.from(b, { x: 40, opacity: 0, duration: 0.4, ease: 'back.out(1.6)', clearProps: 'transform,opacity' });
+    }
+  }
+
   /** Kartenfächer unten: Überlappung so wählen, dass alle Karten in die Breite passen. */
   fitHand() {
     const fan = $('#handFan');
@@ -687,7 +715,7 @@ class App {
 
   /** Höhe der Kopfzeile für Toasts & Co. */
   measure() {
-    const h = $('.topbar');
+    const h = $('.hdr');
     if (h) document.documentElement.style.setProperty('--hdr', `${h.offsetHeight}px`);
   }
 
@@ -798,6 +826,7 @@ class App {
     document.addEventListener('pointerdown', unlock, { once: true });
     document.addEventListener('keydown', unlock, { once: true });
     document.addEventListener('click', (e) => {
+      if (this.ui.fabOpen && !e.target.closest('#fab')) { this.ui.fabOpen = false; this.queueRender(); }
       const devCard = e.target.closest('[data-dev]');
       if (devCard) { playDevCard(this, devCard.dataset.dev); return; }
       const pop = e.target.closest('[data-pop]');
@@ -807,7 +836,7 @@ class App {
       if (!e.target.closest('#menuPop')) this.closePopover();
       const b = e.target.closest('[data-act]');
       if (b) {
-        if (/^(build-|mk-(step|tab|counter-open)|bank-(give|get)|toggle-)/.test(b.dataset.act)) sfx.play('tick');
+        if (/^(build-|fab-|mk-(step|tab|counter-open)|bank-(give|get)|toggle-)/.test(b.dataset.act)) sfx.play('tick');
         this.handleAct(b.dataset.act, b);
       } else if (!e.target.closest('.floatbox') && (this.ui.missionsOpen || this.ui.logOpen) && e.target.closest('#board')) {
         this.ui.missionsOpen = false; this.ui.logOpen = false; this.queueRender();
@@ -834,7 +863,7 @@ class App {
       if (e.target.matches('input, textarea')) return;
       if (e.key === 'Escape') {
         if (!$('#menuPop').classList.contains('hidden')) this.closePopover();
-        else if (this.pending) { this.pending = null; this.queueRender(); } else if (!closeTopModal()) {
+        else if (this.ui.fabOpen) { this.ui.fabOpen = false; this.queueRender(); } else if (this.pending) { this.pending = null; this.queueRender(); } else if (!closeTopModal()) {
           if (this.mode) { this.mode = null; this.queueRender(); } else if (this.market.open) { this.market.open = false; this.queueRender(); }
         }
       } else if ((e.key === 'r' || e.key === 'R') && this.game && !hasModal()) {

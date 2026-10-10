@@ -27,9 +27,7 @@ export function renderHand(g, inflight = {}) {
     tokens = `<button class="rchip tok ${ready ? 'ready' : ''}" data-act="tokens" title="Anti-Pech-Marker: ${p.tokens} von ${cost} für 1 Rohstoff">
       <span class="rsq tokensq">${ic('clover')}</span><b>${p.tokens}</b><small>/${cost}</small></button>`;
   }
-  const vp = `<div class="rchip vp" title="Deine Siegpunkte (Ziel: ${s.settings.targetVP})">${ic('trophy')}<b>${g.vp(HUMAN)}</b><small>/${s.settings.targetVP}</small></div>`;
-  const me = `<div class="me" data-pid="${HUMAN}" style="--pc:${p.color}" title="${esc(p.name)}">${avatarSVG(p.face, p.color, 38)}<b>${esc(p.name)}</b></div>`;
-  return `${me}${vp}<span class="hud-sep"></span>${chips}${tokens}`;
+  return `${chips}${tokens}`;
 }
 
 /**
@@ -65,99 +63,29 @@ function renderResGroups(g, p, inflight, landing) {
   }).join('');
 }
 
-// ------------------------------------------------------------------ Kopfzeile: rechts (Gegner)
-export function renderOpps(g, busy = new Set(), inflight = {}) {
+// ------------------------------------------------------------------ Kopfzeile: alle Spieler als Karten (Reihenfolge = Zugfolge)
+export function renderPlayers(g, busy = new Set(), inflight = {}) {
   const s = g.s;
-  return s.players.filter((p) => p.id !== HUMAN).map((p) => {
+  return s.players.map((p) => {
     const active = s.phase !== 'over' && s.turn === p.id;
-    let status = '';
-    if (busy.has(p.id)) status = 'überlegt …';
-    else if (active && s.phase === 'main') status = g.openOfferOf(p.id) ? 'handelt' : { roll: 'würfelt', actions: 'am Zug', robber: 'Räuber', steal: 'stiehlt', discard: 'Räuber' }[s.sub] || 'am Zug';
-    else if (active) status = 'am Zug';
+    const mine = p.id === HUMAN;
+    const cards = Math.max(0, g.handCount(p.id) - (mine ? 0 : (inflight[p.id] || 0)));
     const badges = (s.longestRoad.holder === p.id ? `<span class="badge" title="Längste Handelsstraße">${ic('road')}</span>` : '')
       + (s.largestArmy.holder === p.id ? `<span class="badge" title="Größte Rittermacht">${ic('sword')}</span>` : '');
+    const think = busy.has(p.id) ? '<span class="pc-think" title="überlegt …"><i></i><i></i><i></i></span>' : '';
     return `
-      <div class="opp ${active ? 'active' : ''}" data-pid="${p.id}" style="--pc:${p.color}" title="${esc(p.name)}${p.tagline ? ` – ${esc(p.tagline)}` : ''}">
-        <span class="opp-av">${avatarSVG(p.face, p.color, 52)}</span>
-        <div class="opp-body">
-          <div class="opp-name">${esc(p.name)}${badges}</div>
-          <div class="opp-stats">
-            <span title="Rohstoffkarten auf der Hand">${ic('cards', 'inline')}${Math.max(0, g.handCount(p.id) - (inflight[p.id] || 0))}</span>
+      <div class="pcard ${active ? 'active' : ''} ${mine ? 'mine' : ''}" data-pid="${p.id}" style="--pc:${p.color}" title="${esc(p.name)}${p.tagline ? ` – ${esc(p.tagline)}` : ''}${active ? ' (am Zug)' : ''}">
+        <span class="pc-av">${avatarSVG(p.face, p.color, 48)}</span>
+        <div class="pc-body">
+          <div class="pc-name">${esc(p.name)}${badges}${think}</div>
+          <div class="pc-stats">
+            <span title="Rohstoffkarten auf der Hand">${ic('cards', 'inline')}${cards}</span>
             <span title="Entwicklungskarten auf der Hand">${ic('card', 'inline')}${p.dev.length}</span>
           </div>
-          <div class="opp-status">${status}</div>
         </div>
-        <div class="opp-vp" title="Öffentliche Siegpunkte">${g.vp(p.id, true)}</div>
+        <div class="pc-vp" title="${mine ? 'Deine Siegpunkte' : 'Öffentliche Siegpunkte'} (Ziel: ${s.settings.targetVP})">${ic('trophy', 'inline')}<b>${g.vp(p.id, !mine)}</b></div>
       </div>`;
   }).join('');
-}
-
-// ------------------------------------------------------------------ Kopfzeile: Mitte (wer ist dran / was jetzt)
-export function turnInfo(g, mode) {
-  const s = g.s;
-  const cur = s.players[s.turn];
-  const me = s.turn === HUMAN;
-  const out = { color: cur.color, pid: cur.id, who: '', what: '', next: '' };
-  if (s.phase === 'over') {
-    const w = s.players[s.winner];
-    return { ...out, color: w.color, pid: w.id, who: 'Spiel beendet', what: `${w.name} gewinnt` };
-  }
-  if (s.phase === 'setup') {
-    const first = s.setup.step < s.players.length;
-    const nth = first ? '1.' : '2.';
-    out.who = me ? 'Du bist dran' : `${cur.name} ist am Zug`;
-    if (!me) { out.what = `Gründung · ${nth} Siedlung`; return out; }
-    if (s.sub === 'settlement') {
-      out.what = `Wähle einen Platz für deine ${nth} Siedlung`;
-      out.next = first ? 'Danach setzt du eine Straße daran.' : 'Danach eine Straße – und du erhältst Startrohstoffe.';
-    } else {
-      out.what = 'Setze eine Straße an deine neue Siedlung';
-      const nx = s.setup.order[s.setup.step + 1];
-      if (nx === undefined) out.next = 'Danach beginnt das Spiel.';
-      else if (nx === HUMAN) out.next = 'Danach bist du direkt noch einmal dran.';
-      else out.next = `Danach ist ${s.players[nx].name} dran.`;
-    }
-    return out;
-  }
-  if (s.sub === 'discard') {
-    const need = s.discard[HUMAN];
-    out.who = 'Eine 7!';
-    out.what = need !== undefined ? `Wirf ${need} Karten ab` : 'Spieler mit über 7 Karten werfen die Hälfte ab';
-    return out;
-  }
-  if (s.sub === 'gold') {
-    const n = s.gold[HUMAN];
-    out.who = 'Wahlfeld!';
-    out.what = n ? `Wähle ${n} Rohstoff${n > 1 ? 'e' : ''} deiner Wahl` : 'Spieler wählen ihre Rohstoffe';
-    return out;
-  }
-  if (!me) {
-    out.who = `${cur.name} ist am Zug`;
-    out.what = { roll: 'würfelt', actions: 'baut und handelt', robber: 'versetzt den Räuber', steal: 'stiehlt eine Karte' }[s.sub] || '';
-    return out;
-  }
-  out.who = 'Du bist dran';
-  if (mode === 'harvest') { out.what = 'Wähle ein Feld, von dem du ernten möchtest'; out.next = 'Siedlung = 1 Karte, Stadt = 2 Karten · Esc bricht ab.'; return out; }
-  if (s.sub === 'roll') { out.what = 'Würfle, um Rohstoffe zu erhalten'; out.next = 'Danach kannst du bauen und handeln.'; return out; }
-  if (s.sub === 'robber') { out.what = 'Versetze den Räuber auf ein Feld'; out.next = 'Danach stiehlst du eine Karte von einem Nachbarn.'; return out; }
-  if (s.sub === 'steal') { out.what = 'Von wem möchtest du stehlen?'; return out; }
-  if (s.roadBuildingLeft > 0) { out.what = `Setze noch ${s.roadBuildingLeft} kostenlose Straße${s.roadBuildingLeft > 1 ? 'n' : ''}`; return out; }
-  if (mode) {
-    out.what = { road: 'Wähle einen Platz für deine Straße', settlement: 'Wähle einen Platz für deine Siedlung', city: 'Wähle die Siedlung, die zur Stadt wird', harvest: 'Wähle ein Feld, von dem du ernten möchtest' }[mode];
-    out.next = coarse() ? 'Tippe einen Platz an, tippe erneut zum Bauen.' : 'Klicke einen Platz an, klicke erneut zum Bauen · Esc bricht ab.';
-    return out;
-  }
-  return out;
-}
-
-export function renderTurn(g, mode) {
-  const t = turnInfo(g, mode);
-  return {
-    key: `${g.s.phase}-${g.s.turn}`,
-    html: `<div class="turn" style="--pc:${t.color}">
-      <div class="turn-who">${avatarSVG(g.s.players[t.pid ?? g.s.turn].face, t.color, 32)}${esc(t.who)}</div>
-    </div>`,
-  };
 }
 
 // ------------------------------------------------------------------ Würfel
@@ -200,41 +128,63 @@ function pieceIcon(g, kind) {
   return null;
 }
 
-function tool(g, kind, label, icon, mode) {
-  const reason = buildStatus(g, kind);
-  return `<button class="tool ${mode === kind ? 'on' : ''}" data-act="${kind === 'devcard' ? 'buy-dev' : `build-${kind}`}" ${reason ? 'data-disabled="1"' : ''} title="${esc(reason || label)}">
-    <span class="tool-ico">${pieceIcon(g, kind) || ic(icon)}</span><span class="tool-name">${label}</span><span class="tool-cost">${costHTML(COSTS[kind])}</span></button>`;
-}
-
 const anyPlayable = (g) => ['knight', 'roadbuilding', 'plenty', 'monopoly', 'remap', 'harvest'].some((t) => g.playableDev(HUMAN, t));
 
-export function renderDock(g, mode, pending = null) {
+const BUILD_ITEMS = [ // von oben nach unten (die Straße liegt am nächsten am Knopf)
+  ['devcard', 'Entwicklungskarte', 'card'],
+  ['city', 'Stadt', 'city'],
+  ['settlement', 'Siedlung', 'house'],
+  ['road', 'Straße', 'road'],
+];
+
+function costChips(g, kind) {
+  const hand = g.s.players[HUMAN].hand;
+  return RES.filter((r) => COSTS[kind][r]).map((r) => `<span class="cost-chip ${hand[r] < COSTS[kind][r] ? 'lack' : ''}">${COSTS[kind][r] > 1 ? `<i>${COSTS[kind][r]}</i>` : ''}${ic(r, 'inline')}</span>`).join('');
+}
+
+/** Kann ich das jetzt bauen? Rohstoffe + Spielfiguren + freier Platz (buildStatus liefert den Grund, falls nicht). */
+function buildReady(g, kind) {
+  return !buildStatus(g, kind);
+}
+
+/**
+ * Bau-Menü unten links: runder Hauptknopf, darüber (aufgeklappt) die Bauoptionen übereinander – farbig, wenn sie bezahlbar sind –
+ * daneben der Handelsknopf (und am Handy der Karten-Knopf).
+ */
+export function renderFab(g, mode, open) {
   const s = g.s;
   const p = s.players[HUMAN];
-  // Vorwählen und Bauen laufen allein über das Brett: erster Klick = Vorschau, zweiter Klick auf denselben Platz = bauen (keine Bestätigungsleiste)
-  if (s.phase !== 'main' || s.turn !== HUMAN) return '';
+  if (s.phase !== 'main') return '';
+  const mineTurn = s.turn === HUMAN;
+  const canAct = mineTurn && s.sub === 'actions' && !(s.roadBuildingLeft > 0);
+  const anyReady = canAct && BUILD_ITEMS.some(([k]) => buildReady(g, k));
+  const canBank = canAct && RES.some((r) => p.hand[r] >= g.portRatio(HUMAN, r));
+  const items = BUILD_ITEMS.map(([kind, label, icon]) => {
+    const reason = canAct ? buildStatus(g, kind) : 'Nicht dein Zug';
+    return `<button class="fab-item ${!reason ? 'ready' : 'dis'} ${mode === kind ? 'on' : ''}" data-act="${kind === 'devcard' ? 'buy-dev' : `build-${kind}`}" ${reason ? 'data-disabled="1"' : ''} title="${esc(reason || label)}">
+      <span class="fi-ico">${pieceIcon(g, kind) || ic(icon)}</span>
+      <span class="fi-text"><b>${label}</b><span class="fi-cost">${costChips(g, kind)}</span></span>
+      <span class="fi-state">${!reason ? ic('plus') : ''}</span></button>`;
+  }).join('');
+  const dev = p.dev.length;
+  return `
+    <div class="fab-stack ${open && canAct ? 'open' : ''}">${items}</div>
+    <div class="fab-row">
+      <div class="fab-cell"><button class="fab-btn main ${anyReady ? 'ready' : ''} ${mode || (open && canAct) ? 'on' : ''}" data-act="fab-toggle" ${canAct ? '' : 'data-disabled="1"'} title="${canAct ? 'Bauen' : 'Bauen: nur in deinem Zug'}" aria-expanded="${!!(open && canAct)}">${mode ? (pieceIcon(g, mode === 'devcard' ? 'devcard' : mode) || ic('hammer')) : ic(open && canAct ? 'close' : 'hammer')}</button><span class="fab-lbl">Bauen</span></div>
+      <div class="fab-cell"><button class="fab-btn ${canBank ? 'ready' : ''}" data-act="trade" ${canAct ? '' : 'data-disabled="1"'} title="${canAct ? 'Handeln' : 'Handeln: nur in deinem Zug'}">${ic('trade')}</button><span class="fab-lbl">Handeln</span></div>
+      ${dev ? `<div class="fab-cell dev-cell"><button class="fab-btn ${anyPlayable(g) ? 'ready' : ''}" data-act="dev" title="Entwicklungskarten">${ic('cards')}<i class="fab-badge">${dev}</i></button><span class="fab-lbl">Karten</span></div>` : ''}
+    </div>`;
+}
 
+/** „Weiter“-Knopf unten rechts: Zug beenden (bzw. Straßenbau überspringen). */
+export function renderNext(g) {
+  const s = g.s;
+  if (s.phase !== 'main' || s.turn !== HUMAN) return '';
   if (s.roadBuildingLeft > 0) {
-    return `<span class="dock-note">${ic('road', 'inline')} Straßenbau</span><button class="btn quiet" data-act="skip-roads">Überspringen</button>`;
-  }
-  if (s.sub === 'roll') {
-    return anyPlayable(g) ? `<button class="btn quiet" data-act="dev">${ic('card', 'inline')} Karte vor dem Würfeln spielen</button>` : '';
+    return `<button class="next-btn quiet" data-act="skip-roads"><span class="nb-text">Straßenbau überspringen</span></button>`;
   }
   if (s.sub !== 'actions') return '';
-
-  const canBank = RES.some((r) => p.hand[r] >= g.portRatio(HUMAN, r));
-  return `
-    <div class="tools">
-      ${tool(g, 'road', 'Straße', 'road', mode)}
-      ${tool(g, 'settlement', 'Siedlung', 'house', mode)}
-      ${tool(g, 'city', 'Stadt', 'city', mode)}
-      ${tool(g, 'devcard', 'Karte kaufen', 'card', mode)}
-    </div>
-    <span class="dock-sep"></span>
-    <button class="tool ${canBank ? '' : 'plain'}" data-act="trade" title="Handeln"><span class="tool-ico">${ic('trade')}</span><span class="tool-name">Handeln</span></button>
-    ${p.dev.length ? `<button class="tool" data-act="dev" title="Entwicklungskarten"><span class="tool-ico">${art.ok ? '<span class="cardback stack"></span>' : ic('cards')}${anyPlayable(g) ? '<i class="dot"></i>' : ''}</span><span class="tool-name">Karten · ${p.dev.length}</span></button>` : ''}
-    <span class="dock-sep"></span>
-    <button class="btn solid" data-act="end-turn">Zug beenden</button>`;
+  return `<button class="next-btn" data-act="end-turn"><span class="nb-text">Zug beenden</span><span class="nb-arrow">${ic('arrow')}</span></button>`;
 }
 
 // ------------------------------------------------------------------ Hero: großer Würfeln-Button in der Mitte
