@@ -102,6 +102,8 @@ Ein/Aus im Menü (⋯ → Sound). Echte Aufnahmen lassen sich optional einhänge
 
 ## Grafiken
 
+Drei umschaltbare **Grafikstile** (Menü ⋯ → Grafik): *Illustriert* (neu, Standard), *Vektor* (reine SVG-Pfade) und *Klassisch*.
+
 Siedlungen und Städte, Rohstoffe, Räuber-Dieb, Pokal und die Entwicklungskarten sind illustriert (siehe `public/assets/README.md`). **Straßen** sind keine Bilder, sondern flache Vektor-Holzmarker
 (`public/js/ui/road.js`, `drawRoad({x, y, orientation, color, length, width})`) in sechs Spielerfarben.
 Fehlen die Bilder, nutzt das Spiel automatisch flache Vektor-Icons.

@@ -8,7 +8,6 @@ const BASE = 'assets/illustrated/';
 export const COLOR_ID = Object.fromEntries(PLAYER_COLORS.map((c) => [c.hex, c.id]));
 
 export const piece = (colorId, kind) => `${BASE}pieces/${colorId}-${kind}.webp`;
-export const resImg = (r) => `${BASE}resources/${r}.webp`;
 export const cardImgSrc = (type) => `assets/cards/${type}.webp`;
 export const IMG = {
   oceanMinimal: `${BASE}ocean-minimal.webp`,
@@ -21,16 +20,68 @@ export const IMG = {
   ship: `${BASE}special/ship.webp`,
 };
 
-/** Bilder, die an Stelle flacher Sprite-Icons verwendet werden, sobald `art.ok` gilt. */
-export const ICON_IMAGE = {
-  wood: resImg('wood'),
-  brick: resImg('brick'),
-  sheep: resImg('sheep'),
-  wheat: resImg('wheat'),
-  ore: resImg('ore'),
-  clover: IMG.choice,
-  trophy: IMG.trophy,
+// ------------------------------------------------------------------ Grafikstile
+// new = illustrierte Motive (SVG-Paket, als WebP extrahiert), vector = reine Pfad-SVGs, classic = erster Illustrations-Satz.
+const harborName = (t) => (t === 'any' ? 'harbor-3to1' : `${t}-2to1`);
+export const ART_STYLES = {
+  new: {
+    label: 'Illustriert',
+    res: (r) => `assets/art-v2/resources/${r}.webp`,
+    harbor: (t) => `assets/art-v2/harbors/${harborName(t)}.webp`,
+    fog: 'assets/art-v2/fog/fog-hex.webp',
+  },
+  vector: {
+    label: 'Vektor',
+    res: (r) => `assets/vector-svg/resources/${r}.svg`,
+    harbor: (t) => `assets/vector-svg/harbors/${harborName(t)}.svg`,
+    fog: 'assets/vector-svg/fog/fog-hex.svg',
+  },
+  classic: {
+    label: 'Klassisch',
+    res: (r) => `${BASE}resources/${r}.webp`,
+    harbor: (t) => (t === 'any' ? IMG.harbor : null), // 2:1-Häfen setzt das Brett aus Rohstoffbild + Schrift zusammen
+    fog: null,
+  },
 };
+const STYLE_KEY = 'catan-art';
+let styleId = 'new';
+try { const saved = localStorage.getItem(STYLE_KEY); if (ART_STYLES[saved]) styleId = saved; } catch { /* egal */ }
+
+export const artStyle = () => styleId;
+export const resImg = (r) => ART_STYLES[styleId].res(r);
+/** Hafen-Medaillon als fertiges Bild (null = selbst zusammensetzen). */
+export const harborImg = (type) => ART_STYLES[styleId].harbor(type);
+/** Nebelkachel als Bild über dem Sechseck (null = Platzhalter-Symbol). */
+export const fogImg = () => ART_STYLES[styleId].fog;
+
+/** Bilder, die an Stelle flacher Sprite-Icons verwendet werden, sobald `art.ok` gilt. */
+export const ICON_IMAGE = {};
+function syncIcons() {
+  for (const r of ['wood', 'brick', 'sheep', 'wheat', 'ore']) ICON_IMAGE[r] = resImg(r);
+  ICON_IMAGE.clover = IMG.choice;
+  ICON_IMAGE.trophy = IMG.trophy;
+}
+syncIcons();
+
+const styleList = (id) => {
+  const st = ART_STYLES[id];
+  return [
+    ...['wood', 'brick', 'sheep', 'wheat', 'ore'].map(st.res),
+    ...['any', 'wood', 'brick', 'sheep', 'wheat', 'ore'].map(st.harbor).filter(Boolean),
+    ...(st.fog ? [st.fog] : []),
+  ];
+};
+
+/** Grafikstil wechseln (lädt die Bilder vor; bei Fehlern bleibt der alte Stil). Gibt true zurück, wenn gewechselt wurde. */
+export async function setArtStyle(id) {
+  if (!ART_STYLES[id]) return false;
+  const ok = (await Promise.all(styleList(id).map(load))).every(Boolean);
+  if (!ok) return false;
+  styleId = id;
+  syncIcons();
+  try { localStorage.setItem(STYLE_KEY, id); } catch { /* egal */ }
+  return true;
+}
 
 // Sichtbarer Inhalt (Bildbereich ohne transparenten Rand), in Bildpixeln – für die Platzierung auf dem Brett.
 export const PIECE_BOX = {
@@ -49,7 +100,7 @@ function load(src) {
 export async function preloadArt() {
   const list = [
     ...PLAYER_COLORS.flatMap((c) => ['settlement', 'city'].map((k) => piece(c.id, k))),
-    ...['wood', 'brick', 'sheep', 'wheat', 'ore'].map(resImg),
+    ...styleList(styleId),
     IMG.thief, IMG.trophy, IMG.harbor, IMG.choice, IMG.wild, IMG.desert,
   ];
   const results = await Promise.all(list.map(load));

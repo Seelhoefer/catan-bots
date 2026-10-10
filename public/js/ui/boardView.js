@@ -1,7 +1,7 @@
 // SVG-Darstellung des Spielfelds inkl. Zoom/Pan und anklickbarer Positionen.
 import { RES_INFO } from '../engine/constants.js';
 import {
-  art, COLOR_ID, piece, resImg, IMG, PIECE_BOX,
+  art, COLOR_ID, piece, resImg, harborImg, fogImg, IMG, PIECE_BOX,
 } from './assets.js';
 import { roadDefs, roadOnEdge } from './road.js';
 
@@ -222,7 +222,8 @@ export class BoardView {
       out.push(`<polyline points="${c(3)} ${c(4)} ${c(5)} ${c(0)}" class="bevel-light"/><polyline points="${c(0)} ${c(1)} ${c(2)} ${c(3)}" class="bevel-dark"/>`);
       const blocked = h.id === s.robber;
       if (h.fog) {
-        if (art.ok) out.push(`<image href="${IMG.wild}" x="${h.x - 0.55}" y="${h.y - 0.55}" width="1.1" height="1.1" class="hex-art" opacity=".95"/>`);
+        if (art.ok && fogImg()) out.push(`<image href="${fogImg()}" x="${(h.x - 0.836).toFixed(3)}" y="${(h.y - 0.965).toFixed(3)}" width="1.672" height="1.93" preserveAspectRatio="none" pointer-events="none"/>`);
+        else if (art.ok) out.push(`<image href="${IMG.wild}" x="${h.x - 0.55}" y="${h.y - 0.55}" width="1.1" height="1.1" class="hex-art" opacity=".95"/>`);
         else {
           out.push(`<use href="#i-cloud" x="${h.x - 0.5}" y="${h.y - 0.62}" width="1" height="1" class="hex-ico fogico"/>`);
           out.push(`<text x="${h.x}" y="${h.y + 0.62}" class="fog-q">?</text>`);
@@ -238,7 +239,8 @@ export class BoardView {
           const cy = h.y - 0.1;
           const five = ['wood', 'brick', 'sheep', 'wheat', 'ore'].map((r, i) => {
             const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-            return `<image href="${resImg(r)}" x="${(cx + Math.cos(a) * 0.27 - 0.17).toFixed(3)}" y="${(cy + Math.sin(a) * 0.27 - 0.17).toFixed(3)}" width="0.34" height="0.34"/>`;
+            // doppelt so groß zeichnen und halbieren: sehr kleine SVG-Bilder werden von manchen Browsern sonst nicht gerendert
+            return `<image href="${resImg(r)}" x="-0.34" y="-0.34" width="0.68" height="0.68" transform="translate(${(cx + Math.cos(a) * 0.27).toFixed(3)} ${(cy + Math.sin(a) * 0.27).toFixed(3)}) scale(.5)"/>`;
           }).join('');
           out.push(`<g class="hex-art gold-emblem${blocked ? ' dim' : ''}"><circle cx="${cx}" cy="${cy}" r="0.5" class="gold-ring"/>${five}<text x="${cx}" y="${(h.y + 0.62).toFixed(3)}" class="gold-label">WAHL</text></g>`);
         } else if (art.ok) {
@@ -268,9 +270,9 @@ export class BoardView {
     // Hafen-Marker
     out.push('<g class="portmarks">');
     for (const p of board.ports) {
-      if (p.type === 'any' && art.ok) {
-        out.push(`<g transform="translate(${p.x},${p.y})" class="port any"><image href="${IMG.harbor}" x="-0.45" y="-0.445" width="0.9" height="0.89" class="port-img"/>`);
-        out.push('</g>');
+      const hb = art.ok ? harborImg(p.type) : null;
+      if (hb) {
+        out.push(`<g transform="translate(${p.x},${p.y})" class="port${p.type === 'any' ? ' any' : ''}"><image href="${hb}" x="-0.47" y="-0.47" width="0.94" height="0.94" class="port-img"/></g>`);
         continue;
       }
       out.push(`<g transform="translate(${p.x},${p.y})" class="port"><circle r="0.45" class="port-bg"/><circle r="0.385" class="port-inner"/>`);

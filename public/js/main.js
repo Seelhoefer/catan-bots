@@ -19,7 +19,7 @@ import { avatarSVG } from './ui/avatars.js';
 import {
   floatGain, flyCards, showDiceHero, showCardHero, DICE_REVEAL, produceFx, bumpPlayer,
 } from './ui/fx.js';
-import { preloadArt } from './ui/assets.js';
+import { preloadArt, ART_STYLES, artStyle, setArtStyle } from './ui/assets.js';
 import {
   devModal, tokensModal, discardModal, goldModal, stealModal, logModal,
   rulesModal, gameOverModal, closeTopModal, closeAllModals, confirmDialog, hasModal, playDevCard,
@@ -727,6 +727,7 @@ class App {
     if (!pop.classList.contains('hidden')) { this.closePopover(); return; }
     pop.innerHTML = `
       <button role="menuitem" data-pop="speed">Bot-Tempo <b>${SPEEDS[this.speed][0]}</b></button>
+      <button role="menuitem" data-pop="art">Grafik <b class="art">${ART_STYLES[artStyle()].label}</b></button>
       <button role="menuitem" data-pop="sound">Sound <b class="snd">${sfx.enabled ? 'An' : 'Aus'}</b></button>
       <button role="menuitem" data-pop="music">Musik <b class="mus">${music.enabled ? 'An' : 'Aus'}</b></button>
       <button role="menuitem" data-pop="log">Gesamter Verlauf</button>
@@ -741,6 +742,16 @@ class App {
       this.speed = keys[(keys.indexOf(this.speed) + 1) % keys.length];
       try { localStorage.setItem(SPEED_KEY, this.speed); } catch { /* egal */ }
       $('#menuPop').innerHTML = $('#menuPop').innerHTML.replace(/<b>.*?<\/b>/, `<b>${SPEEDS[this.speed][0]}</b>`);
+      return;
+    }
+    if (what === 'art') {
+      const ids = Object.keys(ART_STYLES);
+      const next = ids[(ids.indexOf(artStyle()) + 1) % ids.length];
+      if (await setArtStyle(next)) {
+        $('#menuPop .art').textContent = ART_STYLES[artStyle()].label;
+        this.hbHtml = null;
+        this.queueRender();
+      } else this.toast('Dieser Grafikstil konnte nicht geladen werden.', 'warn');
       return;
     }
     if (what === 'music') {

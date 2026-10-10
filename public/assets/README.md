@@ -2,10 +2,17 @@
 
 Illustrierte Grafiken aus dem **Community Asset Pack** und dem **Devcards Pack** (für dieses Projekt erstellt, MIT wie das Repo).
 
+**Grafikstile** (Menü ⋯ → Grafik, wird gespeichert):
+- **Illustriert** (Standard): `art-v2/` – Rohstoffe, alle 2:1-/3:1-Hafenmedaillons und die Nebelkachel aus dem *Catan SVG Asset Pack* (die eingebetteten WebP-Bilder wurden extrahiert, auf 256–384 px verkleinert und bei den Rohstoffen zugeschnitten).
+- **Vektor**: `vector-svg/` – dieselben 12 Motive als reine, frei editierbare Pfad-SVGs (Rohstoffe, Häfen, Nebelkachel).
+- **Klassisch**: der frühere Illustrationssatz (`illustrated/resources`, 3:1-Hafen) – 2:1-Häfen werden hier aus Rohstoffbild und Schrift zusammengesetzt.
+
 | Ordner | Inhalt | Verwendung |
 | --- | --- | --- |
 | `illustrated/pieces/` | Siedlung und Stadt (192 px) in 6 Spielerfarben (Straßen werden als SVG gezeichnet, siehe `js/ui/road.js`) | Spielfiguren auf dem Brett, Vorschau beim Bauen |
-| `illustrated/resources/` | Holz, Lehm, Wolle, Getreide, Erz (WebP) | Felder, Rohstoff-Chips, Häfen, Handel |
+| `art-v2/resources/`, `art-v2/harbors/`, `art-v2/fog/` | Neue Rohstoffe, Hafenmedaillons (3:1 und 5× 2:1), Nebelkachel | Felder, Rohstoffkarten, Chips, Häfen, Nebel |
+| `vector-svg/` | Pfad-basierte SVG-Variante derselben Motive | Grafikstil „Vektor“ |
+| `illustrated/resources/` | Früherer Satz: Holz, Lehm, Wolle, Getreide, Erz (WebP) | Grafikstil „Klassisch“ |
 | `illustrated/special/harbor-3to1.webp` | Runder 3:1-Hafen-Marker (v2) | 3:1-Häfen auf dem Brett, Häfen |
 | `illustrated/special/resource-choice.svg` | Rohstoff nach Wahl | Anti-Pech-Marker |
 | `illustrated/special/wild-terrain.svg` | Unbekanntes Gelände | Nebelfelder |

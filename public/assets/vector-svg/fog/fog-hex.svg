@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320" role="img" aria-label="Nebel – unbekanntes Hexfeld"><title>Nebel – unbekanntes Hexfeld</title><defs>
+ <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fbe29c"/><stop offset=".47" stop-color="#d7a854"/><stop offset="1" stop-color="#9b7135"/></linearGradient>
+ <linearGradient id="parchment" x1="0" y1="0" x2=".2" y2="1"><stop stop-color="#fff9e9"/><stop offset="1" stop-color="#e8d7ae"/></linearGradient>
+ <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e7b477"/><stop offset=".55" stop-color="#a96b38"/><stop offset="1" stop-color="#654127"/></linearGradient>
+ <linearGradient id="brick" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#ed9c6a"/><stop offset=".55" stop-color="#c55b3a"/><stop offset="1" stop-color="#873b2d"/></linearGradient>
+ <linearGradient id="stone" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#c7c9c0"/><stop offset=".55" stop-color="#8593a0"/><stop offset="1" stop-color="#4f6473"/></linearGradient>
+ <linearGradient id="wool" x1="0" y1="0" x2=".5" y2="1"><stop stop-color="#fff9e9"/><stop offset="1" stop-color="#cfc0a1"/></linearGradient>
+ <linearGradient id="wheat" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe59c"/><stop offset=".55" stop-color="#e6b356"/><stop offset="1" stop-color="#b88434"/></linearGradient>
+ <filter id="ds" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2.2" flood-color="#27394a" flood-opacity=".22"/></filter>
+</defs><defs><clipPath id="hexclip"><path d="M160 12 293 88v144l-133 76L27 232V88Z"/></clipPath>
+ <radialGradient id="fogwash"><stop stop-color="#fffefa" stop-opacity=".95"/><stop offset=".55" stop-color="#e8edf0" stop-opacity=".87"/><stop offset="1" stop-color="#9eafbe" stop-opacity=".92"/></radialGradient>
+ <linearGradient id="mistbg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6a8190"/><stop offset="1" stop-color="#445b70"/></linearGradient></defs>
+ <g filter="url(#ds)"><path d="M160 9 295 86v148l-135 77L25 234V86Z" fill="url(#parchment)" stroke="#9b7d4f" stroke-width="4"/>
+ <path d="M160 20 285 92v136l-125 72-125-72V92Z" fill="url(#mistbg)"/>
+ <g clip-path="url(#hexclip)">
+ <path d="m-5 244 70-67 45 20 55-75 72 44 65-43 45 30v160H-5Z" fill="#6a8e8a" opacity=".48"/>
+ <path d="m3 244 66-54 30 19 48-41 32 26 45-12 98 66v75H3Z" fill="#487d87" opacity=".54"/>
+ <g stroke="#274f4a" stroke-width="2" fill="none" opacity=".6"><path d="M70 192v-27m-10 14 10-16 10 16m-16-6 6-12 7 12M222 194v-25m-9 13 9-15 9 15M96 215v-18m-7 11 7-11 7 11"/></g>
+ <g fill="url(#fogwash)"><ellipse cx="88" cy="109" rx="119" ry="47" opacity=".94"/><ellipse cx="210" cy="144" rx="128" ry="59" opacity=".93"/><ellipse cx="126" cy="193" rx="121" ry="62" opacity=".94"/><ellipse cx="238" cy="235" rx="110" ry="48" opacity=".94"/><ellipse cx="72" cy="251" rx="104" ry="45" opacity=".90"/></g>
+ <g fill="#f8f9f5" opacity=".30"><ellipse cx="162" cy="119" rx="109" ry="17"/><ellipse cx="124" cy="214" rx="119" ry="22"/></g>
+ </g><path d="M160 20 285 92v136l-125 72-125-72V92Z" fill="none" stroke="#fff5d7" stroke-width="2" opacity=".70"/></g></svg>
