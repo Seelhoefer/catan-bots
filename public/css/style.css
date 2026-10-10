@@ -886,9 +886,9 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .dh-dice { display: flex; gap: 60px; justify-content: center; align-items: flex-end; perspective: 900px; height: 190px; }
 .d3 { --ds: 92px; --half: 46px; position: relative; width: var(--ds); height: var(--ds); }
 .d3-fly, .cube { position: absolute; inset: 0; transform-style: preserve-3d; }
-.face { position: absolute; inset: 0; background: linear-gradient(145deg, #fffdf4, #e6dcc2); border-radius: 17%; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 14%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.1), inset 0 -5px 9px rgba(0,0,0,.08); backface-visibility: hidden; }
-.face i { margin: 12%; border-radius: 50%; }
-.face i.on { background: radial-gradient(circle at 35% 30%, #404a5e, #131a27); box-shadow: inset 0 1px 2px rgba(0,0,0,.6); }
+.dface { position: absolute; inset: 0; background: linear-gradient(145deg, #fffdf4, #e6dcc2); border-radius: 17%; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 14%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.1), inset 0 -5px 9px rgba(0,0,0,.08); backface-visibility: hidden; }
+.dface i { margin: 12%; border-radius: 50%; }
+.dface i.on { background: radial-gradient(circle at 35% 30%, #404a5e, #131a27); box-shadow: inset 0 1px 2px rgba(0,0,0,.6); }
 .d3-shadow { position: absolute; left: 6%; right: 6%; bottom: -16px; height: 22px; background: radial-gradient(ellipse, rgba(0,0,0,.65), transparent 70%); filter: blur(3px); }
 .d3-ring { position: absolute; left: 50%; bottom: -6px; width: 150px; height: 34px; margin-left: -75px; border-radius: 50%; border: 2px solid rgba(255,255,255,.55); box-shadow: 0 0 14px rgba(255,255,255,.25); animation: dust .65s ease-out forwards; pointer-events: none; }
 @keyframes dust { from { transform: scale(.25); opacity: .9; } to { transform: scale(1.35); opacity: 0; } }
@@ -899,3 +899,26 @@ td.who { display: flex; align-items: center; gap: 8px; }
 @media (max-height: 520px) and (orientation: landscape) { .d3 { --ds: 52px; --half: 26px; } .dh-dice { height: 110px; gap: 30px; } .d3-fly { } }
 .ch-cap { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .ch-cap .avatar-svg { box-shadow: 0 0 0 2px rgba(255,255,255,.7); }
+
+/* Entwicklungskarten im Kartenfächer */
+.hand-sep { align-self: center; width: 1px; height: 64px; background: var(--line); margin: 0 4px; }
+.dgroup { display: flex; align-items: flex-end; pointer-events: auto; cursor: pointer; }
+.dcard { position: relative; width: 64px; height: 92px; flex: none; border-radius: 9px; overflow: hidden; box-shadow: 0 6px 14px rgba(0,0,0,.45); transition: transform .18s ease-out, filter .18s, box-shadow .18s; transform-origin: 50% 120%; transform: rotate(calc((var(--i) - 1) * 1.6deg)); background: #14263b; }
+.dcard img, .dcard .devcard { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; user-select: none; }
+.dcard + .dcard { margin-left: calc(var(--step, 30px) - 64px); }
+.dgroup:not(.ready) .dcard { filter: saturate(.55) brightness(.72); }
+.dgroup[data-dev=victory] .dcard { filter: none; cursor: default; }
+.dgroup.ready .dcard { box-shadow: 0 0 0 2px var(--gold), 0 6px 16px rgba(233,185,73,.35); }
+.dgroup:hover .dcard { transform: translateY(-22px) rotate(0deg); z-index: 5; }
+@media (min-width: 861px) and (min-height: 521px) {
+  .dock [data-act=dev] { display: none; }
+}
+@media not all and (min-width: 861px) and (min-height: 521px) { .dgroup, .hand-sep { display: none; } }
+
+/* Wahlfeld: Emblem und Glanz */
+.gold-ring { fill: rgba(60, 30, 110, .45); stroke: rgba(255, 236, 170, .9); stroke-width: .035; }
+.gold-label { fill: #fff3c4; font-size: .15px; font-weight: 800; letter-spacing: .12em; text-anchor: middle; paint-order: stroke; stroke: rgba(40, 10, 80, .7); stroke-width: .03; pointer-events: none; }
+.gold-shine { animation: goldShine 3.2s ease-in-out infinite; mix-blend-mode: soft-light; }
+@keyframes goldShine { 0%, 100% { opacity: .15; } 50% { opacity: .85; } }
+.avatar-svg.portrait .pi { position: absolute; inset: 0; display: grid; place-items: center; font-size: 45%; font-weight: 800; color: rgba(255,255,255,.9); }
+.avatar-svg.portrait img { z-index: 1; }

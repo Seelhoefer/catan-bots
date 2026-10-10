@@ -127,6 +127,58 @@ export function devModal(app) {
   return m;
 }
 
+/** Warum eine Entwicklungskarte gerade nicht spielbar ist. */
+export function devNote(g, t) {
+  const cards = g.s.players[HUMAN].dev.filter((c) => c.type === t);
+  const fresh = cards.filter((c) => c.turn >= g.s.turnNumber).length;
+  if (t === 'victory') return 'Siegpunktkarten zählen automatisch.';
+  if (g.s.turn !== HUMAN) return 'Du bist gerade nicht dran.';
+  if (fresh === cards.length) return 'Frisch gekaufte Karten sind erst ab der nächsten Runde spielbar.';
+  if (g.s.devPlayed) return 'Pro Zug darfst du nur eine Entwicklungskarte spielen.';
+  if (t === 'harvest') return 'Du hast kein Feld mit Siedlung, das gerade Ertrag bringt.';
+  return 'Diese Karte kann jetzt nicht gespielt werden.';
+}
+
+/** Eine Entwicklungskarte aus dem Kartenfächer ausspielen (inkl. Rohstoffwahl bei Monopol/Erfindung). */
+export function playDevCard(app, type) {
+  const g = app.game;
+  if (type === 'victory' || !g.playableDev(HUMAN, type)) { app.toast(devNote(g, type), 'info'); return; }
+  if (type === 'harvest') { app.startHarvest(); return; }
+  if (type === 'remap') {
+    confirmDialog('Weltenwandel einsetzen?', 'Alle Landfelder werden zufällig neu verteilt – für alle Spieler! Siedlungen und Straßen bleiben stehen.', 'Neu mischen').then((yes) => { if (yes) app.act('playDev', HUMAN, 'remap'); });
+    return;
+  }
+  if (type === 'monopoly') {
+    const m = openModal({ title: 'Monopol – welchen Rohstoff einsammeln?' });
+    m.body.append(el('div', { class: 'res-row' }, RES.map((r) => resBtn(r, { onclick: () => { const x = app.act('playDev', HUMAN, 'monopoly', { res: r }); if (x.ok) m.close(); } }))));
+    return;
+  }
+  if (type === 'plenty') {
+    const m = openModal({ title: 'Erfindung – wähle 2 Rohstoffe' });
+    const chosen = [];
+    const draw = () => {
+      m.body.replaceChildren(
+        el('div', { class: 'res-row' }, RES.map((r) => resBtn(r, {
+          disabled: g.s.bank[r] < 1 + chosen.filter((c) => c === r).length || undefined,
+          onclick: () => {
+            chosen.push(r);
+            if (chosen.length === 2) {
+              const x = app.act('playDev', HUMAN, 'plenty', { a: chosen[0], b: chosen[1] });
+              if (x.ok) { m.close(); return; }
+              chosen.length = 0;
+            }
+            draw();
+          },
+        }))),
+        el('div', { class: 'summary', html: `${chosen.length}/2 ${chosen.map((c) => ic(c, 'inline')).join(' ')}` }),
+      );
+    };
+    draw();
+    return;
+  }
+  app.act('playDev', HUMAN, type);
+}
+
 export function confirmDialog(title, text, okLabel = 'OK') {
   return new Promise((resolve) => {
     const m = openModal({ title, onClose: () => resolve(false) });

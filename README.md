@@ -49,7 +49,7 @@ hast, und erhältst sofort dessen Ertrag. Spielbare Felder werden auf dem Brett 
 kleines − zum Entfernen) und an alle senden. Bots antworten sichtbar mit Zusage, Absage oder **Gegenvorschlag**. Tab *Bank* für
 4:1 / 3:1 / 2:1 (Häfen). Karten fliegen beim Abschluss zwischen den Spielern.
 
-**🟣 Wahlfeld:** Ein violettes Feld mit freier Rohstoffwahl (wie in Erweiterungen). Wird seine Zahl gewürfelt, suchst du dir
+**🟣 Wahlfeld:** Ein violettes Feld mit freier Rohstoffwahl (wie in Erweiterungen); erkennbar am Kreis aus allen fünf Rohstoffen und der Aufschrift „WAHL“. Wird seine Zahl gewürfelt, suchst du dir
 pro angrenzender Siedlung (Stadt = 2) einen beliebigen Rohstoff aus. Abschaltbar im Regeln-Schritt.
 
 **🎲 Würfeln & Ertrag:** Großer Würfeln-Button, rasselnde Würfel mit Augensumme (Klang je nach Zahl: 6/8 glänzen, 7 grollt). Die Würfel sind echte 3D-Würfel (Wurf, Aufprall, zweimaliges Nachhüpfen, Staubring). Danach leuchten
@@ -57,7 +57,8 @@ die Treffer-Felder auf, ein Ring breitet sich aus und die Rohstoffkarten fliegen
 zu deinem Kartenfächer unten (am Handy zu den Chips oben) oder zum Portrait des Gegners. Zähler und Karten erscheinen erst bei der Ankunft,
 begleitet von „+N“-Plaketten, Aufpoppen und Klängen. Bots lassen sich dabei mehr Zeit (Tempo im Menü: Langsam / Normal / Schnell).
 
-**🃏 Rohstoffkarten:** Am Desktop liegt deine Hand als Kartenfächer im Fuß (nach Rohstoff gruppiert, Karten am Mauszeiger heben sich).
+**🃏 Karten im Fuß:** Am Desktop liegt deine Hand als Kartenfächer im Fuß: links die Rohstoffkarten (nach Rohstoff gruppiert), rechts deine Entwicklungskarten.
+Gold umrandete Karten sind spielbar – Anklicken spielt sie (bei Monopol/Erfindung folgt die Rohstoffwahl). Am Handy erreichst du sie über „Karten“ in der Aktionsleiste.
 
 **🙂 Charaktere:** Die Bots haben illustrierte Portraits (du ein generiertes Avatar-Gesicht). Sie haben Namen, Eigenschaft und Spielstil
 (Fritz expandiert, Greta handelt fair, Otto baut Straßen, Mira spart auf Städte, Lea liebt Ritter, Amir zieht Karten).
@@ -83,7 +84,7 @@ linken Panel sichtbar.
 
 ## Musik
 
-Eine ruhige, generative Hintergrundmusik (Streicherflächen, Harfe, Flöte, Hall – Aufbauspiel-Stimmung) läuft leise im Hintergrund.
+Eine epische, generative Hintergrundmusik (Orgelpunkt, Streicher-Ostinato, Hörner mit Heldenmotiv, Chor, Pauken, Becken-Crescendo) steigert sich über 16 Takte vom ruhigen Intro bis zum Finale und beginnt dann neu.
 Ein/Aus im Menü (⋯ → Musik). Eigene frei lizenzierte Stücke lassen sich über `public/assets/music/manifest.json` einbinden.
 
 ## Sound

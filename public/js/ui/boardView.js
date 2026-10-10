@@ -216,6 +216,7 @@ export class BoardView {
       out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#g-${h.fog ? 'fog' : h.type})" class="hexpoly" stroke="rgba(0,0,0,.3)" stroke-width="0.04"/>`);
       out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#grain)" pointer-events="none"/>`);
       if (h.fog) out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#fogVeil)" pointer-events="none"/>`);
+      if (h.type === 'gold' && !h.fog) out.push(`<polygon points="${this.hexPoints(board, h, 0.965)}" fill="url(#fogVeil)" class="gold-shine" pointer-events="none"/>`);
       // Abgeschrägter Rand: Licht oben links, Schatten unten rechts
       const c = (k) => { const v = board.vertices[h.verts[k]]; return `${(h.x + (v.x - h.x) * 0.92).toFixed(3)},${(h.y + (v.y - h.y) * 0.92).toFixed(3)}`; };
       out.push(`<polyline points="${c(3)} ${c(4)} ${c(5)} ${c(0)}" class="bevel-light"/><polyline points="${c(0)} ${c(1)} ${c(2)} ${c(3)}" class="bevel-dark"/>`);
@@ -231,10 +232,17 @@ export class BoardView {
         else out.push(`<use href="#i-dune" x="${h.x - 0.5}" y="${h.y - 0.5}" width="1" height="1" class="hex-ico"/>`);
       } else {
         // Bild in der breiten Mitte der Kachel, Chip leicht überlappend darunter
-        if (art.ok) {
-          const gold = h.type === 'gold';
-          const w = gold ? 0.74 : 0.62;
-          out.push(`<image href="${gold ? IMG.choice : resImg(h.type)}" x="${(h.x - (gold ? 0.72 : 0.63)).toFixed(3)}" y="${(h.y - (gold ? 0.4 : 0.33)).toFixed(3)}" width="${w}" height="${w}" class="hex-art${blocked ? ' dim' : ''}"/>`);
+        if (art.ok && h.type === 'gold') {
+          // Wahlfeld: alle fünf Rohstoffe im Kreis = „such dir einen aus“
+          const cx = h.x - 0.4;
+          const cy = h.y - 0.1;
+          const five = ['wood', 'brick', 'sheep', 'wheat', 'ore'].map((r, i) => {
+            const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+            return `<image href="${resImg(r)}" x="${(cx + Math.cos(a) * 0.27 - 0.17).toFixed(3)}" y="${(cy + Math.sin(a) * 0.27 - 0.17).toFixed(3)}" width="0.34" height="0.34"/>`;
+          }).join('');
+          out.push(`<g class="hex-art gold-emblem${blocked ? ' dim' : ''}"><circle cx="${cx}" cy="${cy}" r="0.5" class="gold-ring"/>${five}<text x="${cx}" y="${(h.y + 0.62).toFixed(3)}" class="gold-label">WAHL</text></g>`);
+        } else if (art.ok) {
+          out.push(`<image href="${resImg(h.type)}" x="${(h.x - 0.63).toFixed(3)}" y="${(h.y - 0.33).toFixed(3)}" width="0.62" height="0.62" class="hex-art${blocked ? ' dim' : ''}"/>`);
         }
         else out.push(`<use href="#i-${h.type === 'gold' ? 'coin' : h.type}" x="${h.x - 0.6}" y="${h.y - 0.3}" width="0.56" height="0.56" class="hex-ico"/>`);
         const red = h.num === 6 || h.num === 8;

@@ -1,5 +1,6 @@
 // HUD (Kopfzeile), Aktionsleiste, Missionen, Verlauf – als HTML-Strings.
-import { RES, RES_INFO, COSTS } from '../engine/constants.js';
+import { RES, RES_INFO, COSTS, DEV_INFO } from '../engine/constants.js';
+import { cardHTML } from './cards.js';
 import { missionById } from '../engine/missions.js';
 import {
   esc, rich, ic, resSq, costHTML, dieHTML,
@@ -38,6 +39,20 @@ export function renderHand(g, inflight = {}) {
  */
 export function renderHandBar(g, inflight = {}, landing = {}) {
   const p = g.s.players[HUMAN];
+  const resHtml = renderResGroups(g, p, inflight, landing);
+  const devHtml = ['knight', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'victory'].map((t) => {
+    const cards = p.dev.filter((c) => c.type === t);
+    if (!cards.length) return '';
+    const ready = t !== 'victory' && g.playableDev(HUMAN, t);
+    const fresh = cards.filter((c) => c.turn >= g.s.turnNumber).length;
+    const inner = cards.map((c, i) => `<div class="dcard${c.turn >= g.s.turnNumber && t !== 'victory' ? ' fresh' : ''}" style="--i:${i}">${cardHTML(t)}</div>`).join('');
+    const tip = t === 'victory' ? 'Siegpunkt – zählt automatisch' : ready ? `${DEV_INFO[t].name} ausspielen` : `${DEV_INFO[t].name}: ${g.s.turn !== HUMAN ? 'nicht dein Zug' : fresh === cards.length ? 'ab der nächsten Runde' : g.s.devPlayed ? 'nur 1 Karte pro Zug' : 'jetzt nicht möglich'}`;
+    return `<div class="dgroup ${ready ? 'ready' : ''}" data-dev="${t}" title="${esc(tip)}">${inner}</div>`;
+  }).join('');
+  return resHtml + (devHtml ? `<div class="hand-sep"></div>${devHtml}` : '');
+}
+
+function renderResGroups(g, p, inflight, landing) {
   return RES.filter((r) => p.hand[r] > 0).map((r) => {
     const n = p.hand[r];
     const hidden = Math.min(inflight[r] || 0, n);

@@ -54,7 +54,7 @@ function terms(leftLabel, left, rightLabel, right) {
   </div>`;
 }
 
-const who = (p, text) => `<div class="tp-who" style="--pc:${p.color}">${avatarSVG(p.face, p.color, 36)}<div><b>${esc(p.name)}</b><span>${text}</span></div></div>`;
+const who = (p, text) => `<div class="tp-who" style="--pc:${p.color}">${avatarSVG(p.face, p.color, 46)}<div><b>${esc(p.name)}</b><span>${text}</span></div></div>`;
 
 function respIcon(resp, thinking) {
   if (thinking) return '<span class="rs wait" title="überlegt …">…</span>';

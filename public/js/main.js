@@ -22,7 +22,7 @@ import {
 import { preloadArt } from './ui/assets.js';
 import {
   devModal, tokensModal, discardModal, goldModal, stealModal, logModal,
-  rulesModal, gameOverModal, closeTopModal, closeAllModals, confirmDialog, hasModal,
+  rulesModal, gameOverModal, closeTopModal, closeAllModals, confirmDialog, hasModal, playDevCard,
 } from './ui/modals.js';
 
 const SAVE_KEY = 'catan-save-v1';
@@ -646,7 +646,7 @@ class App {
   fitHand() {
     const fan = $('#handFan');
     if (!fan || !fan.firstElementChild) return;
-    const groups = [...fan.children];
+    const groups = [...fan.children].filter((c) => c.classList.contains('rgroup') || c.classList.contains('dgroup'));
     const cw = parseFloat(getComputedStyle(fan).getPropertyValue('--cw')) || 64;
     const gap = parseFloat(getComputedStyle(fan).getPropertyValue('--gap')) || 18;
     const avail = fan.parentElement.clientWidth - 32;
@@ -775,6 +775,8 @@ class App {
     document.addEventListener('pointerdown', unlock, { once: true });
     document.addEventListener('keydown', unlock, { once: true });
     document.addEventListener('click', (e) => {
+      const devCard = e.target.closest('[data-dev]');
+      if (devCard) { playDevCard(this, devCard.dataset.dev); return; }
       const pop = e.target.closest('[data-pop]');
       if (pop) { this.onPopover(pop.dataset.pop); return; }
       if (e.target.closest('#btnMenu')) { this.togglePopover(); return; }

@@ -80,7 +80,7 @@ const ORIENT = { 1: [0, 0], 6: [0, 180], 3: [0, -90], 4: [0, 90], 2: [-90, 0], 5
 const TILT = [-26, -30]; // leichte Schrägsicht, damit man die Würfelform sieht
 
 function cubeHTML() {
-  const face = ([n, rot]) => `<div class="face" style="transform:${rot} translateZ(var(--half))">${Array.from({ length: 9 }, (_, i) => `<i class="${PIPS[n].includes(i) ? 'on' : ''}"></i>`).join('')}</div>`;
+  const face = ([n, rot]) => `<div class="dface" style="transform:${rot} translateZ(var(--half))">${Array.from({ length: 9 }, (_, i) => `<i class="${PIPS[n].includes(i) ? 'on' : ''}"></i>`).join('')}</div>`;
   return `<div class="d3"><div class="d3-shadow"></div><div class="d3-fly"><div class="cube">${FACES.map(face).join('')}</div></div></div>`;
 }
 

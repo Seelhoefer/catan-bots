@@ -35,7 +35,7 @@ function accessory(face, color) {
 
 /** Illustriertes Bot-Portrait im runden Ausschnitt (Gesicht), Hintergrund = Spielerfarbe. */
 function portraitHTML(name, color, size) {
-  return `<span class="avatar-svg portrait" style="width:${size}px;height:${size}px;background:radial-gradient(circle at 50% 35%, ${color}, color-mix(in srgb, ${color} 55%, #0b1626))"><img src="assets/portraits/${name}.webp" alt="" draggable="false"></span>`;
+  return `<span class="avatar-svg portrait" style="width:${size}px;height:${size}px;background:radial-gradient(circle at 50% 35%, ${color}, color-mix(in srgb, ${color} 55%, #0b1626))"><b class="pi">${name[0].toUpperCase()}</b><img src="assets/portraits/${name}.webp" alt="" draggable="false" onerror="this.remove()"></span>`;
 }
 
 /** Portrait als HTML-String. Bots: illustriertes Bild; sonst generiertes SVG-Gesicht. `color` = Spielerfarbe. */

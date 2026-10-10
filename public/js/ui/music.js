@@ -24,19 +24,26 @@ let song = null;
 let audioEl = null; // optionale Dateien
 let tracks = null;
 
-const MAJOR = [0, 2, 4, 5, 7, 9, 11];
-const PENTA = [0, 2, 4, 7, 9];
+const MINOR = [0, 2, 3, 5, 7, 8, 10];
 const mtof = (m) => 440 * 2 ** ((m - 69) / 12);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const chance = (p) => Math.random() < p;
 
-// Akkordfolgen als Stufen der Dur-Tonleiter (0 = I)
-const PROGRESSIONS = [[0, 5, 3, 4], [0, 3, 5, 4], [0, 2, 3, 4], [5, 3, 0, 4], [0, 4, 5, 3], [3, 0, 4, 5]];
-const ROOTS = [60, 62, 65, 67]; // C, D, F, G
+// Filmisch: Akkordfolgen als Stufen der Moll-Tonleiter (0 = i, 5 = VI, 2 = III, 6 = VII …)
+const PROGRESSIONS = [[0, 5, 2, 6], [0, 6, 5, 6], [0, 3, 5, 4], [0, 5, 3, 6], [5, 6, 0, 0], [0, 2, 5, 6]];
+const ROOTS = [57, 59, 62, 55]; // A, H, D, G
 
 /** Stufe der Tonleiter (auch über die Oktave hinaus) → MIDI-Note. */
-const degree = (root, d) => root + MAJOR[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7);
+const degree = (root, d) => root + MINOR[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7);
 const triad = (root, d) => [degree(root, d), degree(root, d + 2), degree(root, d + 4)];
+
+// Heldenmotive: [Tonleiterstufe ab Grundton, Dauer in Schlägen]
+const MOTIFS = [
+  [[0, 2], [2, 1], [4, 1], [7, 4]],
+  [[4, 1.5], [5, 0.5], [4, 1], [2, 1], [0, 4]],
+  [[2, 1], [4, 1], [6, 2], [5, 1], [4, 1], [2, 2]],
+  [[7, 1.5], [6, 0.5], [4, 1], [5, 1], [4, 4]],
+];
 
 function impulse(c, seconds = 3.4) {
   const len = Math.floor(c.sampleRate * seconds);
@@ -57,9 +64,9 @@ function setup() {
   const dry = ctx.createGain();
   dry.gain.value = 0.8;
   const conv = ctx.createConvolver();
-  conv.buffer = impulse(ctx);
+  conv.buffer = impulse(ctx, 4.6);
   wet = ctx.createGain();
-  wet.gain.value = 0.5;
+  wet.gain.value = 0.62;
   const tone = ctx.createBiquadFilter(); // Musik leicht abdunkeln, damit sie hinter den Effekten bleibt
   tone.type = 'lowpass';
   tone.frequency.value = 5200;
@@ -170,44 +177,224 @@ function flute(t0, midi, dur, gain = 0.055) {
   [o, lfo, n].forEach((x) => { x.start(t0); x.stop(t0 + dur + 0.7); });
 }
 
-// ------------------------------------------------------------------ Komposition
+// ------------------------------------------------------------------ Orchester
+/** Tiefer Orgelpunkt. */
+function drone(t0, midi, dur, gain = 0.07) {
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 260;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(gain, t0 + dur * 0.3);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + 1.2);
+  lp.connect(g).connect(bus);
+  [['sawtooth', -5], ['sawtooth', 5], ['sine', 0]].forEach(([type, cents]) => {
+    const o = ctx.createOscillator();
+    o.type = type;
+    o.frequency.value = mtof(midi);
+    o.detune.value = cents;
+    o.connect(lp);
+    o.start(t0);
+    o.stop(t0 + dur + 1.4);
+  });
+}
+
+/** Kurze, treibende Streicher-Achtel (Ostinato). */
+function stac(t0, midi, gain = 0.04, dur = 0.2) {
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(2600, t0);
+  lp.frequency.exponentialRampToValueAtTime(700, t0 + dur);
+  const g = ctx.createGain();
+  env(g, t0, { a: 0.008, d: dur, peak: gain });
+  lp.connect(g).connect(bus);
+  [-8, 8].forEach((cents) => {
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.value = mtof(midi);
+    o.detune.value = cents;
+    o.connect(lp);
+    o.start(t0);
+    o.stop(t0 + dur + 0.05);
+  });
+}
+
+/** Horn/Blech: langsamer Einsatz, Filter öffnet sich (Swell). */
+function horn(t0, midi, dur, gain = 0.06) {
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.Q.value = 1.2;
+  lp.frequency.setValueAtTime(420, t0);
+  lp.frequency.exponentialRampToValueAtTime(2100, t0 + Math.min(dur * 0.6, 0.9));
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(gain, t0 + 0.28);
+  g.gain.setValueAtTime(gain * 0.9, t0 + Math.max(0.3, dur - 0.15));
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + 0.6);
+  lp.connect(g).connect(bus);
+  [-6, 0, 6].forEach((cents) => {
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.value = mtof(midi);
+    o.detune.value = cents;
+    o.connect(lp);
+    o.start(t0);
+    o.stop(t0 + dur + 0.8);
+  });
+  const sub = ctx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.value = mtof(midi - 12);
+  const sg = ctx.createGain();
+  sg.gain.value = 0.5;
+  sub.connect(sg).connect(g);
+  sub.start(t0);
+  sub.stop(t0 + dur + 0.8);
+}
+
+/** Pauke: tiefer Körper + Fellanschlag. */
+function timp(t0, gain = 0.5, midi = 38) {
+  const g = ctx.createGain();
+  env(g, t0, { a: 0.004, d: 0.75, peak: gain });
+  g.connect(bus);
+  const o = ctx.createOscillator();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(mtof(midi + 7), t0);
+  o.frequency.exponentialRampToValueAtTime(mtof(midi), t0 + 0.22);
+  o.connect(g);
+  o.start(t0);
+  o.stop(t0 + 0.9);
+  const n = ctx.createBufferSource();
+  const nb = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.2), ctx.sampleRate);
+  const d = nb.getChannelData(0);
+  for (let i = 0; i < d.length; i += 1) d[i] = Math.random() * 2 - 1;
+  n.buffer = nb;
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 520;
+  const ng = ctx.createGain();
+  env(ng, t0, { a: 0.002, d: 0.14, peak: gain * 0.7 });
+  n.connect(lp).connect(ng).connect(bus);
+  n.start(t0);
+}
+
+/** Chor („Ooh“): Sägezähne durch zwei Formantfilter. */
+function choir(t0, midi, dur, gain = 0.03) {
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(gain, t0 + dur * 0.4);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + 1.2);
+  g.connect(bus);
+  [[650, 1], [1100, 0.6]].forEach(([f, k]) => {
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = f;
+    bp.Q.value = 5;
+    const og = ctx.createGain();
+    og.gain.value = k;
+    bp.connect(og).connect(g);
+    [-9, 0, 9].forEach((cents) => {
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = mtof(midi);
+      o.detune.value = cents;
+      o.connect(bp);
+      o.start(t0);
+      o.stop(t0 + dur + 1.4);
+    });
+  });
+}
+
+/** Becken-Anschwellen (Crescendo-Rauschen). */
+function swell(t0, dur, gain = 0.12) {
+  const n = ctx.createBufferSource();
+  const nb = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  const d = nb.getChannelData(0);
+  for (let i = 0; i < d.length; i += 1) d[i] = Math.random() * 2 - 1;
+  n.buffer = nb;
+  n.loop = true;
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.setValueAtTime(2500, t0);
+  hp.frequency.exponentialRampToValueAtTime(7000, t0 + dur);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(gain, t0 + dur);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + 1.6);
+  n.connect(hp).connect(g).connect(bus);
+  n.start(t0);
+  n.stop(t0 + dur + 1.8);
+}
+
+// ------------------------------------------------------------------ Komposition: 16 Takte, vier Steigerungen
 function newSong() {
-  const root = pick(ROOTS);
-  return { root, prog: pick(PROGRESSIONS), bpm: 58 + Math.floor(Math.random() * 12), arp: pick([[0, 1, 2, 1, 2, 1, 0, 1], [0, 2, 1, 2, 0, 2, 1, 2], [0, 1, 2, 3, 2, 1, 2, 1]]), flutePhrase: Math.random() < 0.75 };
+  return {
+    root: pick(ROOTS), prog: pick(PROGRESSIONS), bpm: 84 + Math.floor(Math.random() * 12),
+    motifA: pick(MOTIFS), motifB: pick(MOTIFS), ost: pick([[0, 1, 2, 1, 0, 1, 2, 1], [0, 2, 1, 2, 0, 2, 1, 2], [2, 1, 0, 1, 2, 1, 0, 1]]),
+  };
 }
 
 function scheduleBar(t0, n) {
-  if (!song || n % 16 === 0) song = newSong(); // alle vier Durchläufe etwas Neues
+  if (!song || n % 32 === 0) song = newSong(); // nach 32 Takten neue Tonart/Akkordfolge
   const beat = 60 / song.bpm;
   const bar = beat * 4;
-  const chordDeg = song.prog[n % 4];
+  const phase = n % 16;
+  const lvl = phase < 4 ? 1 : phase < 8 ? 2 : phase < 12 ? 3 : 4; // Intro → Aufbau → Hauptthema → Finale
   const root = song.root;
-  const tones = triad(root, chordDeg);
+  const deg = song.prog[n % 4];
+  const tones = triad(root, deg);
   const low = tones.map((m) => m - 12);
-  // Fläche
-  [...low, tones[0] + 12].forEach((m, i) => pad(t0 + i * 0.05, m, bar, 0.026));
-  // Bass
-  bass(t0, low[0] - 12, bar * 0.9);
-  if (chance(0.6)) bass(t0 + beat * 2, low[2] - 12, bar * 0.45, 0.06);
-  // Harfe: gebrochener Akkord in Achteln, einzelne Töne ausgelassen
-  const span = [tones[0], tones[1], tones[2], tones[0] + 12];
-  song.arp.forEach((idx, i) => {
-    if (!chance(i === 0 ? 1 : 0.78)) return;
-    pluck(t0 + i * beat * 0.5 + (Math.random() - 0.5) * 0.012, span[idx] + 12, i === 0 ? 0.085 : 0.06);
-  });
-  // Flöte: alle zwei Takte eine kleine Phrase aus der Pentatonik
-  if (song.flutePhrase && n % 2 === 1 && chance(0.8)) {
-    const scale = PENTA.map((s) => root + 24 + s);
-    let at = t0 + beat * (chance(0.5) ? 0 : 1);
-    let idx = Math.floor(Math.random() * scale.length);
-    const count = 2 + Math.floor(Math.random() * 3);
-    for (let i = 0; i < count && at < t0 + bar - 0.3; i += 1) {
-      const dur = beat * pick([1, 1.5, 2]);
-      flute(at, scale[idx] + (chance(0.15) ? 12 : 0), dur);
-      at += dur + beat * pick([0, 0.5]);
-      idx = Math.max(0, Math.min(scale.length - 1, idx + pick([-2, -1, 1, 1, 2])));
+
+  // Fundament: Orgelpunkt auf dem Akkordgrundton, tiefer Bass
+  drone(t0, low[0] - 12, bar, 0.05 + lvl * 0.012);
+  bass(t0, low[0] - 12, bar * 0.9, 0.1);
+  if (lvl >= 2) bass(t0 + beat * 2, low[0] - 12, bar * 0.45, 0.07);
+
+  // Streicherfläche (Akkord + Oktave), wird mit der Steigerung breiter
+  const padTones = lvl >= 3 ? [...low, ...tones, tones[0] + 12] : [...low, tones[0] + 12];
+  padTones.forEach((m, i) => pad(t0 + i * 0.04, m, bar, 0.018 + lvl * 0.005));
+
+  // Harfe im Intro, später leise darunter
+  if (lvl <= 2) {
+    const span = [tones[0], tones[1], tones[2], tones[0] + 12];
+    [0, 1, 2, 3, 4, 5, 6, 7].forEach((i) => { if (chance(i === 0 ? 1 : 0.55)) pluck(t0 + i * beat * 0.5, span[[0, 1, 2, 3, 2, 1, 2, 3][i]] + 12, i === 0 ? 0.075 : 0.05); });
+  }
+
+  // Streicher-Ostinato: Achtel ab Stufe 2, Sechzehntel im Finale
+  if (lvl >= 2) {
+    const span = [tones[0], tones[1], tones[2]];
+    const steps = lvl === 4 ? 16 : 8;
+    const stepDur = bar / steps;
+    for (let i = 0; i < steps; i += 1) {
+      const idx = song.ost[i % 8];
+      const accent = i % (steps / 4) === 0;
+      stac(t0 + i * stepDur, span[idx] + 12, accent ? 0.05 : 0.032, stepDur * 0.9);
     }
   }
+
+  // Pauken: Schlag auf Eins (Stufe 2), Eins & Drei (3), jede Zählzeit + Wirbel (4)
+  if (lvl === 2 && n % 2 === 0) timp(t0, 0.5, low[0] - 12);
+  if (lvl === 3) { timp(t0, 0.6, low[0] - 12); timp(t0 + beat * 2, 0.42, low[0] - 12); }
+  if (lvl === 4) {
+    for (let b = 0; b < 4; b += 1) timp(t0 + b * beat, b === 0 ? 0.7 : 0.45, low[0] - 12);
+    if (phase === 15) for (let k = 0; k < 6; k += 1) timp(t0 + beat * 3 + k * (beat / 6), 0.25 + k * 0.05, low[0] - 12); // Wirbel zum Neuanfang
+  }
+
+  // Hörner: Heldenmotiv (Stufe 3 und 4), im Finale mit Chor und Oktave
+  if (lvl >= 3 && phase % 4 === 0) {
+    const motif = phase < 12 ? song.motifA : song.motifB;
+    let at = t0 + (phase % 8 === 0 ? 0 : beat * 0.5);
+    for (const [step, beats] of motif) {
+      const m = degree(root + 12, step);
+      horn(at, m, beats * beat, lvl === 4 ? 0.075 : 0.06);
+      if (lvl === 4) horn(at, m + 12, beats * beat, 0.032);
+      at += beats * beat;
+    }
+  }
+  if (lvl >= 3 && phase % 2 === 0) choir(t0, tones[0] + 12, bar * 2, lvl === 4 ? 0.04 : 0.028);
+
+  // Beckenschlag/Crescendo vor dem Finale und beim Neuanfang
+  if (phase === 11) swell(t0 + beat * 2, beat * 2);
+  if (phase === 0 && n > 0) { swell(t0 - beat * 0.5, beat * 0.5, 0.2); timp(t0, 0.85, low[0] - 12); }
 }
 
 function tick() {
@@ -256,7 +443,7 @@ export const music = {
     }
     bus.gain.cancelScheduledValues(ctx.currentTime);
     bus.gain.setValueAtTime(bus.gain.value, ctx.currentTime);
-    bus.gain.linearRampToValueAtTime(level * 0.9, ctx.currentTime + 5); // sanft einblenden
+    bus.gain.linearRampToValueAtTime(level * 0.6, ctx.currentTime + 5); // sanft einblenden
     song = null;
     barNo = 0;
     nextBar = ctx.currentTime + 0.3;
@@ -287,7 +474,7 @@ export const music = {
   setVolume(v) {
     level = Math.max(0, Math.min(1, v));
     persist();
-    if (bus && running) bus.gain.setTargetAtTime(level * 0.9, ctx.currentTime, 0.2);
+    if (bus && running) bus.gain.setTargetAtTime(level * 0.6, ctx.currentTime, 0.2);
     if (audioEl) audioEl.volume = level * 0.6;
   },
 
@@ -298,7 +485,7 @@ export const music = {
     bus.gain.value = 0.45;
     bus.connect(c.destination);
     song = null;
-    for (let i = 0; i < bars; i += 1) scheduleBar(0.1 + i * (60 / 64) * 4, i);
+    for (let i = 0; i < bars; i += 1) scheduleBar(0.1 + i * (60 / 90) * 4, i);
   },
 };
 
