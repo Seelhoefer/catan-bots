@@ -765,7 +765,8 @@ export class Game {
     return null;
   }
 
-  createOffer(pi, give, get) {
+  /** `opts.deferred`: Zusagen werden nur vorgemerkt; der Anbieter wählt danach selbst, mit wem er tauscht (acceptResponse). */
+  createOffer(pi, give, get, opts = {}) {
     const s = this.s;
     if (s.phase !== 'main' || s.turn !== pi || s.sub !== 'actions') return fail('Jetzt nicht möglich.');
     const bad = this.validTradeShape(give, get);
@@ -775,7 +776,7 @@ export class Game {
     const prev = this.openOfferOf(pi);
     if (prev) this.closeOffer(prev, 'withdrawn');
     const clean = (o) => Object.fromEntries(RES.filter((r) => o[r] > 0).map((r) => [r, o[r]]));
-    const offer = { id: s.nextOfferId++, from: pi, give: clean(give), get: clean(get), responses: {}, turn: s.turnNumber };
+    const offer = { id: s.nextOfferId++, from: pi, give: clean(give), get: clean(get), responses: {}, turn: s.turnNumber, deferred: !!opts.deferred };
     s.offers.push(offer);
     this.log(`${this.player(pi).name} bietet ${this.fmtHand(offer.give)} gegen ${this.fmtHand(offer.get)}.`, pi);
     this.emit({ type: 'offer', id: offer.id, from: pi });
@@ -784,19 +785,25 @@ export class Game {
   }
 
   /** answer: 'accept' | 'decline' | 'counter' (counter = {give, get} aus Sicht des Anbieters) */
-  respondOffer(pi, offerId, answer, counter = null) {
+  respondOffer(pi, offerId, answer, counter = null, reason = '') {
     const s = this.s;
     const offer = this.offerById(offerId);
     if (!offer) return fail('Das Angebot ist nicht mehr offen.');
     if (pi === offer.from) return fail('Das ist dein eigenes Angebot.');
     if (answer === 'decline') {
-      offer.responses[pi] = { type: 'decline' };
+      offer.responses[pi] = { type: 'decline', reason };
       this.emit({ type: 'offerResponse', id: offerId, pi, answer });
       this.afterAction();
       return ok();
     }
     if (answer === 'accept') {
       if (!this.canAcceptOffer(pi, offer)) return fail('Dir fehlen die geforderten Karten.');
+      if (offer.deferred) {
+        offer.responses[pi] = { type: 'accept', reason };
+        this.emit({ type: 'offerResponse', id: offerId, pi, answer });
+        this.afterAction();
+        return ok();
+      }
       const r = this.tradeWith(offer.from, pi, offer.give, offer.get);
       if (!r.ok) return r;
       this.closeOffer(offer, 'accepted', pi);
@@ -809,7 +816,7 @@ export class Game {
       if (bad) return fail(bad);
       const h = this.player(pi).hand;
       for (const r of RES) if ((counter.get[r] || 0) > h[r]) return fail('Dir fehlen Karten für diesen Gegenvorschlag.');
-      offer.responses[pi] = { type: 'counter', give: { ...counter.give }, get: { ...counter.get } };
+      offer.responses[pi] = { type: 'counter', give: { ...counter.give }, get: { ...counter.get }, reason };
       this.log(`${this.player(pi).name} macht ${this.player(offer.from).name} einen Gegenvorschlag.`, pi);
       this.emit({ type: 'offerResponse', id: offerId, pi, answer });
       this.afterAction();
@@ -825,6 +832,19 @@ export class Game {
     const c = offer.responses[responder];
     if (!c || c.type !== 'counter') return fail('Kein Gegenvorschlag vorhanden.');
     const r = this.tradeWith(pi, responder, c.give, c.get);
+    if (!r.ok) return r;
+    this.closeOffer(offer, 'accepted', responder);
+    this.afterAction();
+    return ok();
+  }
+
+  /** Der Anbieter bestätigt den Handel mit `responder` (Zusage oder Gegenvorschlag) – erst jetzt wechseln die Karten. */
+  acceptResponse(pi, offerId, responder) {
+    const offer = this.offerById(offerId);
+    if (!offer || offer.from !== pi) return fail('Das Angebot ist nicht mehr offen.');
+    const c = offer.responses[responder];
+    if (!c || (c.type !== 'accept' && c.type !== 'counter')) return fail('Keine Zusage vorhanden.');
+    const r = c.type === 'counter' ? this.tradeWith(pi, responder, c.give, c.get) : this.tradeWith(pi, responder, offer.give, offer.get);
     if (!r.ok) return r;
     this.closeOffer(offer, 'accepted', responder);
     this.afterAction();

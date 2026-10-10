@@ -745,7 +745,10 @@ button, .tool, .btn, .icon-btn, .res-pick, .seg button { touch-action: manipulat
 .tp-back { position: absolute; inset: 0; background: rgba(5, 12, 22, .5); pointer-events: auto; animation: fadeIn .2s ease-out; }
 .tp { position: absolute; left: 50%; transform: translateX(-50%); width: min(400px, calc(100% - 24px)); max-height: calc(100% - 24px); overflow-y: auto; overscroll-behavior: contain; pointer-events: auto; background: var(--panel-solid); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 24px 60px rgba(0,0,0,.55); }
 .tp.own { top: 50%; transform: translate(-50%, -50%); }
-.tp.in { bottom: 104px; border-color: color-mix(in srgb, var(--ivory) 35%, transparent); }
+.tp.in { top: 50%; transform: translate(-50%, -50%); border-color: color-mix(in srgb, var(--ivory) 35%, transparent); }
+.tp.in.enter { animation: tpInC .22s ease-out; }
+.tp.conf { top: 50%; transform: translate(-50%, -50%); z-index: 3; }
+.tp.conf.enter { animation: tpInC .22s ease-out; }
 .tp.enter { animation: tpIn .22s ease-out; }
 .tp.own.enter { animation: tpInC .22s ease-out; }
 @keyframes tpIn { from { opacity: 0; transform: translate(-50%, 14px); } }
@@ -798,14 +801,14 @@ button, .tool, .btn, .icon-btn, .res-pick, .seg button { touch-action: manipulat
 
 @media (max-width: 860px) {
   .tp-layer { position: fixed; z-index: 45; }
-  .tp, .tp.own, .tp.in { left: 0; right: 0; bottom: 0; top: auto; width: auto; transform: none; max-height: 82vh; max-height: 82dvh; border-radius: 22px 22px 0 0; border-bottom: 0; padding-bottom: env(safe-area-inset-bottom); }
-  .tp.enter, .tp.own.enter { animation: sheetIn .22s ease-out; }
+  .tp, .tp.own, .tp.in, .tp.conf { left: 0; right: 0; bottom: 0; top: auto; width: auto; transform: none; max-height: 82vh; max-height: 82dvh; border-radius: 22px 22px 0 0; border-bottom: 0; padding-bottom: env(safe-area-inset-bottom); }
+  .tp.enter, .tp.own.enter, .tp.in.enter, .tp.conf.enter { animation: sheetIn .22s ease-out; }
   .tp-top .seg button { padding: 9px; }
   .tp-actions .btn { padding: 14px 12px; font-size: 15px; }
   .tl-main { max-width: 64px; }
 }
 @media (max-height: 520px) and (orientation: landscape) {
-  .tp, .tp.own, .tp.in { left: auto; right: 8px; bottom: 8px; top: auto; width: 330px; max-height: calc(100% - 16px); border-radius: 18px; border-bottom: 1px solid var(--line); }
+  .tp, .tp.own, .tp.in, .tp.conf { left: auto; right: 8px; bottom: 8px; top: auto; width: 330px; max-height: calc(100% - 16px); border-radius: 18px; border-bottom: 1px solid var(--line); }
   .tp.in { right: 8px; }
   .tp-body { padding: 10px; gap: 8px; }
   .tp-terms { padding: 8px; }
@@ -1120,3 +1123,81 @@ td.who { display: flex; align-items: center; gap: 8px; }
   .pc-stats .ic { margin-right: 1px; width: 11px; height: 11px; }
   #btnMusic { position: static; }
 }
+
+/* ==========================================================================
+   Handel v3: abgedunkelt, Rohstoffe als Kreise, Antworten der Gegner
+   ========================================================================== */
+.tp-back.dark { background: rgba(3, 8, 16, .74); backdrop-filter: blur(3px); animation: fadeIn .25s ease-out; }
+.tp-back.dark.light { background: rgba(3, 8, 16, .5); backdrop-filter: none; animation: none; }
+.rc-row { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.rc-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.rc-wrap small { font-size: 11px; color: var(--faint); min-height: 14px; }
+.rcirc { position: relative; width: 58px; height: 58px; border-radius: 50%; border: 2.5px solid rgba(255, 255, 255, .16); background: radial-gradient(circle at 35% 28%, color-mix(in srgb, var(--rc) 68%, #fff 32%), var(--rc) 55%, color-mix(in srgb, var(--rc) 64%, #000 36%)); display: grid; place-items: center; padding: 0; opacity: .6; box-shadow: 0 6px 14px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .35); transition: transform .12s, border-color .12s, box-shadow .15s, opacity .15s; }
+.rcirc .ic { width: 34px; height: 34px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
+.rcirc:hover:not(:disabled) { opacity: 1; transform: scale(1.05); }
+.rcirc.has { opacity: 1; }
+.rcirc.sel { opacity: 1; border-color: var(--ivory); transform: scale(1.1); box-shadow: 0 0 0 4px rgba(244, 239, 227, .25), 0 8px 18px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .35); }
+.rcirc:disabled { opacity: .22; cursor: not-allowed; }
+.rc-n { position: absolute; top: -7px; right: -7px; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 99px; background: var(--ivory); color: var(--ivory-ink); font-size: 13px; font-weight: 800; display: grid; place-items: center; box-shadow: 0 2px 6px rgba(0, 0, 0, .4); }
+.rc-n.ratio { background: var(--panel-solid); color: var(--text); border: 1px solid var(--line); font-size: 11px; }
+.rcirc.sel .rc-n.ratio { background: var(--ivory); color: var(--ivory-ink); }
+.tp-divider { display: flex; align-items: center; gap: 12px; color: var(--muted); }
+.tp-divider i { flex: 1; height: 1px; background: var(--line); }
+.tp-divider .ic { width: 18px; height: 18px; transform: rotate(90deg); }
+.tp-step { display: flex; align-items: center; justify-content: center; gap: 18px; min-height: 60px; padding: 6px; border-radius: 18px; background: var(--surface); }
+.tp-step.idle { color: var(--muted); font-size: 13px; text-align: center; padding: 6px 14px; }
+.step-btn { width: 46px; height: 46px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--surface-2); color: var(--text); display: grid; place-items: center; padding: 0; transition: transform .1s, background .15s; }
+.step-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .18); }
+.step-btn:active:not(:disabled) { transform: scale(.92); }
+.step-btn:disabled { opacity: .3; cursor: not-allowed; }
+.step-btn .ic { width: 20px; height: 20px; }
+.step-mid { display: flex; flex-direction: column; align-items: center; min-width: 84px; line-height: 1.1; }
+.step-mid b { font-size: 28px; }
+.step-mid span { font-size: 12px; color: var(--muted); }
+
+/* Antworten der Gegner über dem abgedunkelten Spiel */
+.aw-dim { position: absolute; inset: 0; pointer-events: none; }
+.aw { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 20px; pointer-events: none; }
+.aw > * { pointer-events: auto; }
+.aw-offer .tp-terms { min-width: 280px; background: rgba(20, 38, 59, .9); border: 1px solid var(--line); box-shadow: 0 14px 40px rgba(0, 0, 0, .45); }
+.aw-row { display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; }
+.aw-p { display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: 0; padding: 8px; border-radius: 20px; color: var(--text); transition: transform .15s, opacity .3s, filter .3s; animation: awIn .35s ease-out backwards; }
+.aw-p:nth-child(2) { animation-delay: .06s; } .aw-p:nth-child(3) { animation-delay: .12s; } .aw-p:nth-child(4) { animation-delay: .18s; } .aw-p:nth-child(5) { animation-delay: .24s; }
+@keyframes awIn { from { opacity: 0; transform: translateY(14px) scale(.9); } }
+.aw-av { position: relative; display: block; }
+.aw-av .avatar-svg { display: block; box-shadow: 0 0 0 3px var(--pc); transition: box-shadow .3s; }
+.aw-p b { font-size: 15px; }
+.aw-p small { font-size: 12px; color: var(--muted); max-width: 130px; text-align: center; line-height: 1.25; }
+.aw-p.decline { opacity: .55; filter: grayscale(.55); }
+.aw-p.accept .aw-av .avatar-svg { box-shadow: 0 0 0 4px #4fd18a, 0 0 26px rgba(79, 209, 138, .55); }
+.aw-p.counter .aw-av .avatar-svg { box-shadow: 0 0 0 4px var(--gold), 0 0 26px rgba(233, 185, 73, .5); }
+.aw-p.accept, .aw-p.counter { cursor: pointer; }
+.aw-p.accept:hover, .aw-p.counter:hover { transform: translateY(-4px) scale(1.05); }
+.aw-p:disabled { cursor: default; }
+.aw-badge { position: absolute; right: -6px; bottom: -4px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; border: 2.5px solid #0b1626; box-shadow: 0 3px 8px rgba(0, 0, 0, .45); }
+.aw-badge .ic { width: 16px; height: 16px; }
+.aw-badge.yes { background: #4fd18a; color: #08301c; animation: badgePop .4s cubic-bezier(.2, 1.8, .4, 1); }
+.aw-badge.no { background: #e5484d; color: #fff; animation: badgePop .4s cubic-bezier(.2, 1.8, .4, 1); }
+.aw-badge.cnt { background: var(--gold); color: #2a2000; animation: badgePop .4s cubic-bezier(.2, 1.8, .4, 1); }
+.aw-badge.think { background: var(--panel-solid); gap: 3px; width: 38px; border-radius: 99px; right: -10px; }
+.aw-badge.think i { width: 5px; height: 5px; border-radius: 50%; background: var(--ivory); animation: blink 1.2s ease-in-out infinite; }
+.aw-badge.think i:nth-child(2) { animation-delay: .2s; } .aw-badge.think i:nth-child(3) { animation-delay: .4s; }
+@keyframes badgePop { from { transform: scale(.3); } }
+.aw-msg { color: var(--muted); font-size: 14px; text-align: center; }
+.aw-actions { display: flex; gap: 10px; }
+
+/* Bau-Menü: wählbare Optionen als Kreise */
+.fab-item { background: none; border: 0; box-shadow: none; padding: 0; min-width: 0; gap: 12px; backdrop-filter: none; opacity: 1; }
+.fab-item.dis, .fab-item.ready { background: none; box-shadow: none; }
+.fab-item .fi-ico { width: 60px; height: 60px; border-radius: 50%; border: 2px solid #4a5d78; background: radial-gradient(circle at 35% 28%, #26405f, #0f1f34 72%); box-shadow: 0 8px 18px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .15); transition: transform .15s, box-shadow .2s; }
+.fab-item.ready .fi-ico { border-color: var(--gold); background: radial-gradient(circle at 35% 28%, #6a5120, #2c200b 72%); box-shadow: 0 0 0 3px rgba(233, 185, 73, .28), 0 0 22px rgba(233, 185, 73, .32), 0 8px 18px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.fab-item.dis .fi-ico { opacity: .45; filter: grayscale(.7); }
+.fab-item.ready:hover { transform: none; }
+.fab-item.ready:hover .fi-ico { transform: scale(1.08); }
+.fab-item.on .fi-ico { outline: 2px solid var(--ivory); outline-offset: 2px; }
+.fab-item.on { outline: none; }
+.fab-item .fi-text { background: rgba(12, 24, 38, .92); border: 1px solid var(--line); border-radius: 12px; padding: 6px 12px; }
+.fab-item.ready .fi-text { border-color: rgba(233, 185, 73, .5); }
+.fab-item.dis .fi-text { opacity: .6; }
+.fab-item .fi-state { display: none; }
+.fab-item .fi-ico .tool-piece { height: 32px; }

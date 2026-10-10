@@ -1,8 +1,6 @@
-// Handel als Pop-up: Eingehende Angebote erscheinen von selbst, eigene Angebote und Bank im kompakten Dialog.
+// Handel: abgedunkelter Bildschirm, Rohstoffe als Kreise, Angebot → Antworten der Gegner → Bestätigung.
 import { RES, RES_INFO, COSTS } from '../engine/constants.js';
-import {
-  esc, ic, resSq, handHTML,
-} from './dom.js';
+import { esc, ic, handHTML } from './dom.js';
 import { avatarSVG } from './avatars.js';
 
 const HUMAN = 0;
@@ -23,26 +21,38 @@ export function suggestTrade(g) {
 
 /** Welcher Teil des Angebots fehlt dem Menschen? ("1 Lehm, 2 Holz") */
 function missingText(hand, need) {
-  const parts = RES.filter((r) => (need[r] || 0) > hand[r]).map((r) => `${need[r] - hand[r]} ${RES_INFO[r].name}`);
-  return parts.join(', ');
+  return RES.filter((r) => (need[r] || 0) > hand[r]).map((r) => `${need[r] - hand[r]} ${RES_INFO[r].name}`).join(', ');
 }
 
 // ------------------------------------------------------------------ Bausteine
+const storeOf = (m, side) => ({ give: m.give, get: m.get, cgive: m.counter.give, cget: m.counter.get })[side];
 
-/** Rohstoff-Kachel: Tippen = +1, kleiner Minus-Knopf erscheint, sobald etwas gewählt ist. */
-function tile(side, store, r, cap, have) {
-  const n = store[r] || 0;
-  const name = RES_INFO[r].name;
-  return `<div class="tl ${n ? 'has' : ''}">
-    <button class="tl-main" data-act="mk-step" data-side="${side}" data-res="${r}" data-d="1" aria-label="${name} hinzufügen" ${n >= cap ? 'disabled' : ''}>
-      ${resSq(r, 'lg')}${n ? `<b class="tl-n">${n}</b>` : ''}
+/** Rohstoff als Kreis: antippen wählt ihn aus (dann mit − / + ändern); Zahl oben rechts. */
+function circ(app, side, r, cap, have) {
+  const m = app.market;
+  const n = storeOf(m, side)[r] || 0;
+  const selected = m.sel && m.sel.side === side && m.sel.res === r;
+  return `<div class="rc-wrap">
+    <button class="rcirc r-${r} ${selected ? 'sel' : ''} ${n ? 'has' : ''}" data-act="mk-sel" data-side="${side}" data-res="${r}" data-cap="${cap}" aria-label="${RES_INFO[r].name}" ${cap <= 0 ? 'disabled' : ''}>
+      ${ic(r)}${n ? `<b class="rc-n">${n}</b>` : ''}
     </button>
-    <button class="tl-minus" data-act="mk-step" data-side="${side}" data-res="${r}" data-d="-1" aria-label="${name} entfernen" ${n ? '' : 'tabindex="-1" aria-hidden="true"'}>${ic('minus')}</button>
-    ${have === null ? '' : `<small>${have}</small>`}
+    <small>${have === null ? '' : have}</small>
   </div>`;
 }
 
-const tileRow = (side, store, hand, capped) => `<div class="tl-row">${RES.map((r) => tile(side, store, r, capped ? hand[r] : 9, capped ? hand[r] : null)).join('')}</div>`;
+const circRow = (app, side, hand, capped) => `<div class="rc-row">${RES.map((r) => circ(app, side, r, capped ? hand[r] : 9, capped ? hand[r] : null)).join('')}</div>`;
+
+/** Plus/Minus für den gewählten Rohstoff. */
+function stepBar(app, sides) {
+  const m = app.market;
+  const sel = m.sel && sides.includes(m.sel.side) ? m.sel : null;
+  if (!sel) return '<div class="tp-step idle"><span>Tippe einen Rohstoff an, dann mit − und + die Menge ändern</span></div>';
+  const n = storeOf(m, sel.side)[sel.res] || 0;
+  const hand = app.game.s.players[HUMAN].hand;
+  const cap = sel.side === 'give' || sel.side === 'cgive' ? hand[sel.res] : 9;
+  const btn = (d, label, off) => `<button class="step-btn" data-act="mk-step" data-side="${sel.side}" data-res="${sel.res}" data-d="${d}" aria-label="${d > 0 ? 'mehr' : 'weniger'}" ${off ? 'disabled' : ''}>${label}</button>`;
+  return `<div class="tp-step">${btn(-1, ic('minus'), n <= 0)}<div class="step-mid"><b>${n}</b><span>${RES_INFO[sel.res].name}</span></div>${btn(1, ic('plus'), n >= cap)}</div>`;
+}
 
 const chips = (h) => `<span class="tp-hand">${handHTML(h)}</span>`;
 
@@ -56,15 +66,7 @@ function terms(leftLabel, left, rightLabel, right) {
 
 const who = (p, text) => `<div class="tp-who" style="--pc:${p.color}">${avatarSVG(p.face, p.color, 46)}<div><b>${esc(p.name)}</b><span>${text}</span></div></div>`;
 
-function respIcon(resp, thinking) {
-  if (thinking) return '<span class="rs wait" title="überlegt …">…</span>';
-  if (!resp) return '<span class="rs idle"></span>';
-  if (resp.type === 'accept') return `<span class="rs yes" title="nimmt an">${ic('plus')}</span>`;
-  if (resp.type === 'counter') return `<span class="rs cnt" title="Gegenvorschlag">${ic('trade')}</span>`;
-  return `<span class="rs no" title="lehnt ab">${ic('close')}</span>`;
-}
-
-// ------------------------------------------------------------------ Eingehendes Angebot
+// ------------------------------------------------------------------ Eingehendes Angebot (Bot → Mensch)
 
 /** Das Angebot, über das der Mensch gerade entscheiden soll (oder auf dessen Antwort er wartet). */
 function incomingOffer(app) {
@@ -89,8 +91,10 @@ function incomingView(app, offer) {
     const c = m.counter;
     const ready = sum(c.give) > 0 && sum(c.get) > 0 && !g.validTradeShape(c.give, c.get);
     return `<div class="tp-body">${who(from, 'Dein Gegenvorschlag')}
-      <div class="tp-lbl">Du gibst</div>${tileRow('cgive', c.give, me.hand, true)}
-      <div class="tp-lbl">Du möchtest</div>${tileRow('cget', c.get, me.hand, false)}
+      <div class="tp-lbl">Du gibst</div>${circRow(app, 'cgive', me.hand, true)}
+      <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
+      <div class="tp-lbl">Du möchtest</div>${circRow(app, 'cget', me.hand, false)}
+      ${stepBar(app, ['cgive', 'cget'])}
       <div class="tp-actions"><button class="btn quiet" data-act="mk-counter-cancel">Zurück</button>
       <button class="btn solid grow" data-act="mk-counter-send" data-id="${offer.id}" ${ready ? '' : 'disabled'}>Gegenvorschlag senden</button></div></div>`;
   }
@@ -107,35 +111,22 @@ function incomingView(app, offer) {
     </div>${timer}</div>`;
 }
 
-// ------------------------------------------------------------------ Eigenes Angebot & Bank
+// ------------------------------------------------------------------ Eigenes Angebot: zusammenstellen
 
-function ownOfferStatus(app, offer) {
-  const g = app.game;
-  const s = g.s;
-  const others = s.players.filter((p) => p.id !== HUMAN);
-  const counters = Object.entries(offer.responses).filter(([, r]) => r.type === 'counter');
-  return `<div class="tp-body">
-    ${terms('Du gibst', offer.give, 'Du möchtest', offer.get)}
-    <div class="tp-resp">${others.map((p) => `<span class="tp-r" title="${esc(p.name)}">${avatarSVG(p.face, p.color, 34)}${respIcon(offer.responses[p.id], !offer.responses[p.id] && app.busy.has(p.id))}</span>`).join('')}</div>
-    ${counters.map(([pid, r]) => `<div class="tp-counter">${who(s.players[pid], 'Gegenangebot')}${terms('Du gibst', r.get, 'Du erhältst', r.give)}
-      <button class="btn solid" data-act="mk-accept-counter" data-id="${offer.id}" data-pid="${pid}">Annehmen</button></div>`).join('')}
-    <div class="tp-actions"><button class="btn quiet grow" data-act="mk-withdraw" data-id="${offer.id}">Zurückziehen</button></div></div>`;
-}
-
-function playersTab(app) {
+function composeView(app) {
   const g = app.game;
   const me = g.s.players[HUMAN];
   const m = app.market;
-  const open = g.openOfferOf(HUMAN);
-  if (open) return ownOfferStatus(app, open);
   const valid = sum(m.give) > 0 && sum(m.get) > 0 && !g.validTradeShape(m.give, m.get) && RES.every((r) => (m.give[r] || 0) <= me.hand[r]);
   return `<div class="tp-body">
-    <div class="tp-lbl">Ich gebe</div>${tileRow('give', m.give, me.hand, true)}
-    <div class="tp-lbl">Ich möchte</div>${tileRow('get', m.get, me.hand, false)}
+    <div class="tp-lbl">Ich gebe</div>${circRow(app, 'give', me.hand, true)}
+    <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
+    <div class="tp-lbl">Ich möchte</div>${circRow(app, 'get', me.hand, false)}
+    ${stepBar(app, ['give', 'get'])}
     <div class="tp-actions"><button class="btn solid grow" data-act="mk-send" ${valid ? '' : 'disabled'}>An alle senden</button></div></div>`;
 }
 
-function bankTab(app) {
+function bankView(app) {
   const g = app.game;
   const me = g.s.players[HUMAN];
   const m = app.market;
@@ -143,18 +134,67 @@ function bankTab(app) {
   const give = m.bankGive;
   const get = m.bankGet;
   const ok = give && get && give !== get;
-  const pick = (act, sel, r, dis, tag) => `<button class="tl-main bk ${sel ? 'sel' : ''}" data-act="${act}" data-res="${r}" aria-label="${RES_INFO[r].name}" ${dis ? 'disabled' : ''}>${resSq(r, 'lg')}${tag}</button>`;
+  const pick = (act, sel, r, dis, tag, have) => `<div class="rc-wrap"><button class="rcirc r-${r} ${sel ? 'sel' : ''}" data-act="${act}" data-res="${r}" aria-label="${RES_INFO[r].name}" ${dis ? 'disabled' : ''}>${ic(r)}${tag}</button><small>${have}</small></div>`;
   return `<div class="tp-body">
     <div class="tp-lbl">Ich gebe</div>
-    <div class="tl-row">${RES.map((r, i) => `<div class="tl">${pick('bank-give', give === r, r, me.hand[r] < ports[i], `<b class="tl-n ratio">${ports[i]}:1</b>`)}<small>${me.hand[r]}</small></div>`).join('')}</div>
+    <div class="rc-row">${RES.map((r, i) => pick('bank-give', give === r, r, me.hand[r] < ports[i], `<b class="rc-n ratio">${ports[i]}:1</b>`, me.hand[r])).join('')}</div>
+    <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
     <div class="tp-lbl">Ich erhalte</div>
-    <div class="tl-row">${RES.map((r) => `<div class="tl">${pick('bank-get', get === r, r, !give || r === give || g.s.bank[r] < 1, '')}</div>`).join('')}</div>
+    <div class="rc-row">${RES.map((r) => pick('bank-get', get === r, r, !give || r === give || g.s.bank[r] < 1, '', '')).join('')}</div>
     <div class="tp-actions"><button class="btn solid grow" data-act="bank-do" ${ok ? '' : 'disabled'}>${ok ? `${ports[RES.indexOf(give)]} ${RES_INFO[give].name} → 1 ${RES_INFO[get].name}` : 'Mit der Bank tauschen'}</button></div></div>`;
+}
+
+// ------------------------------------------------------------------ Eigenes Angebot: Antworten der Gegner
+
+/** Bildschirm abgedunkelt; darüber die Gegner mit Häkchen / Kreuz / Gegenangebot. Anklicken = auswählen, dann bestätigen. */
+function awaitView(app, offer) {
+  const g = app.game;
+  const s = g.s;
+  const others = s.players.filter((p) => p.id !== HUMAN);
+  const finished = others.every((p) => offer.responses[p.id]);
+  const actionable = others.some((p) => ['accept', 'counter'].includes(offer.responses[p.id]?.type));
+  const card = (p) => {
+    const r = offer.responses[p.id];
+    const st = !r ? 'think' : r.type;
+    const badge = {
+      think: '<span class="aw-badge think"><i></i><i></i><i></i></span>',
+      accept: `<span class="aw-badge yes">${ic('check')}</span>`,
+      decline: `<span class="aw-badge no">${ic('close')}</span>`,
+      counter: `<span class="aw-badge cnt">${ic('trade')}</span>`,
+    }[st];
+    const label = { think: 'überlegt …', accept: 'einverstanden', decline: r?.reason || 'lehnt ab', counter: 'Gegenangebot' }[st];
+    const clickable = st === 'accept' || st === 'counter';
+    return `<button class="aw-p ${st}" ${clickable ? `data-act="mk-pick" data-pid="${p.id}"` : 'tabindex="-1" disabled'} style="--pc:${p.color}" title="${esc(p.name)}">
+      <span class="aw-av">${avatarSVG(p.face, p.color, 76)}${badge}</span><b>${esc(p.name)}</b><small>${esc(label)}</small></button>`;
+  };
+  return `<div class="aw">
+    <div class="aw-offer">${terms('Du gibst', offer.give, 'Du möchtest', offer.get)}</div>
+    <div class="aw-row">${others.map(card).join('')}</div>
+    <div class="aw-msg">${!finished ? 'Die Spieler überlegen …' : actionable ? 'Tippe auf einen Spieler, um den Handel zu bestätigen.' : 'Niemand möchte zu diesen Bedingungen tauschen.'}</div>
+    <div class="aw-actions">${finished && !actionable
+    ? '<button class="btn" data-act="mk-retry">Angebot ändern</button><button class="btn quiet" data-act="mk-withdraw-close">Schließen</button>'
+    : `<button class="btn quiet" data-act="mk-withdraw" data-id="${offer.id}">Angebot zurückziehen</button>`}</div>
+  </div>`;
+}
+
+/** Bestätigung: Handel mit dem gewählten Spieler ausführen. */
+function confirmView(app, offer, pid) {
+  const s = app.game.s;
+  const p = s.players[pid];
+  const r = offer.responses[pid];
+  if (!r) return '';
+  const counter = r.type === 'counter';
+  const give = counter ? r.give : offer.give; // Gegenangebote stehen aus Sicht des Anbieters (= du)
+  const get = counter ? r.get : offer.get;
+  return `<div class="tp-body">${who(p, counter ? 'macht dir ein Gegenangebot' : 'ist einverstanden')}
+    ${terms('Du gibst', give, 'Du erhältst', get)}
+    <div class="tp-actions"><button class="btn quiet" data-act="mk-confirm-cancel">Zurück</button>
+    <button class="btn solid grow" data-act="mk-confirm" data-id="${offer.id}" data-pid="${pid}">${counter ? 'Gegenangebot annehmen' : 'Handel bestätigen'}</button></div></div>`;
 }
 
 // ------------------------------------------------------------------ Einstieg
 
-/** Liefert { html, key }: `key` ändert sich nur, wenn ein anderes Pop-up erscheint (für die Einblend-Animation). */
+/** Liefert { html, key }: `key` ändert sich nur, wenn eine andere Ansicht erscheint (für die Einblend-Animation). */
 export function renderMarket(app) {
   const g = app.game;
   const s = g.s;
@@ -164,12 +204,27 @@ export function renderMarket(app) {
   const offer = incomingOffer(app);
   if (offer) {
     const view = offer.responses[HUMAN] ? 'wait' : m.counterFor === offer.id ? 'counter' : 'decide';
-    return { html: `<div class="tp in" role="dialog" aria-label="Handelsangebot">${incomingView(app, offer)}</div>`, key: `in-${offer.id}-${view}` };
+    return {
+      html: `<div class="tp-back dark"></div><div class="tp in" role="dialog" aria-label="Handelsangebot">${incomingView(app, offer)}</div>`,
+      key: `in-${offer.id}-${view}`,
+    };
   }
 
   const myTurn = s.turn === HUMAN && s.sub === 'actions';
   if (!m.open || !myTurn) return { html: '', key: '' };
-  const hasOpen = !!g.openOfferOf(HUMAN);
+
+  const mine = g.openOfferOf(HUMAN);
+  if (mine && m.tab !== 'bank') {
+    if (m.confirm !== null && mine.responses[m.confirm]) {
+      return {
+        html: `<div class="tp-back dark"></div><div class="aw-dim">${awaitView(app, mine)}</div><div class="tp-back dark light"></div><div class="tp conf" role="dialog" aria-label="Handel bestätigen">${confirmView(app, mine, m.confirm)}</div>`,
+        key: `conf-${mine.id}-${m.confirm}`,
+      };
+    }
+    const fin = s.players.filter((p) => p.id !== HUMAN).every((p) => mine.responses[p.id]);
+    return { html: `<div class="tp-back dark"></div>${awaitView(app, mine)}`, key: `aw-${mine.id}-${fin ? 'fin' : 'run'}` };
+  }
+
   const tab = m.tab === 'bank' ? 'bank' : 'players';
   return {
     html: `<div class="tp-back" data-act="mk-close"></div>
@@ -178,8 +233,8 @@ export function renderMarket(app) {
           <div class="seg tiny"><button class="${tab === 'players' ? 'on' : ''}" data-act="mk-tab" data-tab="players">Spieler</button><button class="${tab === 'bank' ? 'on' : ''}" data-act="mk-tab" data-tab="bank">Bank</button></div>
           <button class="icon-btn small" data-act="mk-close" aria-label="Schließen">${ic('close')}</button>
         </div>
-        ${tab === 'bank' ? bankTab(app) : playersTab(app)}
+        ${tab === 'bank' ? bankView(app) : composeView(app)}
       </div>`,
-    key: `own-${tab}-${hasOpen ? 'open' : 'new'}`,
+    key: `own-${tab}`,
   };
 }

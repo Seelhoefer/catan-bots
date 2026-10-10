@@ -44,10 +44,10 @@ wird es aufgedeckt und der Entdecker bekommt 1 Rohstoff dieses Feldes. Startsied
 **🌾 Ernte (neue Entwicklungskarte):** Du wählst eines deiner Felder, an dem du eine Siedlung (1 Karte) oder Stadt (2 Karten)
 hast, und erhältst sofort dessen Ertrag. Spielbare Felder werden auf dem Brett markiert.
 
-**🤝 Handel als Pop-up:** Möchte ein Bot mit dir tauschen, erscheint ein kompaktes Pop-up (am Handy als Bottom-Sheet) mit
-*Annehmen*, *Gegenangebot* und *Ablehnen* samt Timer. „Handeln“ öffnet einen minimalen Dialog: Rohstoff-Kacheln antippen (+1,
-kleines − zum Entfernen) und an alle senden. Bots antworten sichtbar mit Zusage, Absage oder **Gegenvorschlag**. Tab *Bank* für
-4:1 / 3:1 / 2:1 (Häfen). Karten fliegen beim Abschluss zwischen den Spielern.
+**🤝 Handel:** „Handeln“ dunkelt das Spiel ab; deine Rohstoffe stehen als Kreise in einer Zeile (*Ich gebe*), darunter nach einem Trenner die gewünschten (*Ich möchte*).
+Kreis antippen = auswählen, dann mit − / + die Menge ändern. Nach „An alle senden“ siehst du die Gegner über dem abgedunkelten Spiel: jeder überlegt unterschiedlich lange
+(nach Charakter) und antwortet mit Häkchen, Kreuz (mit Grund) oder Gegenangebot. Du tippst einen zustimmenden Spieler an und **bestätigst** erst dann den Handel.
+Bietet ein Bot dir etwas an, wird ebenfalls abgedunkelt und ein Pop-up fragt: Annehmen, Gegenangebot (gleiche Kreis-Auswahl) oder Ablehnen. Tab *Bank* für 4:1 / 3:1 / 2:1.
 
 **🟣 Wahlfeld:** Ein violettes Feld mit freier Rohstoffwahl (wie in Erweiterungen); erkennbar am Kreis aus allen fünf Rohstoffen und der Aufschrift „WAHL“. Wird seine Zahl gewürfelt, suchst du dir
 pro angrenzender Siedlung (Stadt = 2) einen beliebigen Rohstoff aus. Abschaltbar im Regeln-Schritt.

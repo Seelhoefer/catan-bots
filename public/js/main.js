@@ -82,7 +82,7 @@ class App {
   }
 
   freshMarket() {
-    return { open: false, tab: 'players', give: {}, get: {}, bankGive: null, bankGet: null, counterFor: null, counter: { give: {}, get: {} } };
+    return { open: false, tab: 'players', give: {}, get: {}, bankGive: null, bankGet: null, counterFor: null, counter: { give: {}, get: {} }, sel: null, confirm: null };
   }
 
   get sf() { return SPEEDS[this.speed][2]; }
@@ -416,6 +416,8 @@ class App {
     const m = this.market;
     m.open = true;
     m.tab = 'players';
+    m.sel = null;
+    m.confirm = null;
     if (!sum(m.give) && !sum(m.get)) {
       const sug = suggestTrade(this.game);
       m.give = sug.give;
@@ -431,8 +433,16 @@ class App {
     const hand = g.s.players[HUMAN].hand;
     switch (act) {
       case 'mk-open': m.open = true; break;
-      case 'mk-close': m.open = false; m.counterFor = null; break;
-      case 'mk-tab': m.tab = d.tab; break;
+      case 'mk-close': m.open = false; m.counterFor = null; m.sel = null; m.confirm = null; break;
+      case 'mk-tab': m.tab = d.tab; m.sel = null; break;
+      case 'mk-sel': {
+        const side = d.side;
+        const store = { give: m.give, get: m.get, cgive: m.counter.give, cget: m.counter.get }[side];
+        const opposite = { give: m.get, get: m.give, cgive: m.counter.get, cget: m.counter.give }[side];
+        m.sel = { side, res: d.res };
+        if (!(store[d.res] > 0)) { store[d.res] = 1; opposite[d.res] = 0; }
+        break;
+      }
       case 'mk-step': {
         const delta = Number(d.d);
         const side = d.side;
@@ -446,14 +456,15 @@ class App {
         break;
       }
       case 'mk-send': {
-        const r = this.act('createOffer', HUMAN, m.give, m.get);
-        if (r.ok) this.runHumanOffer(r.offer.id);
+        const r = this.act('createOffer', HUMAN, m.give, m.get, { deferred: true });
+        if (r.ok) { m.sel = null; m.confirm = null; this.runHumanOffer(r.offer.id); }
         break;
       }
       case 'mk-withdraw': this.act('withdrawOffer', HUMAN, Number(d.id)); break;
       case 'mk-accept': this.act('respondOffer', HUMAN, Number(d.id), 'accept'); break;
       case 'mk-decline': this.act('respondOffer', HUMAN, Number(d.id), 'decline'); break;
       case 'mk-counter-open': {
+        m.sel = null;
         const o = g.offerById(Number(d.id));
         if (o) { m.counterFor = o.id; m.counter = { give: { ...o.get }, get: { ...o.give } }; }
         break;
@@ -463,6 +474,26 @@ class App {
         const id = Number(d.id);
         const r = this.act('respondOffer', HUMAN, id, 'counter', { give: { ...m.counter.get }, get: { ...m.counter.give } });
         if (r.ok) m.counterFor = null;
+        break;
+      }
+      case 'mk-pick': m.confirm = Number(d.pid); break;
+      case 'mk-confirm-cancel': m.confirm = null; break;
+      case 'mk-confirm': {
+        const r = this.act('acceptResponse', HUMAN, Number(d.id), Number(d.pid));
+        m.confirm = null;
+        if (!r.ok) break;
+        break;
+      }
+      case 'mk-retry': {
+        const mine = g.openOfferOf(HUMAN);
+        if (mine) this.act('withdrawOffer', HUMAN, mine.id);
+        m.confirm = null; m.sel = null;
+        break;
+      }
+      case 'mk-withdraw-close': {
+        const mine = g.openOfferOf(HUMAN);
+        if (mine) this.act('withdrawOffer', HUMAN, mine.id);
+        m.open = false; m.confirm = null; m.sel = null;
         break;
       }
       case 'mk-accept-counter': this.act('acceptCounter', HUMAN, Number(d.id), Number(d.pid)); break;
@@ -478,31 +509,29 @@ class App {
     this.queueRender();
   }
 
-  /** Bots antworten nacheinander auf ein Angebot des Menschen. */
+  /**
+   * Die Bots antworten auf dein Angebot – jeder nach eigener Bedenkzeit (je nach Charakter kürzer oder länger).
+   * Zusagen werden nur vorgemerkt; du wählst danach selbst, mit wem du tauschst, und bestätigst.
+   */
   async runHumanOffer(id) {
     const g = this.game;
-    for (const bot of g.s.players.filter((p) => p.isBot)) {
-      if (this.game !== g) return;
-      const offer = g.offerById(id);
-      if (!offer || g.s.turn !== HUMAN) return;
+    const bots = g.s.players.filter((p) => p.isBot);
+    this.queueRender();
+    const pace = { trader: 0.8, gambler: 0.9, expander: 1, builder: 1.05, knight: 1.1, strategist: 1.35 };
+    await Promise.all(bots.map(async (bot) => {
       this.busy.add(bot.id);
-      this.queueRender();
-      await sleep(450 * this.sf + 250);
+      const think = (650 + Math.random() * 1900) * (pace[bot.trait] || 1) * (0.5 + 0.5 * this.sf);
+      await sleep(think);
       this.busy.delete(bot.id);
       if (this.game !== g) return;
       const cur = g.offerById(id);
-      if (!cur) return;
+      if (!cur || g.s.turn !== HUMAN || cur.responses[bot.id]) { this.queueRender(); return; }
       const ans = botRespondOffer(g, bot.id, cur);
-      if (ans.type === 'accept') g.respondOffer(bot.id, id, 'accept');
-      else if (ans.type === 'counter') g.respondOffer(bot.id, id, 'counter', { give: ans.give, get: ans.get });
-      else g.respondOffer(bot.id, id, 'decline');
+      if (ans.type === 'accept') { g.respondOffer(bot.id, id, 'accept', null, ans.reason); sfx.play('gain', { vol: 0.8 }); }
+      else if (ans.type === 'counter') { g.respondOffer(bot.id, id, 'counter', { give: ans.give, get: ans.get }, ans.reason); sfx.play('select'); }
+      else { g.respondOffer(bot.id, id, 'decline', null, ans.reason); sfx.play('tick'); }
       this.queueRender();
-    }
-    const left = g.offerById(id);
-    if (left && Object.values(left.responses).every((r) => r.type === 'decline')) {
-      g.withdrawOffer(HUMAN, id);
-      this.toast('Niemand möchte tauschen – passe dein Angebot an.', 'info');
-    }
+    }));
     this.queueRender();
   }
 

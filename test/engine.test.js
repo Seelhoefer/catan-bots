@@ -373,3 +373,24 @@ test('Goldfeld bleibt beim Weltenwandel erhalten und ist auf dem Standardfeld op
   const off = newGame({ goldField: false }, 33);
   assert.ok(off.board.hexes.every((h) => h.type !== 'gold'));
 });
+
+test('Angebote (deferred): Zusagen werden nur vorgemerkt, getauscht wird erst nach Bestätigung des Anbieters', () => {
+  const g = afterSetup({}, 22);
+  clearBoard(g);
+  g.s.sub = 'actions';
+  g.player(0).hand.wood = 1;
+  g.player(1).hand.brick = 1;
+  g.player(2).hand.brick = 1;
+  const { offer } = g.createOffer(0, { wood: 1 }, { brick: 1 }, { deferred: true });
+  assert.equal(g.respondOffer(1, offer.id, 'accept', null, 'Einverstanden.').ok, true);
+  assert.equal(g.respondOffer(2, offer.id, 'decline', null, 'Lohnt sich nicht.').ok, true);
+  assert.equal(g.player(0).hand.wood, 1, 'noch nichts getauscht');
+  assert.equal(g.offerById(offer.id).responses[1].type, 'accept');
+  assert.equal(g.offerById(offer.id).responses[2].reason, 'Lohnt sich nicht.');
+  assert.equal(g.acceptResponse(0, offer.id, 2).ok, false, 'Ablehnung kann nicht bestätigt werden');
+  assert.equal(g.acceptResponse(0, offer.id, 1).ok, true);
+  assert.equal(g.player(0).hand.wood, 0);
+  assert.equal(g.player(0).hand.brick, 1);
+  assert.equal(g.player(1).hand.wood, 1);
+  assert.equal(g.s.offers.length, 0);
+});
