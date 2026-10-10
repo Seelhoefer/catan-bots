@@ -74,6 +74,10 @@ Für so viele Marker, wie du aktuell Siegpunkte hast (mindestens 1), tauschst du
 *Entdecker*, *Städtebauer*). Wer eine Mission als Erster erfüllt, erhält +1 Siegpunkt. Der Fortschritt ist im
 linken Panel sichtbar.
 
+## Startseite
+
+Titelbildschirm im Spiele-Look: goldenes CATAN-Logo mit Banner, schwebende Insel mit den neuen Feldern, Menü mit „Neues Spiel“, „Fortsetzen“, „Schnellstart“ (letzte Einstellungen) und „Regeln & Neuheiten“, darunter die sechs Gegner mit Charakter. Oben rechts schaltest du die Musik.
+
 ## Bedienung
 
 - Leuchtende Punkte / Linien / Felder auf dem Spielbrett zeigen, wohin du klicken kannst. **Zwei Schritte:** erst anklicken (Vorschau),

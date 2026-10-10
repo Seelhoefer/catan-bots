@@ -4,6 +4,7 @@ import { generateBoard, hexCorner } from '../engine/board.js';
 import { makeRng } from '../engine/rng.js';
 import { el, ic, esc } from './dom.js';
 import { avatarSVG } from './avatars.js';
+import { music } from './music.js';
 import {
   piece, resImg, IMG,
 } from './assets.js';
@@ -35,22 +36,20 @@ const TERRAIN_FILL = { wood: '#2f7d55', brick: '#c4673f', sheep: '#93c27f', whea
 /** Dekoratives Titelbild: eine echte Karte mit einigen Siedlungen und Straßen. */
 function heroArt() {
   const board = generateBoard('small', 'classic', makeRng(11));
+  const tile = (t) => `assets/hexbg/${t === 'desert' ? 'desert' : t}.webp`;
   const hexes = board.hexes.map((h) => {
-    const pts = h.verts.map((vid) => { const v = board.vertices[vid]; return `${(h.x + (v.x - h.x) * 0.96).toFixed(2)},${(h.y + (v.y - h.y) * 0.96).toFixed(2)}`; }).join(' ');
-    const num = h.num
-      ? `<g transform="translate(${h.x},${h.y + 0.18})"><circle r=".34" fill="#f6efdc"/><text y="0.12" text-anchor="middle" font-size=".36" font-weight="800" font-family="Georgia,serif" fill="${h.num === 6 || h.num === 8 ? '#c62828' : '#3a2f1c'}">${h.num}</text></g>` : '';
-    return `<polygon points="${pts}" fill="${TERRAIN_FILL[h.type]}" stroke="rgba(0,0,0,.25)" stroke-width=".04"/>
-      ${h.type === 'desert'
-    ? `<image href="${IMG.desert}" x="${h.x - 0.62}" y="${h.y - 0.5}" width="1.24" height=".92"/>`
-    : `<image href="${resImg(h.type)}" x="${h.x - 0.36}" y="${h.y - 0.97}" width=".72" height=".72"/>`}${num}`;
+    const red = h.num === 6 || h.num === 8;
+    const num = h.num ? `<g transform="translate(${h.x},${h.y})"><circle r=".37" cy=".04" fill="rgba(0,0,0,.28)"/><circle r=".36" fill="#f6efdc" stroke="#b69a58" stroke-width=".035"/><text y=".13" text-anchor="middle" font-size=".4" font-weight="800" font-family="Georgia,serif" fill="${red ? '#c62828' : '#3a2f1c'}">${h.num}</text></g>` : '';
+    return `<image href="${tile(h.type)}" x="${(h.x - 0.866).toFixed(3)}" y="${(h.y - 1).toFixed(3)}" width="1.732" height="2" preserveAspectRatio="none"/>${num}`;
   }).join('');
-  const picks = [[14, 0], [40, 1], [30, 2], [50, 3]];
-  const pieces = picks.map(([vid, pi]) => {
+  const picks = [[14, 0, 'settlement'], [40, 1, 'city'], [30, 2, 'settlement'], [50, 3, 'settlement'], [22, 4, 'settlement']];
+  const pieces = picks.map(([vid, pi, kind]) => {
     const v = board.vertices[vid];
     const w = board.vertices[v.adj[0]];
     const col = PLAYER_COLORS[pi];
+    const sz = kind === 'city' ? 1.05 : 0.86;
     return `${roadOnEdge(v, w, col.id, '', 'rh')}
-      <image href="${piece(col.id, 'settlement')}" x="${v.x - 0.34}" y="${v.y - 0.45}" width=".65" height=".65"/>`;
+      <image href="${piece(col.id, kind)}" x="${(v.x - sz / 2).toFixed(3)}" y="${(v.y - sz * 0.9).toFixed(3)}" width="${sz}" height="${sz}"/>`;
   }).join('');
   const b = board.bounds;
   const pad = 0.8;
@@ -98,20 +97,37 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
     const lastText = last
       ? `${last.bots + 1} Spieler · ${SIZES[last.size]?.label || 'Klein'} · ${last.variant === 'fog' ? 'Nebel' : 'Klassisch'} · ${last.targetVP} SP`
       : null;
-    const cast = BOT_ROSTER.map((b, i) => `<span class="cast-av" style="z-index:${10 - i}">${avatarSVG(b.face, PLAYER_COLORS[(i + 1) % 6].hex, 46)}</span>`).join('');
-    root.replaceChildren(el('div', { class: 'landing' },
-      el('div', { class: 'landing-art', html: heroArt() }),
-      el('div', { class: 'landing-copy' },
-        el('div', { class: 'eyebrow' }, 'Das Brettspiel gegen Bots'),
-        el('h1', {}, 'Catan'),
-        el('p', { class: 'lede' }, 'Baue, handle und erobere die Insel.'),
-        el('div', { class: 'cast', html: cast }),
-        el('div', { class: 'cta' },
-          el('button', { class: 'btn solid xl', type: 'button', onclick: () => { view = 'wizard'; step = 0; draw(); } }, 'Neues Spiel'),
-          hasSave ? el('button', { class: 'btn xl', type: 'button', onclick: onResume }, 'Fortsetzen') : null),
-        lastText ? el('div', { class: 'last' }, el('span', { html: `<small>Zuletzt gespielt</small>${esc(lastText)}` }),
-          el('button', { class: 'btn small', type: 'button', onclick: () => { Object.assign(settings, last); startGame(); } }, 'Erneut spielen')) : null,
-        el('button', { class: 'btn quiet', type: 'button', onclick: onRules }, 'Regeln & Neuheiten'))));
+    const cast = BOT_ROSTER.map((b, i) => `<div class="ts-char" style="--pc:${PLAYER_COLORS[(i + 1) % 6].hex}" title="${esc(b.tagline)}">${avatarSVG(b.face, PLAYER_COLORS[(i + 1) % 6].hex, 64)}<b>${esc(b.name)}</b><small>${esc(b.tagline)}</small></div>`).join('');
+    const btn = (cls, icon, title, sub, onclick) => el('button', { type: 'button', class: `ts-btn ${cls}`, onclick },
+      el('span', { class: 'ts-ico', html: ic(icon) }), el('span', { class: 'ts-lbl' }, el('b', {}, title), sub ? el('small', {}, sub) : null), el('span', { class: 'ts-go', html: ic('arrow') }));
+    root.replaceChildren(el('div', { class: 'title-screen' },
+      el('div', { class: 'ts-sky' }, el('i', { class: 'ts-cloud c1' }), el('i', { class: 'ts-cloud c2' }), el('i', { class: 'ts-cloud c3' })),
+      el('div', { class: 'ts-top' },
+        el('button', { type: 'button', class: 'hbtn ts-music', id: 'tsMusic', 'aria-label': 'Musik an/aus', title: 'Musik an/aus', html: ic(music.enabled ? 'music' : 'music-off'),
+          onclick: () => { music.setEnabled(!music.enabled); document.getElementById('tsMusic').innerHTML = ic(music.enabled ? 'music' : 'music-off'); } })),
+      el('div', { class: 'ts-island', html: `<div class="ts-glow"></div>${heroArt()}<div class="ts-shadow"></div>` }),
+      el('div', { class: 'ts-main' },
+        el('div', { class: 'ts-brand' },
+          el('div', { class: 'ts-pre' }, el('i'), el('span', {}, 'Die Siedler von'), el('i')),
+          el('h1', { class: 'ts-logo' }, 'CATAN'),
+          el('div', { class: 'ts-ribbon' }, el('span', {}, 'gegen Bots'))),
+        el('nav', { class: 'ts-menu' },
+          btn('primary', 'dice', 'Neues Spiel', 'Insel, Gegner und Regeln wählen', () => { view = 'wizard'; step = 0; draw(); }),
+          hasSave ? btn('', 'compass', 'Fortsetzen', 'Gespeicherte Partie weiterspielen', onResume) : null,
+          lastText ? btn('', 'trophy', 'Schnellstart', lastText, () => { Object.assign(settings, last); startGame(); }) : null,
+          btn('minor', 'flag', 'Regeln & Neuheiten', null, onRules))),
+      el('div', { class: 'ts-cast' }, el('div', { class: 'ts-cast-h' }, el('i'), el('span', {}, 'Deine Gegner'), el('i')), el('div', { class: 'ts-cast-row', html: cast })),
+      el('div', { class: 'ts-foot' }, 'Dein Spielstand wird automatisch im Browser gespeichert.')));
+    const g = window.gsap;
+    if (g) {
+      g.from('.ts-logo', { y: -50, opacity: 0, scale: 1.08, duration: 0.9, ease: 'back.out(1.5)' });
+      g.from('.ts-pre, .ts-ribbon', { opacity: 0, y: -10, duration: 0.6, delay: 0.35, stagger: 0.12 });
+      g.from('.ts-btn', { x: -50, opacity: 0, duration: 0.5, delay: 0.45, stagger: 0.09, ease: 'power3.out', clearProps: 'transform,opacity' });
+      g.from('.ts-island', { y: 40, opacity: 0, duration: 1.1, delay: 0.2, ease: 'power3.out' });
+      g.from('.ts-char', { y: 30, opacity: 0, duration: 0.5, delay: 0.8, stagger: 0.07, ease: 'back.out(1.6)', clearProps: 'transform,opacity' });
+      g.to('.ts-island svg', { y: -12, rotation: 1.2, duration: 3.6, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+      g.to('.ts-shadow', { scaleX: 0.92, opacity: 0.5, duration: 3.6, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+    }
   };
 
   // ---------------------------------------------------------------- Assistent
