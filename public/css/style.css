@@ -1576,3 +1576,14 @@ td.who { display: flex; align-items: center; gap: 8px; }
   .oc-mid .ic { width: 24px; height: 24px; }
   .tp-actions.pair .btn.big { padding: 16px 10px; font-size: 16px; }
 }
+
+/* Auswahl-Hinweise: dezent – ein ruhiger, kleiner Atem-Ring statt großer Wellen */
+.hl-pulse, .hl-pulse.vp, .hl-pulse.ep { animation: pulseQuiet 3.4s ease-in-out infinite; animation-delay: var(--ph, 0ms); fill: rgba(244, 239, 227, .05); stroke-width: .035; }
+.hl-pulse.p2 { display: none; }
+@keyframes pulseQuiet { 0%, 100% { transform: scale(.8); opacity: .12; } 50% { transform: scale(1.12); opacity: .42; } }
+.hl-pulse.vp, .hl-pulse.ep { animation-name: pulseQuietV; }
+@keyframes pulseQuietV { 0%, 100% { transform: scale(.9); opacity: .15; } 50% { transform: scale(1.5); opacity: .45; } }
+.hl-ring { animation: ringBreathQuiet 3.4s ease-in-out infinite; animation-delay: var(--ph, 0ms); }
+@keyframes ringBreathQuiet { 0%, 100% { opacity: .6; } 50% { opacity: .85; } }
+.hl-ring { fill: rgba(244, 239, 227, .12); stroke-width: .04; }
+.hl-edge-vis { opacity: .22; }
