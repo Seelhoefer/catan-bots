@@ -13,6 +13,7 @@ import {
   renderHand, renderOpps, renderTurn, renderDock, renderDice, renderMissionBox, renderLogBox, renderHeroRoll,
 } from './ui/panels.js';
 import { renderMarket, suggestTrade } from './ui/market.js';
+import { sfx } from './ui/sfx.js';
 import {
   floatGain, flyCards, showDiceHero, showCardHero,
 } from './ui/fx.js';
@@ -111,6 +112,7 @@ class App {
     closeAllModals();
     this.closePopover();
     this.game = game;
+    this.lastVp = undefined;
     this.mode = null;
     this.pending = null;
     this.auto = {};
@@ -141,14 +143,19 @@ class App {
     const g = this.game;
     const name = (pi) => g.s.players[pi].name;
     switch (e.type) {
-      case 'build': this.fresh.pieces.add(`${e.kind === 'road' ? 'e' : 'v'}${e.id}`); break;
-      case 'reveal': this.fresh.hexes.add(e.id); this.toast('Nebel gelüftet', 'info'); break;
+      case 'build':
+        this.fresh.pieces.add(`${e.kind === 'road' ? 'e' : 'v'}${e.id}`);
+        sfx.play(e.kind, { vol: e.pi === HUMAN ? 1 : 0.6 });
+        break;
+      case 'reveal': this.fresh.hexes.add(e.id); this.toast('Nebel gelüftet', 'info'); sfx.play('cardplay', { vol: 0.5 }); break;
       case 'remap':
         this.fresh.remap = true;
+        sfx.play('remap');
         this.toast(`${name(e.pi)} spielt Weltenwandel – alle Felder wurden neu verteilt.`, 'big');
         break;
       case 'dice': {
         this.rolling = true;
+        sfx.play('dice');
         const total = e.dice[0] + e.dice[1];
         const dur = showDiceHero(e.dice, e.pi === HUMAN ? 'Du' : name(e.pi), this.sf);
         const reveal = 750 * this.sf;
@@ -161,28 +168,37 @@ class App {
         break;
       }
       case 'gain':
-        if (g.s.phase === 'main') floatGain(e.pi, e.hand, Math.max(0, this.diceRevealAt - Date.now()));
+        if (g.s.phase === 'main') {
+          const wait = Math.max(0, this.diceRevealAt - Date.now());
+          floatGain(e.pi, e.hand, wait);
+          if (e.pi === HUMAN) sfx.play('gain', { delay: wait + 100 });
+        }
         break;
       case 'token':
-        if (e.pi === HUMAN) this.toastHTML(`${ic('clover', 'inline')} +1 Anti-Pech-Marker`, 'gain');
+        if (e.pi === HUMAN) { this.toastHTML(`${ic('clover', 'inline')} +1 Anti-Pech-Marker`, 'gain'); sfx.play('token', { delay: Math.max(0, this.diceRevealAt - Date.now()) + 150 }); }
         break;
       case 'mission':
+        if (e.pi !== HUMAN) sfx.play('vpOther');
         this.toastHTML(`${ic(missionById(e.id).icon, 'inline')} ${esc(name(e.pi))} erfüllt „${missionById(e.id).name}“ (+1 Siegpunkt)`, 'big');
         break;
       case 'devbuy':
+        sfx.play('card', { vol: e.pi === HUMAN ? 1 : 0.5 });
         if (e.pi === HUMAN) showCardHero(e.card, `Neue Karte: <b>${DEV_INFO[e.card].name}</b>`, 2600);
         break;
       case 'devplay': {
+        sfx.play('cardplay');
         const ms = showCardHero(e.card, `${e.pi === HUMAN ? 'Du spielst' : `${esc(name(e.pi))} spielt`} <b>${DEV_INFO[e.card].name}</b>`, 2300 * Math.max(0.6, this.sf));
         if (e.pi !== HUMAN) this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + ms - 300);
         break;
       }
-      case 'harvest': this.flash([e.hex], 2400); break;
+      case 'harvest': this.flash([e.hex], 2400); sfx.play('harvest'); break;
       case 'steal':
+        sfx.play('steal');
         if (e.from === HUMAN) this.toastHTML(`${esc(name(e.to))} hat dir 1${ic(e.res, 'inline')} gestohlen`, 'warn');
         else if (e.to === HUMAN) this.toastHTML(`Du hast 1${ic(e.res, 'inline')} gestohlen`, 'gain');
         break;
       case 'trade':
+        sfx.play('trade');
         flyCards(e.from, e.to, e.give);
         flyCards(e.to, e.from, e.get, 180);
         this.toastHTML(`Handel erfolgreich: ${esc(name(e.from))} erhielt ${handHTML(e.get)}, ${esc(name(e.to))} erhielt ${handHTML(e.give)}`, 'gain');
@@ -191,8 +207,20 @@ class App {
       case 'offerClosed':
         if (this.market.counterFor === e.id) this.market.counterFor = null;
         break;
-      case 'win': setTimeout(() => this.showGameOver(), 700); break;
-      case 'change': this.queueRender(); break;
+      case 'win':
+        sfx.play(e.pi === HUMAN ? 'win' : 'lose', { delay: 300 });
+        setTimeout(() => this.showGameOver(), 700);
+        break;
+      case 'robber': sfx.play('robber'); break;
+      case 'monopoly': sfx.play('monopoly'); break;
+      case 'turn': if (e.pi === HUMAN) sfx.play('turn', { delay: 250 }); break;
+      case 'change': {
+        const vp = g.vp(HUMAN);
+        if (this.lastVp !== undefined && vp > this.lastVp) sfx.play('vp', { delay: 200 });
+        this.lastVp = vp;
+        this.queueRender();
+        break;
+      }
       default: break;
     }
   }
@@ -201,8 +229,7 @@ class App {
   act(method, ...args) {
     const g = this.game;
     const r = g[method](...args);
-    if (!r.ok) this.toast(r.error, 'warn');
-    else this.pump();
+    if (!r.ok) { this.toast(r.error, 'warn'); sfx.play('error'); } else this.pump();
     this.queueRender();
     return r;
   }
@@ -217,6 +244,7 @@ class App {
     if (this.game.s.phase === 'over') return;
     if (!this.pending || this.pending.kind !== kind || this.pending.id !== id) {
       this.pending = { kind, id };
+      sfx.play('select');
       this.queueRender();
       return;
     }
@@ -452,6 +480,7 @@ class App {
     const live = g.offerById(id);
     if (live && !live.responses[HUMAN] && g.handCount(HUMAN) > 0) {
       this.waitingOffer = id;
+      sfx.play('offer');
       this.waitStart = Date.now();
       this.offerWaitMs = SPEEDS[this.speed][3];
       this.queueRender();
@@ -616,6 +645,7 @@ class App {
     if (!pop.classList.contains('hidden')) { this.closePopover(); return; }
     pop.innerHTML = `
       <button role="menuitem" data-pop="speed">Bot-Tempo <b>${SPEEDS[this.speed][0]}</b></button>
+      <button role="menuitem" data-pop="sound">Sound <b class="snd">${sfx.enabled ? 'An' : 'Aus'}</b></button>
       <button role="menuitem" data-pop="log">Gesamter Verlauf</button>
       <button role="menuitem" data-pop="rules">Regeln</button>
       <button role="menuitem" data-pop="menu">Hauptmenü</button>`;
@@ -628,6 +658,11 @@ class App {
       this.speed = keys[(keys.indexOf(this.speed) + 1) % keys.length];
       try { localStorage.setItem(SPEED_KEY, this.speed); } catch { /* egal */ }
       $('#menuPop').innerHTML = $('#menuPop').innerHTML.replace(/<b>.*?<\/b>/, `<b>${SPEEDS[this.speed][0]}</b>`);
+      return;
+    }
+    if (what === 'sound') {
+      sfx.setEnabled(!sfx.enabled);
+      $('#menuPop .snd').textContent = sfx.enabled ? 'An' : 'Aus';
       return;
     }
     this.closePopover();
@@ -647,14 +682,19 @@ class App {
 
   // ------------------------------------------------------------- UI-Bindung
   bindUI() {
+    // Browser erlauben Ton erst nach einer Nutzergeste
+    document.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
+    document.addEventListener('keydown', () => sfx.unlock(), { once: true });
     document.addEventListener('click', (e) => {
       const pop = e.target.closest('[data-pop]');
       if (pop) { this.onPopover(pop.dataset.pop); return; }
       if (e.target.closest('#btnMenu')) { this.togglePopover(); return; }
       if (!e.target.closest('#menuPop')) this.closePopover();
       const b = e.target.closest('[data-act]');
-      if (b) this.handleAct(b.dataset.act, b);
-      else if (!e.target.closest('.floatbox') && (this.ui.missionsOpen || this.ui.logOpen) && e.target.closest('#board')) {
+      if (b) {
+        if (/^(build-|mk-(step|tab|counter-open)|bank-(give|get)|toggle-)/.test(b.dataset.act)) sfx.play('tick');
+        this.handleAct(b.dataset.act, b);
+      } else if (!e.target.closest('.floatbox') && (this.ui.missionsOpen || this.ui.logOpen) && e.target.closest('#board')) {
         this.ui.missionsOpen = false; this.ui.logOpen = false; this.queueRender();
       }
     });

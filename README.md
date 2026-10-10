@@ -77,6 +77,12 @@ linken Panel sichtbar.
 - Die Partie wird automatisch im Browser gespeichert und kann im Menü fortgesetzt werden.
 - Bot-Tempo (🐢 / 🚶 / ⚡) oben rechts einstellbar.
 
+## Sound
+
+Straße, Siedlung und Stadt klopfen unterschiedlich auf Holz, Würfel rasseln, Handel klimpert, ein Siegpunkt gibt ein kleines Glockenspiel,
+dazu Karten, Räuber, Weltenwandel, Angebote, eigener Zug und Sieg. Alles wird live per Web Audio erzeugt (keine Dateien, keine Lizenzen).
+Ein/Aus im Menü (⋯ → Sound). Echte Aufnahmen lassen sich optional einhängen, siehe `public/assets/sfx/README.md`.
+
 ## Am Handy spielen
 
 - **Im WLAN:** `npm run start:lan` startet den Server für alle Geräte im Netz und zeigt die Adressen (z. B. `http://192.168.0.12:3000`) an.
