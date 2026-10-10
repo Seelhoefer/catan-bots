@@ -15,9 +15,10 @@ import {
 import { renderMarket, suggestTrade } from './ui/market.js';
 import { sfx } from './ui/sfx.js';
 import { music } from './ui/music.js';
+import { preloadDice3d } from './ui/dice3d.js';
 import { avatarSVG } from './ui/avatars.js';
 import {
-  floatGain, flyCards, showDiceHero, showCardHero, DICE_REVEAL, celebrate, produceFx, bumpPlayer,
+  floatGain, flyCards, showDiceHero, showCardHero, lastDice, whirlHexes, celebrate, produceFx, bumpPlayer,
 } from './ui/fx.js';
 import { preloadArt, ART_STYLES, artStyle, setArtStyle } from './ui/assets.js';
 import {
@@ -130,6 +131,7 @@ class App {
     closeAllModals();
     this.closePopover();
     this.game = game;
+    preloadDice3d();
     this.lastVp = undefined;
     this.inflightH = {};
     this.inflightO = {};
@@ -182,17 +184,19 @@ class App {
         this.rolling = true;
         sfx.play('dice', { vol: 0.8 });
         const total = e.dice[0] + e.dice[1];
-        const dur = showDiceHero(e.dice, e.pi === HUMAN ? 'Du' : name(e.pi), this.sf, avatarSVG(g.s.players[e.pi].face, g.s.players[e.pi].color, 36));
-        const reveal = DICE_REVEAL * this.sf;
-        this.diceRevealAt = Date.now() + reveal + 150;
-        this.heroEnd = Date.now() + dur; // danach folgt der Ertrag: Felder leuchten, Karten fliegen
-        this.fxOffset = 0;
-        this.rollPauseUntil = Date.now() + dur;
-        sfx.play('diceLand', { delay: reveal, total });
-        setTimeout(() => { this.rolling = false; this.queueRender(); }, 650);
-        if (total !== 7) {
-          setTimeout(() => this.flash(g.s.board.hexes.filter((h) => h.num === total && !h.fog).map((h) => h.id), 2200), Math.max(0, dur - 350));
+        const dur = showDiceHero(e.dice, e.pi === HUMAN ? 'Du' : name(e.pi), this.sf);
+        this.diceRevealAt = Date.now() + lastDice.settleMs + 150;
+        const hitHexes = total === 7 ? [] : g.s.board.hexes.filter((h) => h.num === total && !h.fog && h.id !== g.s.robber).map((h) => ({ id: h.id, type: h.type }));
+        let whirlMs = 0;
+        if (hitHexes.length) {
+          whirlMs = 1150 * Math.max(0.7, this.sf);
+          setTimeout(() => { whirlHexes(hitHexes, this.sf); sfx.play('whirl'); }, Math.max(0, dur - 150));
         }
+        this.heroEnd = Date.now() + dur + whirlMs - 150; // danach fliegen die Karten zu den Spielern
+        this.fxOffset = 0;
+        this.rollPauseUntil = Date.now() + dur + whirlMs;
+        sfx.play('diceLand', { delay: lastDice.settleMs, total });
+        setTimeout(() => { this.rolling = false; this.queueRender(); }, 650);
         break;
       }
       case 'gain':

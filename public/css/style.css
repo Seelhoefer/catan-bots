@@ -1322,3 +1322,15 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .vp-input { width: 92px; flex: none; text-align: center; font: inherit; font-size: 28px; font-weight: 800; color: var(--text); background: rgba(0,0,0,.28); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 6px; -moz-appearance: textfield; appearance: textfield; }
 .vp-input:focus { outline: none; border-color: var(--ivory); }
 .vp-input::-webkit-inner-spin-button, .vp-input::-webkit-outer-spin-button { opacity: 1; }
+
+/* Würfel-Moment: Glas + 3D-Szene */
+.dicehero { background: rgba(3, 8, 16, .74); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
+.dicehero.show { display: block; }
+.dicehero .dh3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.dicehero .dh { position: absolute; inset: 0; display: grid; place-items: center; }
+.dh-flash { position: absolute; left: 50%; top: 50%; width: 220px; height: 220px; margin: -110px 0 0 -110px; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, rgba(255,244,214,.9) 0, rgba(255,226,150,.55) 30%, rgba(255,226,150,0) 68%); }
+
+/* Wirbelsturm über Treffer-Feldern */
+.whirl { position: fixed; z-index: 58; margin: 0; transform: translate(-50%, -50%); pointer-events: none; }
+.wh-disc { position: absolute; inset: 0; border-radius: 50%; opacity: 0; background: conic-gradient(from 0deg, rgba(255,255,255,0) 0deg, rgba(255,255,255,.55) 70deg, rgba(255,255,255,0) 150deg, rgba(255,255,255,.4) 220deg, rgba(255,255,255,0) 300deg, rgba(255,255,255,.5) 340deg, rgba(255,255,255,0)); -webkit-mask: radial-gradient(circle, transparent 18%, #000 40%, #000 62%, transparent 72%); mask: radial-gradient(circle, transparent 18%, #000 40%, #000 62%, transparent 72%); }
+.wh-p { position: absolute; left: 50%; top: 50%; margin: -4px 0 0 -4px; opacity: 0; will-change: transform, opacity; box-shadow: 0 0 6px rgba(255,255,255,.55); }

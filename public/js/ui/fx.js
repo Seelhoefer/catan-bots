@@ -3,6 +3,7 @@ import { RES, RES_INFO } from '../engine/constants.js';
 import { ic, resSq } from './dom.js';
 import { cardHTML } from './cards.js';
 import { sfx } from './sfx.js';
+import { dice3dReady, rollDice3D } from './dice3d.js';
 
 const layer = () => document.getElementById('fx');
 
@@ -207,57 +208,117 @@ function throwDie(node, side, T, delay) {
   return tl;
 }
 
-/** Großer Würfel-Moment in der Bildschirmmitte. Gibt die Gesamtdauer (ms) zurück. */
-export function showDiceHero(dice, who, speedFactor = 1, avatar = '') {
+/** Ergebnis des letzten Wurfs für den Aufrufer: wann liegen die Würfel, wann ist alles vorbei (ms). */
+export const lastDice = { settleMs: 0, totalMs: 0 };
+
+/**
+ * Würfel-Moment: Glas legt sich über das Spiel → Würfel werden geworfen, rollen, hüpfen nach → werden zusammengezogen → Glas verschwindet.
+ * Keine Zahlen, keine Texte. Gibt die Gesamtdauer (ms) zurück.
+ */
+export function showDiceHero(dice, who, speedFactor = 1) {
   const box = document.getElementById('diceHero');
   if (!box) return 0;
   const g = gs();
-  const total = dice[0] + dice[1];
-  const T = (DICE_REVEAL * speedFactor) / 1000;
-  const hold = 0.95 * speedFactor;
+  const sf = speedFactor;
   box.className = 'dicehero show';
-  box.innerHTML = `<div class="dh">
-      <div class="dh-dice">${cubeHTML(dice[0])}${cubeHTML(dice[1])}</div>
-      <div class="dh-total ${total === 7 ? 'seven' : total === 6 || total === 8 ? 'hot' : ''}"><span>${total}</span>${total === 7 ? '<small>Der Räuber kommt!</small>' : ''}</div>
-    </div>`;
-  const totalEl = box.querySelector('.dh-total');
-  const nodes = [...box.querySelectorAll('.d3')];
-  const lag = 0.09 * speedFactor;
-  const done = () => { box.className = 'dicehero'; box.innerHTML = ''; };
-  if (!g) {
-    totalEl.classList.add('in');
-    setTimeout(done, (T + hold) * 1000);
-    return (T + hold) * 1000 + 200;
-  }
+  box.innerHTML = '';
+  if (!g) { setTimeout(() => { box.className = 'dicehero'; }, 1500 * sf); lastDice.settleMs = 700 * sf; return 1500 * sf; }
   g.killTweensOf(box);
-  g.set(box, { opacity: 1 });
-  g.from(box.querySelector('.dh'), { opacity: 0, y: 14, duration: 0.2, ease: 'power2.out' });
-  g.set(totalEl, { opacity: 0, scale: 0.3 });
+  g.fromTo(box, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+  const clear = () => { box.className = 'dicehero'; box.innerHTML = ''; g.set(box, { clearProps: 'opacity' }); };
+
+  if (dice3dReady()) {
+    const hitSound = (k, i) => sfx.play('diceHit', { pitch: 1 + i * 0.12 + k * 0.1, vol: [1, 0.55, 0.3][k] });
+    const r = rollDice3D(box, { dice, sf, onHit: hitSound });
+    // Zusammenziehen: kurzer Lichtring, dann Glas ausblenden
+    g.delayedCall(r.gatherAtMs / 1000 + (r.gatherMs / 1000) * 0.55, () => {
+      sfx.play('gather');
+      const ring = document.createElement('i');
+      ring.className = 'dh-flash';
+      box.append(ring);
+      g.fromTo(ring, { scale: 0.2, opacity: 0.9 }, { scale: 2.6, opacity: 0, duration: 0.5, ease: 'power2.out', onComplete: () => ring.remove() });
+    });
+    const fadeAt = r.totalMs / 1000 - 0.1;
+    g.to(box, { opacity: 0, duration: 0.35, delay: fadeAt, ease: 'power1.in' });
+    r.done.then(() => g.delayedCall(0.3, clear));
+    lastDice.settleMs = 300 + r.settleMs;
+    lastDice.totalMs = (fadeAt + 0.35) * 1000;
+    return lastDice.totalMs;
+  }
+
+  // Ersatz ohne WebGL: CSS-Würfel
+  const T = DICE_REVEAL * sf / 1000;
+  const hold = 0.55 * sf;
+  box.innerHTML = `<div class="dh"><div class="dh-dice">${cubeHTML(dice[0])}${cubeHTML(dice[1])}</div></div>`;
+  const nodes = [...box.querySelectorAll('.d3')];
+  const lag = 0.09 * sf;
   nodes.forEach((n, i) => {
     throwDie(n, i === 0 ? 1 : -1, T, i * lag);
-    // Bodenkontakte von bounce.out: bei 36 %, 73 % und 91 % der Dauer
-    [[0.364, 1], [0.727, 0.55], [0.909, 0.3]].forEach(([f, v], k) => {
-      g.delayedCall(T * f + i * lag, () => {
-        sfx.play('diceHit', { pitch: 1 + i * 0.12 + k * 0.1, vol: v });
-        if (k === 0) {
-          const ring = document.createElement('i');
-          ring.className = 'd3-ring';
-          n.append(ring);
-          g.fromTo(ring, { scale: 0.25, opacity: 0.9 }, { scale: 1.4, opacity: 0, duration: 0.65, ease: 'power2.out', onComplete: () => ring.remove() });
+    [[0.364, 1], [0.727, 0.55], [0.909, 0.3]].forEach(([f, v], k) => g.delayedCall(T * f + i * lag, () => sfx.play('diceHit', { pitch: 1 + i * 0.12 + k * 0.1, vol: v })));
+  });
+  g.to(box.querySelector('.dh-dice'), { scale: 0.2, opacity: 0, duration: 0.4, delay: T + hold, ease: 'power3.in' });
+  g.to(box, { opacity: 0, duration: 0.35, delay: T + hold + 0.3, ease: 'power1.in', onComplete: clear });
+  lastDice.settleMs = (T + 0.2) * 1000;
+  lastDice.totalMs = (T + hold + 0.65) * 1000;
+  return lastDice.totalMs;
+}
+
+// ------------------------------------------------------------------ Wirbelsturm über den Feldern mit der gewürfelten Zahl
+const SWIRL_COLORS = {
+  wood: ['#3f9a63', '#8fd49a', '#2c6c4a'], brick: ['#d27649', '#f0a67c', '#aa502d'], sheep: ['#ffffff', '#f2eee0', '#cfe6b6'],
+  wheat: ['#f3cf63', '#ffe9a0', '#d9a93a'], ore: ['#b8c0d0', '#8d97ab', '#e3e8f0'], gold: ['#c8a2ff', '#ffe9a0', '#8f63e0'],
+};
+
+/** Ein Wirbel aus Partikeln dreht sich über jedem Treffer-Feld hoch und zieht sich zusammen. Gibt die Dauer (ms) zurück. */
+export function whirlHexes(hexes, sf = 1) {
+  const g = gs();
+  if (!g || !hexes.length) return 0;
+  const dur = 1.15 * Math.max(0.7, sf);
+  hexes.forEach((hx, hi) => {
+    const rect = hexRect(hx.id);
+    if (!rect) return;
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const R = rect.width * 0.72;
+    const cols = SWIRL_COLORS[hx.type] || SWIRL_COLORS.wheat;
+    const wrap = document.createElement('div');
+    wrap.className = 'whirl';
+    wrap.style.cssText = `left:${cx}px;top:${cy}px;width:${R * 2}px;height:${R * 2}px;`;
+    wrap.innerHTML = '<i class="wh-disc"></i>';
+    layer().append(wrap);
+    const disc = wrap.firstChild;
+    g.fromTo(disc, { scale: 0.3, opacity: 0, rotation: 0 }, { scale: 1.3, opacity: 0.85, rotation: 520, duration: dur * 0.55, ease: 'power2.out' });
+    g.to(disc, { scale: 0.2, opacity: 0, rotation: 900, duration: dur * 0.45, ease: 'power3.in', delay: dur * 0.55 });
+    const n = 30;
+    const parts = [];
+    for (let i = 0; i < n; i++) {
+      const p = document.createElement('i');
+      p.className = 'wh-p';
+      p.style.background = cols[i % cols.length];
+      p.style.width = p.style.height = `${8 + (i % 3) * 3}px`;
+      p.style.borderRadius = i % 2 ? '50%' : '2px';
+      wrap.append(p);
+      parts.push({ el: p, a0: (i / n) * Math.PI * 2, k: 0.55 + (i % 5) * 0.12, h: (i % 7) / 7 });
+    }
+    const st = { t: 0 };
+    g.to(st, {
+      t: 1, duration: dur, delay: hi * 0.06, ease: 'power1.inOut',
+      onUpdate() {
+        const t = st.t;
+        const spiral = Math.sin(Math.PI * Math.min(1, t * 1.05)); // schwillt an, zieht sich wieder zusammen
+        for (const q of parts) {
+          const ang = q.a0 + t * Math.PI * (4.2 + q.k * 2.2);
+          const rad = R * (0.18 + 0.82 * q.k * spiral);
+          const x = Math.cos(ang) * rad;
+          const y = Math.sin(ang) * rad * 0.52 - spiral * R * (0.1 + q.h * 0.45);
+          q.el.style.transform = `translate(${x}px, ${y}px) scale(${0.4 + spiral * 0.9})`;
+          q.el.style.opacity = String(Math.min(1, spiral * 1.6));
         }
-      });
+      },
+      onComplete: () => wrap.remove(),
     });
   });
-  // Zahl springt ein, die Summe zählt kurz hoch
-  g.delayedCall(T + 0.12 * speedFactor, () => {
-    const span = totalEl.querySelector('span');
-    const counter = { v: Math.max(2, total - 4) };
-    g.to(totalEl, { opacity: 1, scale: 1, duration: 0.55, ease: 'elastic.out(1, 0.5)' });
-    g.to(counter, { v: total, duration: 0.3, ease: 'none', onUpdate: () => { span.textContent = String(Math.round(counter.v)); } });
-    if (total === 7) g.fromTo(totalEl, { x: -8 }, { x: 0, duration: 0.5, ease: 'elastic.out(1, 0.15)', delay: 0.05 });
-  });
-  g.to(box, { opacity: 0, duration: 0.4, delay: T + hold, ease: 'power1.in', onComplete: done });
-  return (T + hold) * 1000 + 200;
+  return dur * 1000;
 }
 
 /** Karte groß einblenden (gekauft oder ausgespielt). Gibt die Dauer in ms zurück. */

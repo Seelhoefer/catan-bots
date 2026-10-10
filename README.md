@@ -52,10 +52,11 @@ Bietet ein Bot dir etwas an, wird ebenfalls abgedunkelt und ein Pop-up fragt: An
 **🟣 Wahlfeld:** Ein violettes Feld mit freier Rohstoffwahl (wie in Erweiterungen); erkennbar am Kreis aus allen fünf Rohstoffen und der Aufschrift „WAHL“. Wird seine Zahl gewürfelt, suchst du dir
 pro angrenzender Siedlung (Stadt = 2) einen beliebigen Rohstoff aus. Abschaltbar im Regeln-Schritt.
 
-**🎲 Würfeln & Ertrag:** Großer Würfeln-Button, rasselnde Würfel mit Augensumme (Klang je nach Zahl: 6/8 glänzen, 7 grollt). Die Würfel sind echte 3D-Würfel (Wurf, Aufprall, zweimaliges Nachhüpfen, Staubring). Danach leuchten
-die Treffer-Felder auf, ein Ring breitet sich aus und die Rohstoffkarten fliegen im Bogen mit Bewegungsspur vom Feld zum Empfänger –
-zu deinem Kartenfächer unten (am Handy zu den Chips oben) oder zum Portrait des Gegners. Zähler und Karten erscheinen erst bei der Ankunft,
-begleitet von „+N“-Plaketten, Aufpoppen und Klängen. Bots lassen sich dabei mehr Zeit (Tempo im Menü: Langsam / Normal / Schnell).
+**🎲 Würfeln & Ertrag:** Ein Glas legt sich über das Spiel, zwei echte weiße Würfel (three.js, mit Licht und weichem Schatten) werden von außen geworfen,
+rollen, hüpfen nach und bleiben liegen – dann werden sie zusammengezogen und das Glas verschwindet (keine Zahlen, keine Texte). Über den Feldern mit der
+gewürfelten Zahl wirbelt ein Sturm aus Partikeln in der Farbe des Rohstoffs; danach werden die Rohstoffkarten im Bogen mit Bewegungsspur zu den Spielern
+gezogen – zu deinem Kartenfächer unten (am Handy zu den Chips oben) oder zum Portrait des Gegners. Zähler erscheinen erst bei der Ankunft.
+Bots lassen sich dabei mehr Zeit (Tempo im Menü: Langsam / Normal / Schnell). Ohne WebGL gibt es einen CSS-Würfel als Ersatz.
 
 **🃏 Karten im Fuß:** Am Desktop liegt deine Hand als Kartenfächer im Fuß: links die Rohstoffkarten (nach Rohstoff gruppiert), rechts deine Entwicklungskarten.
 Gold umrandete Karten sind spielbar – Anklicken spielt sie (bei Monopol/Erfindung folgt die Rohstoffwahl). Am Handy erreichst du sie über „Karten“ in der Aktionsleiste.
