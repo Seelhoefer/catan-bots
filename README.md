@@ -31,7 +31,7 @@ Entwicklungskarten (Ritter, Straßenbau, Erfindung, Monopol, Siegpunkte), Längs
 Größte Rittermacht, Sieg bei Erreichen der Siegpunktzahl in deinem Zug.
 
 **Einstellungen vor der Partie**
-- Einstieg als Assistent in 3 Schritten: Karte → Spieler (Avatar oder eines der Bot-Gesichter, Gegner, Stärke) → Regeln & Siegpunkte
+- Eine Lobby-Seite „Spiel einrichten“: Insel (Größe, Klassisch/Nebel), Spieler (Bot-Gesicht per Pfeilen, Name, Gegner, Stärke) und Regeln (Siegpunkte mit ±/Eingabe, Regeln als runde Schalter)
 - Spielfeldgröße: Klein (19 Felder, klassisch), Groß (37), Riesig (61)
 - Siegpunkte: 5–20 (Standard 10) – die Anzahl der Spielfiguren wächst automatisch mit
 - Spielvariante: Klassisch oder **Nebel** (wie *Seefahrer*)

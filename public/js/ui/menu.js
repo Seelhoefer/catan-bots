@@ -60,13 +60,12 @@ function miniBoard(radius, fog) {
   const board = generateBoard(radius === 2 ? 'small' : radius === 3 ? 'large' : 'huge', fog ? 'fog' : 'classic', makeRng(5));
   const cells = board.hexes.map((h) => {
     const pts = h.verts.map((vid) => { const v = board.vertices[vid]; return `${(h.x + (v.x - h.x) * 0.9).toFixed(2)},${(h.y + (v.y - h.y) * 0.9).toFixed(2)}`; }).join(' ');
-    return `<polygon points="${pts}" fill="${h.fog ? '#6c7d97' : TERRAIN_FILL[h.type]}"/>`;
+    return `<polygon points="${pts}" fill="${h.fog ? '#9aa8c8' : TERRAIN_FILL[h.type]}" stroke="rgba(0,0,0,.28)" stroke-width=".05"/>`;
   }).join('');
   const b = board.bounds;
   return `<svg viewBox="${b.minX - 0.3} ${b.minY - 0.3} ${b.maxX - b.minX + 0.6} ${b.maxY - b.minY + 0.6}" class="mini">${cells}</svg>`;
 }
 
-const STEPS = ['Karte', 'Spieler', 'Regeln'];
 
 export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
   const settings = loadSettings();
@@ -140,92 +139,101 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
     el('span', { class: 'knob' }),
     el('span', { class: 'sw-text' }, el('b', { html: `${ic(icon, 'inline')} ${title}` }), el('small', {}, desc)));
 
-  const stepMap = () => el('div', { class: 'wz-body' },
-    el('h2', {}, 'Welche Insel?'),
-    el('div', { class: 'tiles' }, Object.values(SIZES).map((sz) => el('button', {
-      type: 'button', class: `tile ${settings.size === sz.id ? 'on' : ''}`,
-      onclick: () => { settings.size = sz.id; ensureCast(); draw(); },
-      html: `${miniBoard(sz.radius, settings.variant === 'fog')}<b>${sz.label}</b><small>${sz.desc}</small>`,
-    }))),
-    el('div', { class: 'tiles two' }, [['classic', 'dune', 'Klassisch', 'Alle Felder offen – wie im Original.'], ['fog', 'cloud', 'Nebel (Seefahrer)', 'Ein Teil der Insel ist verdeckt. Baue eine Straße heran, um ihn zu lüften!']].map(([id, icon, name, desc]) => el('button', {
-      type: 'button', class: `tile row ${settings.variant === id ? 'on' : ''}`, onclick: () => { settings.variant = id; draw(); },
-      html: `<span class="t-icon">${ic(icon)}</span><span><b>${name}</b><small>${desc}</small></span>`,
-    }))));
+  // ---------------------------------------------------------------- Spiel einrichten (eine Seite, wie eine Spiele-Lobby)
+  const pickFace = (id) => {
+    const before = (settings.botIds || []).length;
+    settings.avatarPortrait = id;
+    const ids = (settings.botIds || []).filter((x) => x !== id);
+    for (const o of BOT_ROSTER) { if (ids.length >= before) break; if (o.id !== id && !ids.includes(o.id)) ids.push(o.id); } // gleiche Spielerzahl behalten
+    settings.botIds = BOT_ROSTER.map((x) => x.id).filter((x) => ids.includes(x));
+    draw();
+  };
+  const cycleFace = (d) => {
+    const i = BOT_ROSTER.findIndex((b) => b.id === settings.avatarPortrait);
+    pickFace(BOT_ROSTER[(i + d + BOT_ROSTER.length) % BOT_ROSTER.length].id);
+  };
+  const setVP = (v) => { settings.targetVP = Math.max(5, Math.min(20, Math.round(v) || 10)); saveSettings(settings); };
+  const card = (icon, title, ...kids) => el('section', { class: 'lb-card' },
+    el('header', {}, el('span', { class: 'lb-hico', html: ic(icon) }), el('b', {}, title)), ...kids);
+  const rule = (key, icon, title) => el('button', {
+    type: 'button', class: `lb-rule ${settings[key] ? 'on' : ''}`, title, 'aria-pressed': String(!!settings[key]),
+    onclick: () => { settings[key] = !settings[key]; draw(); },
+  }, el('span', { class: 'lr-ico', html: ic(icon) }), el('small', {}, title));
 
-  const stepPlayers = () => {
+  const drawWizard = () => {
     ensureCast();
     const sel = new Set(settings.botIds);
     const max = maxBots();
-    const preset = (n) => { settings.botIds = BOT_ROSTER.filter((b) => b.id !== settings.avatarPortrait).slice(0, Math.min(n - 1, max)).map((b) => b.id); ensureCast(); draw(); };
-    return el('div', { class: 'wz-body' },
-      el('h2', {}, 'Wer spielt mit?'),
-      el('div', { class: 'you' },
-        el('div', { class: 'you-faces' },
-          BOT_ROSTER.map((b) => el('button', {
-            type: 'button', class: `face portrait ${settings.avatarPortrait === b.id ? 'on' : ''}`, title: b.name, 'aria-label': `Gesicht ${b.name}`,
-            onclick: () => {
-              const before = (settings.botIds || []).length;
-              settings.avatarPortrait = b.id;
-              const ids = (settings.botIds || []).filter((id) => id !== b.id);
-              // gleiche Spielerzahl behalten: für das gewählte Gesicht rückt der nächste freie Bot nach
-              for (const o of BOT_ROSTER) { if (ids.length >= before) break; if (o.id !== b.id && !ids.includes(o.id)) ids.push(o.id); }
-              settings.botIds = BOT_ROSTER.map((x) => x.id).filter((id) => ids.includes(id));
-              draw();
-            }, html: avatarSVG(b.face, PLAYER_COLORS[0].hex, 48),
-          }))),
-        el('label', { class: 'field' }, el('span', {}, 'Dein Name'),
-          el('input', { type: 'text', value: settings.playerName === 'Du' ? '' : settings.playerName, placeholder: 'Du', maxlength: 14, oninput: (e) => { settings.playerName = e.target.value.trim() || 'Du'; saveSettings(settings); } }))),
-      el('div', { class: 'wz-row' },
-        el('h3', {}, `Gegner · ${settings.bots + 1} Spieler`),
-        el('div', { class: 'presets' },
-          el('button', { type: 'button', class: `btn small ${settings.bots === 3 ? 'solid' : ''}`, onclick: () => preset(4) }, '4 Spieler'),
-          el('button', { type: 'button', class: `btn small ${settings.bots === 5 ? 'solid' : ''}`, disabled: max < 5 || undefined, title: max < 5 ? 'Für 6 Spieler brauchst du eine größere Insel' : '', onclick: () => preset(6) }, '6 Spieler'))),
-      el('div', { class: 'roster' }, BOT_ROSTER.map((b, i) => {
+    const me = BOT_ROSTER.find((b) => b.id === settings.avatarPortrait) || BOT_ROSTER[0];
+    const islands = card('compass', 'Insel',
+      el('div', { class: 'lb-islands' }, Object.values(SIZES).map((sz) => el('button', {
+        type: 'button', class: `isl ${settings.size === sz.id ? 'on' : ''}`, title: `${sz.hexes} Felder`,
+        onclick: () => { settings.size = sz.id; ensureCast(); draw(); },
+        html: `${miniBoard(sz.radius, settings.variant === 'fog')}<b>${sz.label}</b>`,
+      }))),
+      el('div', { class: 'lb-chips' }, [['classic', 'dune', 'Klassisch'], ['fog', 'cloud', 'Nebel']].map(([id, icon, name]) => el('button', {
+        type: 'button', class: `chip ${settings.variant === id ? 'on' : ''}`, title: id === 'fog' ? 'Ein Teil der Insel ist verdeckt (Seefahrer)' : 'Alle Felder offen',
+        onclick: () => { settings.variant = id; draw(); }, html: `${ic(icon)}<span>${name}</span>`,
+      }))));
+
+    const players = card('user', 'Spieler',
+      el('div', { class: 'lb-you' },
+        el('button', { type: 'button', class: 'lb-arrow', 'aria-label': 'Vorheriges Gesicht', onclick: () => cycleFace(-1), html: ic('chev') }),
+        el('div', { class: 'lb-face', html: avatarSVG(me.face, PLAYER_COLORS[0].hex, 104) }),
+        el('button', { type: 'button', class: 'lb-arrow r', 'aria-label': 'Nächstes Gesicht', onclick: () => cycleFace(1), html: ic('chev') })),
+      el('input', { type: 'text', class: 'lb-name', value: settings.playerName === 'Du' ? '' : settings.playerName, placeholder: 'Dein Name', maxlength: 14, 'aria-label': 'Dein Name', oninput: (e) => { settings.playerName = e.target.value.trim() || 'Du'; saveSettings(settings); } }),
+      el('div', { class: 'lb-sub' }, el('span', {}, 'Gegner'), el('em', {}, `${settings.bots}`)),
+      el('div', { class: 'lb-bots' }, BOT_ROSTER.map((b, i) => {
         const you = settings.avatarPortrait === b.id;
         const on = sel.has(b.id) && !you;
         const full = !on && sel.size >= max;
         return el('button', {
-          type: 'button', class: `char ${on ? 'on' : ''} ${you ? 'you' : ''}`, disabled: full || you || undefined, title: you ? 'Dieses Gesicht hast du gewählt' : undefined,
+          type: 'button', class: `bot ${on ? 'on' : ''} ${you ? 'you' : ''}`, disabled: full || you || undefined, title: you ? 'Das bist du' : `${b.name} – ${b.tagline}`,
+          style: `--pc:${PLAYER_COLORS[(i + 1) % 6].hex}`,
           onclick: () => { if (on) { if (sel.size > 1) sel.delete(b.id); } else sel.add(b.id); settings.botIds = BOT_ROSTER.map((x) => x.id).filter((id) => sel.has(id)); ensureCast(); draw(); },
-          html: `${avatarSVG(b.face, PLAYER_COLORS[(i + 1) % 6].hex, 52)}<b>${b.name}</b><small>${you ? 'Das bist du' : b.tagline}</small>`,
+          html: `${avatarSVG(b.face, PLAYER_COLORS[(i + 1) % 6].hex, 58)}<small>${b.name}</small>`,
         });
       })),
-      el('div', { class: 'field' }, el('span', {}, 'Stärke der Bots'),
-        seg([['easy', 'Leicht'], ['normal', 'Normal'], ['hard', 'Schwer']], settings.difficulty, (v) => { settings.difficulty = v; })));
+      el('div', { class: 'lb-diff' }, [['easy', 'Leicht'], ['normal', 'Normal'], ['hard', 'Schwer']].map(([v, l]) => el('button', {
+        type: 'button', class: `${settings.difficulty === v ? 'on' : ''}`, onclick: () => { settings.difficulty = v; draw(); },
+      }, l))));
+
+    const rules = card('trophy', 'Regeln',
+      el('div', { class: 'lb-vp' },
+        el('button', { type: 'button', class: 'vp-b', 'aria-label': 'Weniger Siegpunkte', onclick: () => { setVP(settings.targetVP - 1); draw(); }, html: ic('minus') }),
+        el('label', { class: 'vp-c' }, el('span', { class: 'vp-t', html: ic('trophy') }),
+          el('input', {
+            type: 'number', inputmode: 'numeric', min: 5, max: 20, value: settings.targetVP, class: 'vp-input', 'aria-label': 'Siegpunkte',
+            oninput: (e) => { const v = Math.round(Number(e.target.value)); if (v >= 5 && v <= 20) { settings.targetVP = v; saveSettings(settings); } },
+            onblur: (e) => { setVP(Number(e.target.value)); e.target.value = settings.targetVP; },
+          })),
+        el('button', { type: 'button', class: 'vp-b', 'aria-label': 'Mehr Siegpunkte', onclick: () => { setVP(settings.targetVP + 1); draw(); }, html: ic('plus') })),
+      el('div', { class: 'lb-rules' },
+        rule('antiBad', 'clover', 'Anti-Pech'),
+        rule('missions', 'flag', 'Missionen'),
+        rule('remapCard', 'globe', 'Weltenwandel'),
+        rule('harvestCard', 'wheat', 'Ernte'),
+        rule('goldField', 'coin', 'Wahlfeld')));
+
+    root.replaceChildren(el('div', { class: 'lobby' },
+      el('div', { class: 'lb-top' },
+        el('button', { type: 'button', class: 'hbtn lb-back', 'aria-label': 'Zurück zum Start', title: 'Zurück', onclick: () => { view = 'home'; draw(); }, html: ic('arrow') }),
+        el('h2', { class: 'lb-title' }, el('i'), el('span', {}, 'Spiel einrichten'), el('i')),
+        el('span', { class: 'lb-spacer' })),
+      el('div', { class: 'lb-grid' }, islands, players, rules),
+      el('div', { class: 'lb-foot' },
+        el('button', { type: 'button', class: 'next-btn lb-start', onclick: startGame }, el('span', { class: 'nb-text' }, 'Spiel starten'), el('span', { class: 'nb-arrow', html: ic('arrow') })))));
+    const g = window.gsap;
+    if (g && !this_animated) {
+      this_animated = true;
+      g.from('.lb-card', { y: 40, opacity: 0, duration: 0.5, stagger: 0.1, ease: 'power3.out', clearProps: 'transform,opacity' });
+      g.from('.lb-foot', { y: 30, opacity: 0, duration: 0.5, delay: 0.3, clearProps: 'transform,opacity' });
+    }
   };
 
-  const stepRules = () => el('div', { class: 'wz-body' },
-    el('h2', {}, 'Wie lange und mit welchen Regeln?'),
-    el('label', { class: 'vp-field' },
-      el('span', { class: 'vp-ico', html: ic('trophy') }),
-      el('span', { class: 'vp-txt' }, el('b', {}, 'Siegpunkte'), el('small', {}, 'Wer zuerst so viele Punkte hat, gewinnt (5–20).')),
-      el('input', {
-        type: 'number', inputmode: 'numeric', min: 5, max: 20, value: settings.targetVP, class: 'vp-input', 'aria-label': 'Siegpunkte',
-        oninput: (e) => { const v = Math.round(Number(e.target.value)); if (v >= 5 && v <= 20) { settings.targetVP = v; saveSettings(settings); } },
-        onblur: (e) => { settings.targetVP = Math.max(5, Math.min(20, Math.round(Number(e.target.value)) || 10)); e.target.value = settings.targetVP; saveSettings(settings); },
-      })),
-    el('div', { class: 'switches' },
-      toggle('antiBad', 'clover', 'Anti-Pech-Marker', 'Ausbleibende Erträge werden ausgeglichen.'),
-      toggle('missions', 'flag', 'Öffentliche Missionen', '3 Ziele mit Zusatz-Siegpunkten.'),
-      toggle('remapCard', 'globe', 'Weltenwandel-Karte', 'Mischt alle Felder neu.'),
-      toggle('harvestCard', 'wheat', 'Ernte-Karte', 'Ertrag eines eigenen Feldes sofort holen.'),
-      toggle('goldField', 'coin', 'Wahlfeld', 'Ein Feld mit freier Rohstoffwahl (wie in Erweiterungen).')));
-
-  const drawWizard = () => {
-    const body = [stepMap, stepPlayers, stepRules][step]();
-    root.replaceChildren(el('div', { class: 'wizard' },
-      el('div', { class: 'wz-head' },
-        el('button', { class: 'btn quiet small', type: 'button', onclick: () => { view = 'home'; draw(); } }, '← Start'),
-        el('ol', { class: 'steps' }, STEPS.map((n, i) => el('li', { class: `${i === step ? 'on' : ''} ${i < step ? 'done' : ''}`, onclick: () => { step = i; draw(); } }, el('i', {}, String(i + 1)), n)))),
-      body,
-      el('div', { class: 'wz-foot' },
-        step > 0 ? el('button', { class: 'btn', type: 'button', onclick: () => { step--; draw(); } }, 'Zurück') : el('span'),
-        step < STEPS.length - 1
-          ? el('button', { class: 'btn solid xl', type: 'button', onclick: () => { step++; draw(); } }, 'Weiter')
-          : el('button', { class: 'btn solid xl', type: 'button', onclick: startGame }, 'Spiel starten'))));
-  };
-
+  let this_animated = false;
   const draw = () => {
+    if (view === 'home') this_animated = false;
     ensureCast();
     saveSettings(settings);
     (view === 'home' ? drawHome : drawWizard)();
