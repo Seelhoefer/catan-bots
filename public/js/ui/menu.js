@@ -76,11 +76,12 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
 
   const maxBots = () => SIZES[settings.size].maxPlayers - 1;
   const ensureCast = () => {
-    if (settings.avatarPortrait && !BOT_ROSTER.some((b) => b.id === settings.avatarPortrait)) settings.avatarPortrait = null;
+    if (!BOT_ROSTER.some((b) => b.id === settings.avatarPortrait)) settings.avatarPortrait = BOT_ROSTER[BOT_ROSTER.length - 1].id; // dein Gesicht: immer eines der Portraits
     const others = BOT_ROSTER.filter((b) => b.id !== settings.avatarPortrait); // das eigene Gesicht spielt nicht als Gegner mit
-    const ids = (settings.botIds && settings.botIds.length ? settings.botIds : others.slice(0, settings.bots).map((b) => b.id)).filter((id) => others.some((b) => b.id === id));
-    settings.botIds = ids.slice(0, maxBots());
-    if (!settings.botIds.length) settings.botIds = [others[0].id];
+    const want = Math.min((settings.botIds && settings.botIds.length) || settings.bots || 3, maxBots());
+    const ids = (settings.botIds || []).filter((id) => others.some((b) => b.id === id));
+    for (const o of others) { if (ids.length >= want) break; if (!ids.includes(o.id)) ids.push(o.id); }
+    settings.botIds = BOT_ROSTER.map((b) => b.id).filter((id) => ids.includes(id)).slice(0, maxBots());
     settings.bots = settings.botIds.length;
   };
 
@@ -155,9 +156,6 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
               settings.botIds = BOT_ROSTER.map((x) => x.id).filter((id) => ids.includes(id));
               draw();
             }, html: avatarSVG(b.face, PLAYER_COLORS[0].hex, 48),
-          })),
-          HUMAN_FACES.map((f, i) => el('button', {
-            type: 'button', class: `face ${!settings.avatarPortrait && settings.avatar === i ? 'on' : ''}`, 'aria-label': `Avatar ${i + 1}`, onclick: () => { settings.avatarPortrait = null; settings.avatar = i; draw(); }, html: avatarSVG(f, PLAYER_COLORS[0].hex, 48),
           }))),
         el('label', { class: 'field' }, el('span', {}, 'Dein Name'),
           el('input', { type: 'text', value: settings.playerName === 'Du' ? '' : settings.playerName, placeholder: 'Du', maxlength: 14, oninput: (e) => { settings.playerName = e.target.value.trim() || 'Du'; saveSettings(settings); } }))),
@@ -182,12 +180,14 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
 
   const stepRules = () => el('div', { class: 'wz-body' },
     el('h2', {}, 'Wie lange und mit welchen Regeln?'),
-    el('div', { class: 'vp-line' },
-      el('div', { class: 'vp-big' }, ic('trophy'), el('b', {}, String(settings.targetVP)), el('small', {}, 'Siegpunkte')),
-      el('div', { class: 'vp-ctl' },
-        el('div', { class: 'presets' }, [[8, 'Kurz'], [10, 'Klassisch'], [12, 'Lang'], [15, 'Episch']].map(([v, l]) => el('button', { type: 'button', class: `btn small ${settings.targetVP === v ? 'solid' : ''}`, onclick: () => { settings.targetVP = v; draw(); } }, `${l} · ${v}`))),
-        el('input', { type: 'range', min: 5, max: 20, value: settings.targetVP, oninput: (e) => { settings.targetVP = Number(e.target.value); root.querySelector('.vp-big b').textContent = settings.targetVP; saveSettings(settings); } }))),
-    el('h3', {}, 'Neue Regeln'),
+    el('label', { class: 'vp-field' },
+      el('span', { class: 'vp-ico', html: ic('trophy') }),
+      el('span', { class: 'vp-txt' }, el('b', {}, 'Siegpunkte'), el('small', {}, 'Wer zuerst so viele Punkte hat, gewinnt (5–20).')),
+      el('input', {
+        type: 'number', inputmode: 'numeric', min: 5, max: 20, value: settings.targetVP, class: 'vp-input', 'aria-label': 'Siegpunkte',
+        oninput: (e) => { const v = Math.round(Number(e.target.value)); if (v >= 5 && v <= 20) { settings.targetVP = v; saveSettings(settings); } },
+        onblur: (e) => { settings.targetVP = Math.max(5, Math.min(20, Math.round(Number(e.target.value)) || 10)); e.target.value = settings.targetVP; saveSettings(settings); },
+      })),
     el('div', { class: 'switches' },
       toggle('antiBad', 'clover', 'Anti-Pech-Marker', 'Ausbleibende Erträge werden ausgeglichen.'),
       toggle('missions', 'flag', 'Öffentliche Missionen', '3 Ziele mit Zusatz-Siegpunkten.'),

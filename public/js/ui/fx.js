@@ -217,7 +217,6 @@ export function showDiceHero(dice, who, speedFactor = 1, avatar = '') {
   const hold = 0.95 * speedFactor;
   box.className = 'dicehero show';
   box.innerHTML = `<div class="dh">
-      <div class="dh-who">${avatar}<span>${who} würfelt …</span></div>
       <div class="dh-dice">${cubeHTML(dice[0])}${cubeHTML(dice[1])}</div>
       <div class="dh-total ${total === 7 ? 'seven' : total === 6 || total === 8 ? 'hot' : ''}"><span>${total}</span>${total === 7 ? '<small>Der Räuber kommt!</small>' : ''}</div>
     </div>`;
@@ -251,7 +250,6 @@ export function showDiceHero(dice, who, speedFactor = 1, avatar = '') {
   });
   // Zahl springt ein, die Summe zählt kurz hoch
   g.delayedCall(T + 0.12 * speedFactor, () => {
-    box.querySelector('.dh-who span').textContent = `${who} würfelt ${total}`;
     const span = totalEl.querySelector('span');
     const counter = { v: Math.max(2, total - 4) };
     g.to(totalEl, { opacity: 1, scale: 1, duration: 0.55, ease: 'elastic.out(1, 0.5)' });
