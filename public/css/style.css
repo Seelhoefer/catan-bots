@@ -215,8 +215,8 @@ kbd { background: var(--surface-2); border-radius: 5px; padding: 1px 6px; font-s
 .hl-vertex:hover .hl-ring { fill: rgba(244, 239, 227, .55); }
 .hl-edge-vis { stroke: var(--ivory); stroke-width: .09; stroke-linecap: round; stroke-dasharray: .001 .17; opacity: .95; transition: opacity .12s; }
 .hl-edge:hover .hl-edge-vis { opacity: 0; }
-.hl-hex-vis { fill: rgba(244, 239, 227, .06); stroke: var(--ivory); stroke-width: .05; stroke-dasharray: .14 .12; opacity: .8; }
-.hl-hex:hover .hl-hex-vis { fill: rgba(244, 239, 227, .2); }
+.hl-hex-vis { fill: transparent; stroke: none; }
+.hl-hex:hover .hl-hex-vis { fill: rgba(244, 239, 227, .12); }
 .sel-ring { fill: none; stroke: var(--ivory); stroke-width: .05; filter: drop-shadow(0 0 .08px rgba(244,239,227,.9)); pointer-events: none; }
 
 .bld.pop { animation: pop .45s cubic-bezier(.2, 1.5, .4, 1); transform-box: fill-box; transform-origin: 50% 100%; }
@@ -864,3 +864,38 @@ button, .tool, .btn, .icon-btn, .res-pick, .seg button { touch-action: manipulat
   .hud-left .rchip[data-res], .hud-left .hud-sep { display: none; }
 }
 @keyframes cardLand { 0% { transform: translateY(-30px) scale(1.3); filter: brightness(1.7); } 100% { transform: none; filter: none; } }
+
+/* Räuber/Ernte: jedes wählbare Feld pulsiert als Kreis */
+.hl-pulse { fill: rgba(244, 239, 227, .10); stroke: var(--ivory); stroke-width: .06; transform-box: fill-box; transform-origin: center; animation: hexPulse 1.7s ease-out infinite; pointer-events: none; }
+.hl-pulse.p2 { animation-delay: .85s; }
+.hl-dot { fill: var(--ivory); opacity: .85; pointer-events: none; }
+.hl-hex:hover .hl-pulse { animation: none; transform: scale(1.12); fill: rgba(244, 239, 227, .28); }
+.hl-hex.pending .hl-pulse { animation: none; fill: rgba(244, 239, 227, .35); }
+@keyframes hexPulse { 0% { transform: scale(.55); opacity: .95; } 100% { transform: scale(1.35); opacity: 0; } }
+.turn-who .avatar-svg { flex: none; box-shadow: 0 0 0 2px var(--pc); }
+.logline .avatar-svg { flex: none; width: 18px; height: 18px; }
+.victim-av .avatar-svg { box-shadow: 0 0 0 2px var(--pc); }
+.victim { align-items: center; }
+.m-claimed { display: flex; align-items: center; gap: 6px; }
+.m-claimed .avatar-svg { width: 18px; height: 18px; }
+td.who { display: flex; align-items: center; gap: 8px; }
+.dh-who { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.dh-who .avatar-svg { box-shadow: 0 0 0 2px rgba(255,255,255,.7); }
+
+/* Würfel-Moment: echte 3D-Würfel */
+.dh-dice { display: flex; gap: 60px; justify-content: center; align-items: flex-end; perspective: 900px; height: 190px; }
+.d3 { --ds: 92px; --half: 46px; position: relative; width: var(--ds); height: var(--ds); }
+.d3-fly, .cube { position: absolute; inset: 0; transform-style: preserve-3d; }
+.face { position: absolute; inset: 0; background: linear-gradient(145deg, #fffdf4, #e6dcc2); border-radius: 17%; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 14%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.1), inset 0 -5px 9px rgba(0,0,0,.08); backface-visibility: hidden; }
+.face i { margin: 12%; border-radius: 50%; }
+.face i.on { background: radial-gradient(circle at 35% 30%, #404a5e, #131a27); box-shadow: inset 0 1px 2px rgba(0,0,0,.6); }
+.d3-shadow { position: absolute; left: 6%; right: 6%; bottom: -16px; height: 22px; background: radial-gradient(ellipse, rgba(0,0,0,.65), transparent 70%); filter: blur(3px); }
+.d3-ring { position: absolute; left: 50%; bottom: -6px; width: 150px; height: 34px; margin-left: -75px; border-radius: 50%; border: 2px solid rgba(255,255,255,.55); box-shadow: 0 0 14px rgba(255,255,255,.25); animation: dust .65s ease-out forwards; pointer-events: none; }
+@keyframes dust { from { transform: scale(.25); opacity: .9; } to { transform: scale(1.35); opacity: 0; } }
+.dh-total.hot { color: var(--gold); text-shadow: 0 0 32px rgba(233,185,73,.65), 0 6px 24px rgba(0,0,0,.6); }
+.dh-total.in span { display: inline-block; animation: totalPop .5s cubic-bezier(.2,1.8,.4,1); }
+@keyframes totalPop { from { transform: scale(.4) rotate(-6deg); } }
+@media (max-width: 860px) { .d3 { --ds: 66px; --half: 33px; } .dh-dice { gap: 38px; height: 150px; } .d3-ring { width: 110px; margin-left: -55px; } }
+@media (max-height: 520px) and (orientation: landscape) { .d3 { --ds: 52px; --half: 26px; } .dh-dice { height: 110px; gap: 30px; } .d3-fly { } }
+.ch-cap { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.ch-cap .avatar-svg { box-shadow: 0 0 0 2px rgba(255,255,255,.7); }

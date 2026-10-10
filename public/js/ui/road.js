@@ -2,8 +2,8 @@
 // Eine Straße liegt mittig auf einer Hex-Kante; die Kantenlänge entspricht 1 Brett-Einheit.
 import { PLAYER_COLORS } from '../engine/constants.js';
 
-/** Voreinstellungen in Brett-Einheiten: deutlich kürzer als die Kante, damit Siedlungen und Städte Luft haben. */
-export const ROAD_DEFAULTS = { length: 0.5, width: 0.13 };
+/** Voreinstellungen in Brett-Einheiten: Eckpunkt zu Eckpunkt (leichte Überlappung), damit Straßen einander und die Gebäude berühren. */
+export const ROAD_DEFAULTS = { length: 1.04, width: 0.15 };
 
 /** Drehwinkel (Grad) der drei möglichen Ausrichtungen auf einem Hex-Feld mit Spitze nach oben. */
 export const ROAD_ANGLE = { vertical: 90, 'diagonal-down': 30, 'diagonal-up': -30 };
@@ -60,7 +60,7 @@ export function drawRoad(o) {
   const p = paletteOf(o.color);
   const l = length / 2;
   const w = width / 2;
-  const rx = w * 0.82;
+  const rx = w * 0.9;
   // Maserung: zwei feine, leicht versetzte Linien entlang der Länge
   const grain = [-0.28, 0.2].map((k, i) => `<path d="M${(-l * (0.78 - i * 0.12)).toFixed(3)} ${(w * k).toFixed(3)}H${(l * (0.62 + i * 0.2)).toFixed(3)}" stroke="${p.grain}" stroke-opacity=".28" stroke-width="${(width * 0.055).toFixed(3)}" stroke-linecap="round"/>`).join('');
   return `<g class="road-vec${o.cls ? ` ${o.cls}` : ''}" transform="translate(${o.x.toFixed(3)} ${o.y.toFixed(3)}) rotate(${angle.toFixed(2)})">

@@ -1,4 +1,5 @@
 // Dialoge: Handel, Entwicklungskarten, Anti-Pech, Abwerfen, Diebstahl, Angebote, Regeln, Spielende.
+import { avatarSVG } from './avatars.js';
 import { RES, RES_INFO, DEV_INFO } from '../engine/constants.js';
 import { MISSION_POOL } from '../engine/missions.js';
 import {
@@ -218,7 +219,7 @@ export function stealModal(app, targets) {
   m.body.append(el('div', { class: 'victims' }, targets.map((t) => {
     const p = g.s.players[t];
     return el('button', { class: 'victim', style: `--pc:${p.color}`, onclick: () => { const x = app.act('steal', HUMAN, t); if (x.ok) m.close(); } },
-      el('span', { class: 'opp-dot' }, p.name[0]), el('b', {}, p.name), el('small', {}, `${g.handCount(t)} Karten`));
+      el('span', { class: 'victim-av', html: avatarSVG(p.face, p.color, 44) }), el('b', {}, p.name), el('small', {}, `${g.handCount(t)} Karten`));
   })));
   return m;
 }
@@ -276,7 +277,7 @@ export function gameOverModal(app, { onNew, onMenu }) {
     el('p', { class: 'hint-text' }, s.winner === HUMAN ? 'Glückwunsch – du hast alle Bots hinter dir gelassen!' : `${winner.name} erreicht ${s.settings.targetVP} Siegpunkte.`),
     el('table', { class: 'score', html: `
       <thead><tr><th>Spieler</th><th title="Siedlungen">${ic('house', 'inline')}</th><th title="Städte">${ic('city', 'inline')}</th><th title="Längste Handelsstraße">${ic('road', 'inline')}</th><th title="Größte Rittermacht">${ic('sword', 'inline')}</th><th title="Siegpunktkarten">${ic('card', 'inline')}</th><th title="Missionen">${ic('flag', 'inline')}</th><th>Σ</th></tr></thead>
-      <tbody>${rows.map(({ p, b }) => `<tr class="${p.id === s.winner ? 'win' : ''}"><td><span class="pdot" style="background:${p.color}"></span>${esc(p.name)}</td><td>${b.settlements}</td><td>${b.cities * 2}</td><td>${b.longestRoad}</td><td>${b.largestArmy}</td><td>${b.victoryCards}</td><td>${b.missions}</td><td><b>${b.total}</b></td></tr>`).join('')}</tbody>` }),
+      <tbody>${rows.map(({ p, b }) => `<tr class="${p.id === s.winner ? 'win' : ''}"><td class="who">${avatarSVG(p.face, p.color, 26)}${esc(p.name)}</td><td>${b.settlements}</td><td>${b.cities * 2}</td><td>${b.longestRoad}</td><td>${b.largestArmy}</td><td>${b.victoryCards}</td><td>${b.missions}</td><td><b>${b.total}</b></td></tr>`).join('')}</tbody>` }),
     el('div', { class: 'modal-actions' },
       el('button', { class: 'btn', onclick: () => m.close() }, 'Spielfeld ansehen'),
       el('button', { class: 'btn', onclick: () => { m.close(); onMenu(); } }, 'Hauptmenü'),

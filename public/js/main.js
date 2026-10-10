@@ -14,8 +14,10 @@ import {
 } from './ui/panels.js';
 import { renderMarket, suggestTrade } from './ui/market.js';
 import { sfx } from './ui/sfx.js';
+import { music } from './ui/music.js';
+import { avatarSVG } from './ui/avatars.js';
 import {
-  floatGain, flyCards, showDiceHero, showCardHero, produceFx, bumpPlayer,
+  floatGain, flyCards, showDiceHero, showCardHero, DICE_REVEAL, produceFx, bumpPlayer,
 } from './ui/fx.js';
 import { preloadArt } from './ui/assets.js';
 import {
@@ -165,10 +167,10 @@ class App {
         break;
       case 'dice': {
         this.rolling = true;
-        sfx.play('dice');
+        sfx.play('dice', { vol: 0.8 });
         const total = e.dice[0] + e.dice[1];
-        const dur = showDiceHero(e.dice, e.pi === HUMAN ? 'Du' : name(e.pi), this.sf);
-        const reveal = 750 * this.sf;
+        const dur = showDiceHero(e.dice, e.pi === HUMAN ? 'Du' : name(e.pi), this.sf, avatarSVG(g.s.players[e.pi].face, g.s.players[e.pi].color, 36));
+        const reveal = DICE_REVEAL * this.sf;
         this.diceRevealAt = Date.now() + reveal + 150;
         this.heroEnd = Date.now() + dur; // danach folgt der Ertrag: Felder leuchten, Karten fliegen
         this.fxOffset = 0;
@@ -202,7 +204,7 @@ class App {
         break;
       case 'devplay': {
         sfx.play('cardplay');
-        const ms = showCardHero(e.card, `${e.pi === HUMAN ? 'Du spielst' : `${esc(name(e.pi))} spielt`} <b>${DEV_INFO[e.card].name}</b>`, 2300 * Math.max(0.6, this.sf));
+        const ms = showCardHero(e.card, `${avatarSVG(g.s.players[e.pi].face, g.s.players[e.pi].color, 34)} <span>${e.pi === HUMAN ? 'Du spielst' : `${esc(name(e.pi))} spielt`} <b>${DEV_INFO[e.card].name}</b></span>`, 2300 * Math.max(0.6, this.sf));
         if (e.pi !== HUMAN) this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + ms - 300);
         break;
       }
@@ -303,6 +305,8 @@ class App {
   /** Erster Klick auf einen markierten Platz wählt ihn vor (Vorschau), ein zweiter Klick darauf baut. */
   onPick(kind, id) {
     if (this.game.s.phase === 'over') return;
+    // Räuber versetzen: ein Klick genügt (keine Bestätigung nötig)
+    if (kind === 'hex' && this.game.s.sub === 'robber') { this.pending = null; this.executePick(kind, id); return; }
     if (!this.pending || this.pending.kind !== kind || this.pending.id !== id) {
       this.pending = { kind, id };
       sfx.play('select');
@@ -724,6 +728,7 @@ class App {
     pop.innerHTML = `
       <button role="menuitem" data-pop="speed">Bot-Tempo <b>${SPEEDS[this.speed][0]}</b></button>
       <button role="menuitem" data-pop="sound">Sound <b class="snd">${sfx.enabled ? 'An' : 'Aus'}</b></button>
+      <button role="menuitem" data-pop="music">Musik <b class="mus">${music.enabled ? 'An' : 'Aus'}</b></button>
       <button role="menuitem" data-pop="log">Gesamter Verlauf</button>
       <button role="menuitem" data-pop="rules">Regeln</button>
       <button role="menuitem" data-pop="menu">Hauptmenü</button>`;
@@ -736,6 +741,11 @@ class App {
       this.speed = keys[(keys.indexOf(this.speed) + 1) % keys.length];
       try { localStorage.setItem(SPEED_KEY, this.speed); } catch { /* egal */ }
       $('#menuPop').innerHTML = $('#menuPop').innerHTML.replace(/<b>.*?<\/b>/, `<b>${SPEEDS[this.speed][0]}</b>`);
+      return;
+    }
+    if (what === 'music') {
+      music.setEnabled(!music.enabled);
+      $('#menuPop .mus').textContent = music.enabled ? 'An' : 'Aus';
       return;
     }
     if (what === 'sound') {
@@ -761,8 +771,9 @@ class App {
   // ------------------------------------------------------------- UI-Bindung
   bindUI() {
     // Browser erlauben Ton erst nach einer Nutzergeste
-    document.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
-    document.addEventListener('keydown', () => sfx.unlock(), { once: true });
+    const unlock = () => { sfx.unlock(); music.start(); };
+    document.addEventListener('pointerdown', unlock, { once: true });
+    document.addEventListener('keydown', unlock, { once: true });
     document.addEventListener('click', (e) => {
       const pop = e.target.closest('[data-pop]');
       if (pop) { this.onPopover(pop.dataset.pop); return; }

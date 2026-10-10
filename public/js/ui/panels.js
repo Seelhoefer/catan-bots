@@ -82,10 +82,10 @@ export function turnInfo(g, mode) {
   const s = g.s;
   const cur = s.players[s.turn];
   const me = s.turn === HUMAN;
-  const out = { color: cur.color, who: '', what: '', next: '' };
+  const out = { color: cur.color, pid: cur.id, who: '', what: '', next: '' };
   if (s.phase === 'over') {
     const w = s.players[s.winner];
-    return { ...out, color: w.color, who: 'Spiel beendet', what: `${w.name} gewinnt` };
+    return { ...out, color: w.color, pid: w.id, who: 'Spiel beendet', what: `${w.name} gewinnt` };
   }
   if (s.phase === 'setup') {
     const first = s.setup.step < s.players.length;
@@ -140,7 +140,7 @@ export function renderTurn(g, mode) {
   return {
     key: `${g.s.phase}-${g.s.turn}`,
     html: `<div class="turn" style="--pc:${t.color}">
-      <div class="turn-who"><span class="turn-dot"></span>${esc(t.who)}</div>
+      <div class="turn-who">${avatarSVG(g.s.players[t.pid ?? g.s.turn].face, t.color, 32)}${esc(t.who)}</div>
       ${t.what ? `<div class="turn-what">${esc(t.what)}</div>` : ''}
       ${t.next ? `<div class="turn-next">${esc(t.next)}</div>` : ''}
     </div>`,
@@ -251,7 +251,7 @@ export function renderMissionBox(g, open) {
           <div class="m-title">${def.name}<span class="m-reward">+1</span></div>
           <div class="m-desc">${def.desc}</div>
           ${owner
-    ? `<div class="m-claimed"><span class="pdot" style="background:${owner.color}"></span>${esc(owner.name)} war schneller</div>`
+    ? `<div class="m-claimed">${avatarSVG(owner.face, owner.color, 18)}${esc(owner.name)} war schneller</div>`
     : `<div class="m-bar"><div style="width:${Math.round((prog.cur / prog.max) * 100)}%"></div></div><div class="m-prog">${prog.cur} / ${prog.max}</div>`}
         </div>
       </div>`;
@@ -264,8 +264,8 @@ export function renderMissionBox(g, open) {
 // ------------------------------------------------------------------ Verlauf (einklappbar, minimal)
 export function renderLogHTML(g, limit = 14) {
   return g.s.log.slice(-limit).map((l) => {
-    const color = l.pi !== null && l.pi !== undefined ? g.s.players[l.pi].color : 'var(--faint)';
-    return `<div class="logline"><i style="background:${color}"></i><span>${rich(l.msg)}</span></div>`;
+    const p = l.pi !== null && l.pi !== undefined ? g.s.players[l.pi] : null;
+    return `<div class="logline">${p ? avatarSVG(p.face, p.color, 18) : '<i></i>'}<span>${rich(l.msg)}</span></div>`;
   }).join('');
 }
 

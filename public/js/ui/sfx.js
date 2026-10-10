@@ -158,6 +158,7 @@ const SOUNDS = {
     bell(t + 0.08, N(base + 12), { gain: hot ? 0.2 : 0.12, dur: hot ? 0.9 : 0.5 });
     if (hot) bell(t + 0.16, N(base + 19), { gain: 0.14, dur: 0.9 });
   },
+  diceHit: (t, o) => { knock(t, { pitch: 215 * (o.pitch || 1), gain: 0.55 }); tone(t, { f: 120, to: 70, dur: 0.12, gain: 0.25 }); },
   gain: (t) => { tone(t, { f: 660, to: 990, dur: 0.09, gain: 0.1, type: 'triangle' }); tone(t + 0.07, { f: 1320, dur: 0.1, gain: 0.06, type: 'triangle' }); },
   token: (t) => { [84, 88, 91, 96].forEach((n, i) => tone(t + i * 0.05, { f: N(n), dur: 0.25, gain: 0.07 })); },
 
@@ -186,7 +187,7 @@ const SOUNDS = {
 
 // Feinabgleich der Lautstärke je Klang (Messung: Spitzenpegel der synthetisierten Klänge)
 const BOOST = {
-  tick: 1.8, select: 2.2, error: 2.2, gain: 2.4, token: 1.8, card: 3, cardplay: 1.8, harvest: 1.6,
+  diceHit: 1.2, tick: 1.8, select: 2.2, error: 2.2, gain: 2.4, token: 1.8, card: 3, cardplay: 1.8, harvest: 1.6,
   steal: 2.4, deal: 2.6, land: 2.2, dice: 2.4, turn: 2.2, remap: 1.6, monopoly: 1.5, vpOther: 2, trade: 1.2, lose: 1.5, offer: 1.4, robber: 0.9,
 };
 
@@ -228,6 +229,9 @@ export const sfx = {
     const c = ensure();
     if (c && c.state === 'suspended') c.resume();
   },
+
+  /** Gemeinsamer AudioContext (auch für die Musik). */
+  context() { return ensure(); },
 
   get enabled() { return enabled; },
 

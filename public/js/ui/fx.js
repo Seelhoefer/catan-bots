@@ -1,7 +1,8 @@
 // Kleine Inszenierungen: Würfel-Moment, aufpoppende Erträge, fliegende Karten beim Handel.
 import { RES, RES_INFO } from '../engine/constants.js';
-import { ic, resSq, dieHTML } from './dom.js';
+import { ic, resSq } from './dom.js';
 import { cardHTML } from './cards.js';
+import { sfx } from './sfx.js';
 
 const layer = () => document.getElementById('fx');
 
@@ -68,20 +69,87 @@ export function flyCards(from, to, hand, delay = 0) {
   }
 }
 
+// ------------------------------------------------------------------ Würfel-Moment (echte 3D-Würfel)
+export const DICE_REVEAL = 900; // ms bis die Würfel liegen (× Tempo-Faktor)
+
+const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+// Welche Augenzahl liegt auf welcher Würfelseite (gegenüber = 7)
+const FACES = [[1, 'rotateY(0deg)'], [6, 'rotateY(180deg)'], [3, 'rotateY(90deg)'], [4, 'rotateY(-90deg)'], [2, 'rotateX(90deg)'], [5, 'rotateX(-90deg)']];
+// Drehung (X, Y) des Würfels, bei der die jeweilige Zahl vorne liegt
+const ORIENT = { 1: [0, 0], 6: [0, 180], 3: [0, -90], 4: [0, 90], 2: [-90, 0], 5: [90, 0] };
+const TILT = [-26, -30]; // leichte Schrägsicht, damit man die Würfelform sieht
+
+function cubeHTML() {
+  const face = ([n, rot]) => `<div class="face" style="transform:${rot} translateZ(var(--half))">${Array.from({ length: 9 }, (_, i) => `<i class="${PIPS[n].includes(i) ? 'on' : ''}"></i>`).join('')}</div>`;
+  return `<div class="d3"><div class="d3-shadow"></div><div class="d3-fly"><div class="cube">${FACES.map(face).join('')}</div></div></div>`;
+}
+
+const rotStr = (ax, ay, az, ox, oy) => `rotateX(${TILT[0]}deg) rotateY(${TILT[1]}deg) rotateX(${ox + ax}deg) rotateY(${oy + ay}deg) rotateZ(${az}deg)`;
+
+/** Wurf, Aufprall, zweimal Nachhüpfen; Würfel kommen von links/rechts oben. */
+function throwDie(node, value, side, T, delay) {
+  const fly = node.querySelector('.d3-fly');
+  const cube = node.querySelector('.cube');
+  const shadow = node.querySelector('.d3-shadow');
+  const [ox, oy] = ORIENT[value];
+  const spin = (n) => 360 * n;
+  const sx = -side * (300 + Math.random() * 60);
+  const rnd = () => (Math.random() > 0.5 ? 1 : -1);
+  const start = { ax: spin(rnd() * (2 + Math.floor(Math.random() * 2))), ay: spin(rnd() * (2 + Math.floor(Math.random() * 2))), az: rnd() * (90 + Math.random() * 180) };
+  const rot = [
+    { transform: rotStr(start.ax, start.ay, start.az, ox, oy), offset: 0 },
+    { transform: rotStr(start.ax * 0.35, start.ay * 0.35, start.az * 0.35, ox, oy), offset: 0.46, easing: 'ease-out' },
+    { transform: rotStr(start.ax * 0.1, start.ay * 0.12, start.az * 0.1, ox, oy), offset: 0.74, easing: 'ease-out' },
+    { transform: rotStr(0, 0, 0, ox, oy), offset: 1 },
+  ];
+  const opts = { duration: T, delay, fill: 'both' };
+  cube.animate(rot, { ...opts, easing: 'cubic-bezier(.25,.6,.35,1)' });
+  // Flugbahn: Wurf von außen, Aufprall, zwei Hüpfer
+  fly.animate([
+    { transform: `translate(${sx}px, -330px) scale(1.55)`, offset: 0, easing: 'cubic-bezier(.4,0,.9,.6)' },
+    { transform: 'translate(0, 0) scale(1.02, .94)', offset: 0.46, easing: 'cubic-bezier(.2,.7,.4,1)' },
+    { transform: 'translate(0, -62px) scale(.99, 1.03)', offset: 0.6, easing: 'cubic-bezier(.5,0,.8,.4)' },
+    { transform: 'translate(0, 0) scale(1.01, .97)', offset: 0.74, easing: 'cubic-bezier(.2,.7,.4,1)' },
+    { transform: 'translate(0, -16px)', offset: 0.84, easing: 'cubic-bezier(.5,0,.8,.4)' },
+    { transform: 'translate(0, 0)', offset: 1 },
+  ], opts);
+  // Schatten: klein und blass in der Luft, kräftig beim Aufprall
+  shadow.animate([
+    { transform: 'translateX(0) scale(.5)', opacity: 0.1, offset: 0 },
+    { transform: 'scale(1.05)', opacity: 0.55, offset: 0.46 },
+    { transform: 'scale(.78)', opacity: 0.3, offset: 0.6 },
+    { transform: 'scale(1)', opacity: 0.5, offset: 0.74 },
+    { transform: 'scale(.92)', opacity: 0.4, offset: 0.84 },
+    { transform: 'scale(1)', opacity: 0.5, offset: 1 },
+  ], opts);
+}
+
 /** Großer Würfel-Moment in der Bildschirmmitte. Gibt die Gesamtdauer zurück. */
-export function showDiceHero(dice, who, speedFactor = 1) {
+export function showDiceHero(dice, who, speedFactor = 1, avatar = '') {
   const box = document.getElementById('diceHero');
   if (!box) return 0;
   const total = dice[0] + dice[1];
   box.className = 'dicehero show';
   box.innerHTML = `<div class="dh">
-      <div class="dh-who">${who} würfelt …</div>
-      <div class="dh-dice">${dieHTML(dice[0], true)}${dieHTML(dice[1], true)}</div>
-      <div class="dh-total ${total === 7 ? 'seven' : ''}"><span>${total}</span>${total === 7 ? '<small>Der Räuber kommt!</small>' : ''}</div>
+      <div class="dh-who">${avatar}<span>${who} würfelt …</span></div>
+      <div class="dh-dice">${cubeHTML()}${cubeHTML()}</div>
+      <div class="dh-total ${total === 7 ? 'seven' : total === 6 || total === 8 ? 'hot' : ''}"><span>${total}</span>${total === 7 ? '<small>Der Räuber kommt!</small>' : ''}</div>
     </div>`;
-  const reveal = 750 * speedFactor;
+  const reveal = DICE_REVEAL * speedFactor;
   const hold = 950 * speedFactor;
-  setTimeout(() => { box.querySelector('.dh-dice')?.classList.add('settled'); box.querySelectorAll('.die').forEach((d) => d.classList.remove('rolling')); box.querySelector('.dh-total')?.classList.add('in'); box.querySelector('.dh-who').textContent = `${who} würfelt ${total}`; }, reveal);
+  const nodes = [...box.querySelectorAll('.d3')];
+  nodes.forEach((n, i) => throwDie(n, dice[i], i === 0 ? 1 : -1, reveal, i * 90 * speedFactor));
+  // Aufprall: Klang + Staubring zum Zeitpunkt des ersten Bodenkontakts
+  nodes.forEach((n, i) => {
+    const hit = (0.46 * reveal) + i * 90 * speedFactor;
+    setTimeout(() => { sfx.play('diceHit', { pitch: 1 + i * 0.12 }); const r = document.createElement('i'); r.className = 'd3-ring'; n.append(r); setTimeout(() => r.remove(), 700); }, hit);
+    setTimeout(() => sfx.play('diceHit', { pitch: 1.25 + i * 0.1, vol: 0.5 }), 0.74 * reveal + i * 90 * speedFactor);
+  });
+  setTimeout(() => {
+    box.querySelector('.dh-total')?.classList.add('in');
+    box.querySelector('.dh-who span').textContent = `${who} würfelt ${total}`;
+    box.querySelector('.dh-dice')?.classList.add('settled');
+  }, reveal + 120);
   setTimeout(() => box.classList.add('out'), reveal + hold);
   setTimeout(() => { box.className = 'dicehero'; box.innerHTML = ''; }, reveal + hold + 400);
   return reveal + hold + 200;

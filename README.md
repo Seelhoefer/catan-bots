@@ -52,7 +52,7 @@ kleines − zum Entfernen) und an alle senden. Bots antworten sichtbar mit Zusag
 **🟣 Wahlfeld:** Ein violettes Feld mit freier Rohstoffwahl (wie in Erweiterungen). Wird seine Zahl gewürfelt, suchst du dir
 pro angrenzender Siedlung (Stadt = 2) einen beliebigen Rohstoff aus. Abschaltbar im Regeln-Schritt.
 
-**🎲 Würfeln & Ertrag:** Großer Würfeln-Button, rasselnde Würfel mit Augensumme (Klang je nach Zahl: 6/8 glänzen, 7 grollt). Danach leuchten
+**🎲 Würfeln & Ertrag:** Großer Würfeln-Button, rasselnde Würfel mit Augensumme (Klang je nach Zahl: 6/8 glänzen, 7 grollt). Die Würfel sind echte 3D-Würfel (Wurf, Aufprall, zweimaliges Nachhüpfen, Staubring). Danach leuchten
 die Treffer-Felder auf, ein Ring breitet sich aus und die Rohstoffkarten fliegen im Bogen mit Bewegungsspur vom Feld zum Empfänger –
 zu deinem Kartenfächer unten (am Handy zu den Chips oben) oder zum Portrait des Gegners. Zähler und Karten erscheinen erst bei der Ankunft,
 begleitet von „+N“-Plaketten, Aufpoppen und Klängen. Bots lassen sich dabei mehr Zeit (Tempo im Menü: Langsam / Normal / Schnell).
@@ -80,6 +80,11 @@ linken Panel sichtbar.
 - Unten: deine Rohstoffe und die Aktionsleiste (Bauen, Handeln, Karten, Anti-Pech-Marker, Zug beenden).
 - Die Partie wird automatisch im Browser gespeichert und kann im Menü fortgesetzt werden.
 - Bot-Tempo (🐢 / 🚶 / ⚡) oben rechts einstellbar.
+
+## Musik
+
+Eine ruhige, generative Hintergrundmusik (Streicherflächen, Harfe, Flöte, Hall – Aufbauspiel-Stimmung) läuft leise im Hintergrund.
+Ein/Aus im Menü (⋯ → Musik). Eigene frei lizenzierte Stücke lassen sich über `public/assets/music/manifest.json` einbinden.
 
 ## Sound
 

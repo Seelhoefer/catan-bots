@@ -314,6 +314,7 @@ export class BoardView {
         const h = board.hexes[id];
         const pend = ui.pending && ui.pending.kind === 'hex' && ui.pending.id === id;
         out.push(`<g class="hl-hex${pend ? ' pending' : ''}" data-h="${id}"><polygon points="${this.hexPoints(board, h, 0.93)}" class="hl-hex-vis"/>`
+          + `<circle cx="${h.x}" cy="${h.y}" r="0.5" class="hl-pulse"/><circle cx="${h.x}" cy="${h.y}" r="0.5" class="hl-pulse p2"/>`
           + (ghost.hexKind === 'harvest' ? '' : `<g transform="translate(${h.x},${h.y + 0.8})" class="ghost${pend ? ' on' : ''}">${art.ok ? thiefImage() : `<g transform="translate(0,-.34)">${ROBBER}</g>`}</g>`) + '</g>');
       }
     }
