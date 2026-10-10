@@ -98,8 +98,8 @@ function frame(w, h) {
   camera.aspect = w / h;
   // Genug Platz: mindestens 8 Einheiten Breite und 5.5 Einheiten Höhe sichtbar
   const fov = (camera.fov * Math.PI) / 180;
-  const needH = 5.8 / (2 * Math.tan(fov / 2));
-  const needW = 8.6 / (2 * Math.tan(fov / 2) * camera.aspect);
+  const needH = 7.9 / (2 * Math.tan(fov / 2));
+  const needW = 11.4 / (2 * Math.tan(fov / 2) * camera.aspect);
   const dist = Math.max(needH, needW);
   camera.position.set(0, dist * 0.84, dist * 0.54);
   camera.lookAt(0, 0.2, 0);

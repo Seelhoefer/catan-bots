@@ -185,6 +185,17 @@ export class BoardView {
     this.zoomTarget = null;
   }
 
+  /** Brett-Koordinate → Bildschirm (für Effekte über dem Brett). */
+  screenPoint(x, y) {
+    const pt = this.svg.createSVGPoint();
+    pt.x = x; pt.y = y;
+    const r = pt.matrixTransform(this.svg.getScreenCTM());
+    return { x: r.x, y: r.y };
+  }
+
+  /** Bildschirmpixel pro Brett-Einheit. */
+  pxPerUnit() { return this.svg.getScreenCTM().a; }
+
   zoomBy(factor) {
     const r = this.svg.getBoundingClientRect();
     this.zoomAt(r.left + r.width / 2, r.top + r.height / 2, factor);
@@ -356,7 +367,7 @@ export class BoardView {
     // Hervorhebungen (klickbar) – ruhig, mit Vorschau der Figur beim Darüberfahren
     const ghost = ui.ghost || {};
     const gcol = ghost.color || '#fff';
-    out.push('<g class="hl">');
+    out.push(`<g class="hl" style="--ph:${(-(performance.now() % 2600)).toFixed(0)}ms">`);
     if (ui.selected) {
       for (const id of ui.selected) {
         const v = board.vertices[id];

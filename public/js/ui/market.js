@@ -88,14 +88,22 @@ function incomingView(app, offer) {
 
   const can = g.canAcceptOffer(HUMAN, offer);
   const timer = app.waitingOffer === offer.id ? `<div class="tp-timer"><i style="animation-duration:${app.offerWaitMs}ms"></i></div>` : '';
-  return `<div class="tp-body">${who(from, 'bietet')}
-    ${terms('Erhalte', offer.give, 'Gebe', offer.get)}
+  const circs = (h, hand) => `<span class="tp-hand">${RES.filter((r) => h[r] > 0).map((r) => `<span class="rcirc static r-${r} ${hand && hand[r] < h[r] ? 'lack' : ''}">${ic(r)}<b class="rc-n">${h[r]}</b></span>`).join('')}</span>`;
+  const mine = `<div class="oc-hand"><span class="tp-lbl">Deine Karten</span><div class="oc-hand-row">${RES.map((r) => `<span class="rcirc static mini r-${r} ${me.hand[r] ? '' : 'none'}">${ic(r)}<b class="rc-n">${me.hand[r]}</b></span>`).join('')}</div></div>`;
+  return `<div class="tp-body">${who(from, 'macht dir ein Angebot')}
+    <div class="oc">
+      <div class="oc-col up"><span class="oc-tag">Du bekommst</span>${circs(offer.give)}</div>
+      <div class="oc-mid">${ic('trade')}</div>
+      <div class="oc-col down"><span class="oc-tag">Du gibst</span>${circs(offer.get, me.hand)}</div>
+    </div>
     ${can ? '' : `<div class="tp-hint">Dir fehlt: ${missingText(me.hand, offer.get)}</div>`}
-    <div class="tp-actions">
-      <button class="btn quiet" data-act="mk-decline" data-id="${offer.id}">Ablehnen</button>
-      <button class="btn" data-act="mk-counter-open" data-id="${offer.id}">Gegenangebot</button>
-      <button class="btn solid grow" data-act="mk-accept" data-id="${offer.id}" ${can ? '' : 'disabled'}>Annehmen</button>
-    </div>${timer}</div>`;
+    <div class="tp-actions pair">
+      <button class="btn big no" data-act="mk-decline" data-id="${offer.id}">Ablehnen</button>
+      <button class="btn big solid" data-act="mk-accept" data-id="${offer.id}" ${can ? '' : 'disabled'}>Annehmen</button>
+    </div>
+    <button class="btn counter" data-act="mk-counter-open" data-id="${offer.id}">Gegenangebot</button>
+    ${timer}
+    ${mine}</div>`;
 }
 
 // ------------------------------------------------------------------ Eigenes Angebot: zusammenstellen

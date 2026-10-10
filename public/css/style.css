@@ -1506,3 +1506,73 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .lb-rules { justify-items: center; }
 @media (max-width: 960px) { .lobby { justify-content: flex-start; } }
 @media (max-width: 960px) { .lb-title { font-size: 1.45rem; letter-spacing: .05em; white-space: nowrap; } .lb-title i { display: none; } }
+
+/* ==========================================================================
+   Weichere Auswahl-Effekte (Phase bleibt beim Neuzeichnen erhalten)
+   ========================================================================== */
+.hl-pulse, .hl-pulse.vp, .hl-pulse.ep { animation: pulseSoft 2.6s cubic-bezier(.3, .55, .4, 1) infinite; animation-delay: var(--ph, 0ms); will-change: transform, opacity; }
+.hl-pulse.p2 { animation-delay: calc(var(--ph, 0ms) - 1300ms); }
+@keyframes pulseSoft { 0% { transform: scale(.62); opacity: 0; } 22% { opacity: .85; } 100% { transform: scale(1.5); opacity: 0; } }
+.hl-pulse.vp, .hl-pulse.ep { animation-name: pulseSoftV; }
+@keyframes pulseSoftV { 0% { transform: scale(.7); opacity: 0; } 22% { opacity: .9; } 100% { transform: scale(2.1); opacity: 0; } }
+.hl-ring { animation: ringBreath 2.6s ease-in-out infinite; animation-delay: var(--ph, 0ms); }
+@keyframes ringBreath { 0%, 100% { opacity: .72; } 50% { opacity: 1; } }
+.hl-vertex:hover .hl-pulse, .hl-edge:hover .hl-pulse, .hl-hex:hover .hl-pulse { animation: none; }
+.hl-vertex .hl-ring, .hl-edge .hl-edge-vis { transition: opacity .25s ease, fill .25s ease; }
+
+/* Bau-Animationen am Brett */
+.bld.pop { animation: buildDrop .6s cubic-bezier(.3, .7, .35, 1) both; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes buildDrop {
+  0% { transform: translateY(-.95px) scale(.82, 1.18); opacity: 0; }
+  45% { opacity: 1; }
+  58% { transform: translateY(0) scale(1.14, .82); }
+  76% { transform: scale(.96, 1.07); }
+  100% { transform: none; opacity: 1; }
+}
+.road.draw { animation: roadIn .55s cubic-bezier(.25, .9, .3, 1) both; transform-box: fill-box; transform-origin: 50% 50%; }
+@keyframes roadIn { 0% { opacity: 0; transform: scale(.2, 1.6); } 55% { opacity: 1; transform: scale(1.12, .9); } 100% { opacity: 1; transform: none; } }
+
+/* Bau-Effekte (DOM-Ebene) */
+.bf-ring { position: fixed; width: 76px; height: 76px; margin: 0; border: 4px solid #fff; border-radius: 50%; pointer-events: none; z-index: 57; box-shadow: 0 0 14px currentColor; }
+.bf-ring.small { width: 38px; height: 38px; border-width: 3px; }
+.bf-flash { position: fixed; width: 130px; height: 130px; border-radius: 50%; pointer-events: none; z-index: 56; background: radial-gradient(circle, rgba(255,246,214,.95), rgba(255,226,150,.5) 35%, rgba(255,226,150,0) 70%); }
+.bf-dust { position: fixed; border-radius: 50%; pointer-events: none; z-index: 56; background: radial-gradient(circle, rgba(240,226,196,.95), rgba(210,190,150,.6) 60%, rgba(210,190,150,0) 72%); }
+.bf-spark { position: fixed; line-height: 1; pointer-events: none; z-index: 58; text-shadow: 0 0 8px rgba(255,217,106,.9); }
+.bf-bar { position: fixed; border-radius: 8px; pointer-events: none; z-index: 56; box-shadow: 0 0 16px rgba(255,255,255,.55); }
+
+/* Handel: Angebot eines Bots */
+#game.trading .bottombar { z-index: 25; }
+#game.trading .bottombar .fab, #game.trading .bottombar .nextwrap { opacity: .28; pointer-events: none; }
+.tp-layer.dim { background: rgba(3, 8, 16, .56); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.oc { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; gap: 14px; width: 100%; }
+.oc-col { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 12px 18px; border-radius: 22px; background: rgba(8, 18, 30, .55); border: 2px solid transparent; }
+.oc-col.up { border-color: rgba(79, 209, 138, .55); box-shadow: 0 0 28px rgba(79, 209, 138, .12); }
+.oc-col.down { border-color: rgba(229, 72, 77, .5); box-shadow: 0 0 28px rgba(229, 72, 77, .1); }
+.oc-tag { font-size: 13px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.oc-col.up .oc-tag { color: #6fe0a2; }
+.oc-col.down .oc-tag { color: #ff8f93; }
+.oc-mid { align-self: center; color: var(--muted); }
+.oc-mid .ic { width: 34px; height: 34px; }
+.oc .rcirc.static { width: 88px; height: 88px; }
+.oc .rcirc.static .ic { width: 54px; height: 54px; }
+.rcirc.lack { border-color: #e5484d !important; box-shadow: 0 0 0 3px #e5484d, 0 0 0 5px rgba(60, 8, 8, .9), 0 8px 18px rgba(0,0,0,.5) !important; opacity: .75; }
+.tp-actions.pair { gap: 12px; }
+.tp-actions.pair .btn.big { flex: 1; padding: 18px 16px; font-size: 18px; font-weight: 800; border-radius: 999px; }
+.btn.no { background: rgba(229, 72, 77, .16); border: 2px solid #e5484d; color: #ffb7b9; }
+.btn.no:hover:not(:disabled) { background: rgba(229, 72, 77, .3); }
+.btn.counter { align-self: center; padding: 10px 26px; font-size: 14px; font-weight: 700; border-radius: 999px; background: none; border: 1.5px solid var(--line); color: var(--muted); }
+.btn.counter:hover { color: var(--text); border-color: rgba(255,255,255,.3); }
+.oc-hand { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 4px; }
+.oc-hand-row { display: flex; gap: 10px; }
+.rcirc.static.mini { width: 46px; height: 46px; border-width: 3px; box-shadow: 0 0 0 2px #d9b45a, 0 4px 10px rgba(0,0,0,.4); }
+.rcirc.static.mini .ic { width: 28px; height: 28px; }
+.rcirc.static.mini .rc-n { top: -6px; right: -6px; min-width: 22px; height: 22px; font-size: 12px; }
+.rcirc.static.mini.none { opacity: .35; }
+@media (max-width: 860px) {
+  .oc { gap: 6px; }
+  .oc-col { padding: 12px 6px 14px; }
+  .oc .rcirc.static { width: 66px; height: 66px; }
+  .oc .rcirc.static .ic { width: 40px; height: 40px; }
+  .oc-mid .ic { width: 24px; height: 24px; }
+  .tp-actions.pair .btn.big { padding: 16px 10px; font-size: 16px; }
+}

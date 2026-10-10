@@ -18,7 +18,7 @@ import { music } from './ui/music.js';
 import { preloadDice3d } from './ui/dice3d.js';
 import { avatarSVG } from './ui/avatars.js';
 import {
-  floatGain, flyCards, showDiceHero, showCardHero, lastDice, whirlHexes, celebrate, produceFx, bumpPlayer,
+  floatGain, flyCards, showDiceHero, showCardHero, lastDice, whirlHexes, celebrate, buildFxPiece, buildFxRoad, produceFx, bumpPlayer,
 } from './ui/fx.js';
 import { preloadArt, ART_STYLES, artStyle, setArtStyle } from './ui/assets.js';
 import {
@@ -173,6 +173,7 @@ class App {
       case 'build':
         this.fresh.pieces.add(`${e.kind === 'road' ? 'e' : 'v'}${e.id}`);
         sfx.play(e.kind, { vol: e.pi === HUMAN ? 1 : 0.6 });
+        setTimeout(() => this.buildEffect(e), 40);
         break;
       case 'reveal': this.fresh.hexes.add(e.id); this.toast('Nebel gelüftet', 'info'); sfx.play('cardplay', { vol: 0.5 }); break;
       case 'remap':
@@ -687,6 +688,24 @@ class App {
   }
 
   /** Handels-Pop-up: nur neu zeichnen, wenn sich etwas geändert hat; Einblend-Animation nur beim Erscheinen. */
+  /** Klassische Bau-Effekte über dem Brett (Staub, Funken, Lichtstreifen). */
+  buildEffect(e) {
+    const g = this.game;
+    if (!g || this.game.s.phase === 'over') return;
+    const bd = g.s.board;
+    const color = g.s.players[e.pi].color;
+    const u = this.view.pxPerUnit();
+    if (e.kind === 'road') {
+      const ed = bd.edges[e.id];
+      const a = this.view.screenPoint(bd.vertices[ed.a].x, bd.vertices[ed.a].y);
+      const b = this.view.screenPoint(bd.vertices[ed.b].x, bd.vertices[ed.b].y);
+      buildFxRoad(a, b, color, u);
+    } else {
+      const v = bd.vertices[e.id];
+      buildFxPiece(e.kind, this.view.screenPoint(v.x, v.y + 0.22), color, u);
+    }
+  }
+
   /** Bau-Menü (links unten) und Weiter-Knopf (rechts unten). Neu gezeichnet wird nur bei Änderungen; das Aufklappen wird per GSAP animiert. */
   renderControls() {
     const g = this.game;
@@ -730,6 +749,7 @@ class App {
     const host = $('#market');
     const { html, key, dim, closeOnBack } = renderMarket(this);
     host.classList.toggle('dim', !!dim);
+    $('#game').classList.toggle('trading', !!dim);
     if (closeOnBack) host.dataset.act = 'mk-close'; else delete host.dataset.act;
     if (html !== this.mkHtml) {
       const scroll = host.querySelector('.tp')?.scrollTop || 0;

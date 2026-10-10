@@ -361,3 +361,73 @@ export function celebrate(kind = 'vp') {
   const r = chip && shown(chip) ? chip.getBoundingClientRect() : null;
   c({ particleCount: 46, spread: 70, startVelocity: 30, gravity: 0.9, ticks: 110, scalar: 0.85, colors, origin: r ? { x: (r.left + r.width / 2) / window.innerWidth, y: (r.top + r.height / 2) / window.innerHeight } : { x: 0.5, y: 0.2 } });
 }
+
+// ------------------------------------------------------------------ Bau-Effekte (Staub, Funken, Ring, Lichtstreifen)
+const mkEl = (cls, css = '', html = '') => {
+  const d = document.createElement('div');
+  d.className = cls;
+  if (css) d.style.cssText = css;
+  if (html) d.innerHTML = html;
+  layer().append(d);
+  return d;
+};
+
+/** Siedlung/Stadt: Aufprall mit Staubwolke, Farbring und goldenen Funken. `u` = Bildschirmpixel pro Brett-Einheit. */
+export function buildFxPiece(kind, p, color, u) {
+  const g = gs();
+  if (!g) return;
+  const city = kind === 'city';
+  const sc = city ? 1.25 : 1;
+  const flash = mkEl('bf-flash', `left:${p.x}px;top:${p.y - u * 0.15}px;`);
+  g.fromTo(flash, { xPercent: -50, yPercent: -50, scale: 0.3, opacity: 0.85 }, { scale: 1.6 * sc, opacity: 0, duration: 0.55, ease: 'power2.out', onComplete: () => flash.remove() });
+  const ring = mkEl('bf-ring', `left:${p.x}px;top:${p.y}px;border-color:${color};`);
+  g.fromTo(ring, { xPercent: -50, yPercent: -50, scaleX: 0.3, scaleY: 0.12, opacity: 0.95 }, { scaleX: 2.3 * sc, scaleY: 0.85 * sc, opacity: 0, duration: 0.7, ease: 'power2.out', delay: 0.12, onComplete: () => ring.remove() });
+  const dust = city ? 12 : 8;
+  for (let i = 0; i < dust; i++) {
+    const side = i % 2 ? 1 : -1;
+    const d = mkEl('bf-dust', `left:${p.x}px;top:${p.y}px;width:${10 + Math.random() * 10}px;height:${10 + Math.random() * 10}px;`);
+    g.fromTo(d, { xPercent: -50, yPercent: -50, x: side * u * 0.15, y: 0, scale: 0.3, opacity: 0 }, {
+      x: side * u * (0.35 + Math.random() * 0.55) * sc, y: -u * (0.05 + Math.random() * 0.22), scale: 1.2 + Math.random() * 0.8, opacity: 0.55,
+      duration: 0.25, delay: 0.1 + Math.random() * 0.05, ease: 'power2.out',
+    });
+    g.to(d, { opacity: 0, y: `-=${u * 0.15}`, scale: '+=0.4', duration: 0.55, delay: 0.35, ease: 'power1.in', onComplete: () => d.remove() });
+  }
+  const sparks = city ? 12 : 8;
+  for (let i = 0; i < sparks; i++) {
+    const a = (i / sparks) * Math.PI * 2 + Math.random() * 0.4;
+    const dist = u * (0.55 + Math.random() * 0.6) * sc;
+    const sp = mkEl('bf-spark', `left:${p.x}px;top:${p.y - u * 0.3}px;color:${i % 3 === 0 ? '#fff' : '#ffd96a'};font-size:${10 + Math.random() * 9}px;`, '✦');
+    g.fromTo(sp, { xPercent: -50, yPercent: -50, x: 0, y: 0, scale: 0.2, opacity: 0, rotation: 0 }, {
+      x: Math.cos(a) * dist, y: Math.sin(a) * dist * 0.8 - u * 0.15, scale: 1, opacity: 1, rotation: 90 + Math.random() * 90,
+      duration: 0.3, delay: 0.1, ease: 'power2.out',
+    });
+    g.to(sp, { opacity: 0, scale: 0.2, y: `+=${u * 0.35}`, duration: 0.5, delay: 0.38, ease: 'power1.in', onComplete: () => sp.remove() });
+  }
+}
+
+/** Straße: ein Lichtstreifen läuft von A nach B, hinterlässt Funken. */
+export function buildFxRoad(a, b, color, u) {
+  const g = gs();
+  if (!g) return;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+  const ang = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const bar = mkEl('bf-bar', `left:${a.x}px;top:${a.y}px;width:${len}px;height:${Math.max(8, u * 0.17)}px;background:linear-gradient(90deg, ${color}00, ${color} 55%, #fff);transform-origin:0 50%;`);
+  g.set(bar, { rotation: ang, yPercent: -50 });
+  g.fromTo(bar, { scaleX: 0, opacity: 1 }, { scaleX: 1, duration: 0.34, ease: 'power2.out' });
+  g.to(bar, { opacity: 0, duration: 0.4, delay: 0.3, ease: 'power1.in', onComplete: () => bar.remove() });
+  const n = 7;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const x = a.x + dx * t;
+    const y = a.y + dy * t;
+    const sp = mkEl('bf-spark', `left:${x}px;top:${y}px;color:${i % 2 ? '#fff' : '#ffd96a'};font-size:${9 + (i % 3) * 3}px;`, '✦');
+    g.fromTo(sp, { xPercent: -50, yPercent: -50, scale: 0, opacity: 0, rotation: 0, y: 0 }, { scale: 1, opacity: 1, rotation: 120, y: -u * 0.12, duration: 0.2, delay: t * 0.3, ease: 'back.out(2)' });
+    g.to(sp, { opacity: 0, scale: 0, y: `-=${u * 0.2}`, duration: 0.4, delay: t * 0.3 + 0.2, ease: 'power1.in', onComplete: () => sp.remove() });
+  }
+  [a, b].forEach((p2, k) => {
+    const ring = mkEl('bf-ring small', `left:${p2.x}px;top:${p2.y}px;border-color:${color};`);
+    g.fromTo(ring, { xPercent: -50, yPercent: -50, scale: 0.2, opacity: 0.9 }, { scale: 1.6, opacity: 0, duration: 0.5, delay: k ? 0.3 : 0, ease: 'power2.out', onComplete: () => ring.remove() });
+  });
+}
