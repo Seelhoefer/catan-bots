@@ -92,8 +92,8 @@ export async function setArtStyle(id) {
 // Sichtbarer Inhalt (Bildbereich ohne transparenten Rand), in Bildpixeln – für die Platzierung auf dem Brett.
 export const PIECE_BOX = {
   // w/h = Bildgröße, l/r = sichtbarer Inhalt waagerecht, b = unterste sichtbare Zeile, target = Breite des Inhalts auf dem Brett (Kante = 1)
-  settlement: { w: 256, h: 256, l: 8, r: 248, b: 252, target: 0.96 },
-  city: { w: 256, h: 256, l: 12, r: 244, b: 252, target: 1.2 },
+  settlement: { w: 256, h: 256, l: 14, r: 241, b: 252, target: 0.9 },
+  city: { w: 256, h: 256, l: 20, r: 236, b: 252, target: 1.05 },
 };
 function load(src) {
   return new Promise((resolve) => {
