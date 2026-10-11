@@ -255,6 +255,9 @@ export function goldModal(app, n) {
     const g = app.game;
     const count = (r) => picks.filter((x) => x === r).length;
     m.body.replaceChildren(
+      el('div', { class: 'pk-banner' },
+        el('img', { class: 'pk-banner-ico', src: IMG.choice, alt: '', draggable: 'false' }),
+        el('div', { class: 'pk-banner-txt' }, el('small', {}, 'Wahlfeld getroffen!'), el('b', {}, n === 1 ? 'Wähle 1 Rohstoff' : `Wähle ${n} Rohstoffe`))),
       el('div', { class: 'pk-row' }, RES.map((r) => circPick(r, {
         count: count(r), disabled: picks.length >= n || g.s.bank[r] < count(r) + 1, title: `${RES_INFO[r].name} (Bank: ${g.s.bank[r]})`,
         onclick: () => { picks.push(r); sfx.play('tick'); draw(); },

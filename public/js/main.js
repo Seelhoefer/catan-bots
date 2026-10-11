@@ -230,7 +230,7 @@ class App {
       case 'harvest': this.flash([e.hex], 2400); sfx.play('harvest'); break;
       case 'steal': {
         // nach dem Sprung des Räubers fliegt die Karte vom Opfer zum Dieb
-        const wait = Math.max(0, this.view.robberEnd - Date.now(), (this.robberMoveAt || 0) + 1500 - Date.now()) + 120;
+        const wait = Math.max(0, this.view.robberEnd - Date.now(), (this.robberMoveAt || 0) + 2300 - Date.now()) + 120;
         const known = e.from === HUMAN || e.to === HUMAN;
         this.inflightSteal = (this.inflightSteal || 0) + 1;
         setTimeout(() => {
@@ -690,7 +690,12 @@ class App {
     $('#missionBox').innerHTML = renderMissionBox(g, this.ui.missionsOpen);
 
     if (s.phase === 'main' && s.sub === 'discard' && s.discard[HUMAN] !== undefined) this.ensure('discard', () => discardModal(this, s.discard[HUMAN]));
-    if (s.phase === 'main' && s.sub === 'gold' && s.gold[HUMAN]) this.ensure('gold', () => goldModal(this, s.gold[HUMAN]));
+    if (s.phase === 'main' && s.sub === 'gold' && s.gold[HUMAN]) {
+      // erst auswählen lassen, nachdem Würfel, Wirbel und Kartenflug zu sehen waren
+      const rest = this.rollPauseUntil + 350 - Date.now();
+      if (rest > 0) { clearTimeout(this.goldTimer); this.goldTimer = setTimeout(() => this.queueRender(), rest + 30); }
+      else this.ensure('gold', () => goldModal(this, s.gold[HUMAN]));
+    }
     if (s.phase === 'main' && s.sub === 'steal' && s.turn === HUMAN) this.ensure('steal', () => stealModal(this, g.stealTargets(s.robber)));
 
     if (this.modal && !this.modal.closed && this.modal.refresh) this.modal.refresh();

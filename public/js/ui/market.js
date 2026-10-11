@@ -92,9 +92,9 @@ function incomingView(app, offer) {
   const mine = `<div class="oc-hand"><span class="tp-lbl">Deine Karten</span><div class="oc-hand-row">${RES.map((r) => `<span class="rcirc static mini r-${r} ${me.hand[r] ? '' : 'none'}">${ic(r)}<b class="rc-n">${me.hand[r]}</b></span>`).join('')}</div></div>`;
   return `<div class="tp-body">${who(from, 'macht dir ein Angebot')}
     <div class="oc">
-      <div class="oc-col up"><span class="oc-tag">Du bekommst</span>${circs(offer.give)}</div>
+      <div class="oc-col up">${circs(offer.give)}<span class="oc-tag">Du bekommst</span></div>
       <div class="oc-mid">${ic('trade')}</div>
-      <div class="oc-col down"><span class="oc-tag">Du gibst</span>${circs(offer.get, me.hand)}</div>
+      <div class="oc-col down">${circs(offer.get, me.hand)}<span class="oc-tag">Du gibst</span></div>
     </div>
     <div class="tp-actions pair">
       <button class="btn big no" data-act="mk-decline" data-id="${offer.id}">Ablehnen</button>

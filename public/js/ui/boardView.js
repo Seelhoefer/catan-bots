@@ -34,7 +34,7 @@ function pieceImage(kind, hex, vx, vy, extra = '') {
   return `${shadow}<image href="${piece(COLOR_ID[hex] || 'blue', kind)}" x="${x.toFixed(3)}" y="${y.toFixed(3)}" width="${w.toFixed(3)}" height="${h.toFixed(3)}" class="piece-img" ${extra}/>`;
 }
 
-const THIEF_W = 0.86;
+const THIEF_W = 1.08;
 function thiefImage(extra = '') {
   return `<image href="${IMG.thief}" x="${-THIEF_W / 2}" y="${-THIEF_W * 1.024}" width="${THIEF_W}" height="${THIEF_W * 1.024}" class="piece-img" ${extra}/>`;
 }
@@ -422,7 +422,7 @@ export class BoardView {
     const y = h.y + 0.8;
     const g = window.gsap;
     if (!this.robberEl) {
-      this.robberLayer.innerHTML = `<g class="robber"><g class="robber-in">${art.ok ? `<ellipse class="rb-shadow" cx="0" cy="0" rx="0.4" ry="0.115" fill="rgba(0,0,0,.4)"/><g class="rb-body">${thiefImage()}</g>` : `<g transform="translate(0,-.34)">${ROBBER}</g>`}</g></g>`;
+      this.robberLayer.innerHTML = `<g class="robber"><g class="robber-in">${art.ok ? `<ellipse class="rb-shadow" cx="0" cy="0" rx="0.5" ry="0.14" fill="rgba(0,0,0,.4)"/><g class="rb-body">${thiefImage()}</g>` : `<g transform="translate(0,-.34)">${ROBBER}</g>`}</g></g>`;
       this.robberEl = this.robberLayer.firstChild;
       this.robberEl.setAttribute('transform', `translate(${x},${y})`);
       this.robberAt = hexId;
@@ -438,7 +438,7 @@ export class BoardView {
     const dx = x - from.x;
     const dy = y - (from.y + 0.8);
     const dist = Math.hypot(dx, dy);
-    const T = Math.min(1.25, 0.6 + dist * 0.11);
+    const T = Math.min(2.1, 1.05 + dist * 0.17);
     const hops = dist > 2.4 ? 2 : 1;
     this.robberEnd = Date.now() + T * 1000 + 450;
     g.killTweensOf([el, body, shadow]);
@@ -446,7 +446,7 @@ export class BoardView {
     const tl = g.timeline();
     // Der Räuber (inkl. Schatten) gleitet vom alten zum neuen Feld; der Körper hüpft dabei in Bögen
     tl.fromTo(el.querySelector('.robber-in'), { x: -dx, y: -dy }, { x: 0, y: 0, duration: T, ease: 'power2.inOut' }, 0);
-    const hop = Math.min(0.9, 0.45 + dist * 0.12);
+    const hop = Math.min(1.1, 0.55 + dist * 0.14);
     for (let i = 0; i < hops; i++) {
       const t0 = (T / hops) * i;
       const d = T / hops;
