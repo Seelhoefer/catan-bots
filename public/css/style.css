@@ -1757,3 +1757,15 @@ td.who { display: flex; align-items: center; gap: 8px; }
   .vc-actions .btn { flex: 1 1 40%; }
   .vc-actions .btn.big { flex-basis: 100%; }
 }
+
+/* Einrichten: drei gleich breite Karten, Inhalte gleichmäßig verteilt */
+@media (min-width: 961px) {
+  .lb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.isl:hover { transform: none; }
+.lb-islands { grid-auto-rows: 1fr; }
+.lb-bots { grid-auto-rows: 1fr; }
+.lb-rules { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px 0; }
+.lb-rule { flex: 0 0 33.333%; }
+@media (max-width: 960px) { .lb-rule { flex-basis: 20%; } }
+@media (max-height: 520px) and (orientation: landscape) { .lb-rule { flex-basis: 33.333%; } }
