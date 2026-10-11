@@ -78,10 +78,10 @@ function arcFly(node, p0, p1, { delay = 0, duration = 0.9, lift = 80, onDone, si
   const ctrl = { x: (p0.x + p1.x) / 2 + (Math.random() - 0.5) * 30, y: Math.min(p0.y, p1.y) - lift };
   g.set(node, { x: p0.x, y: p0.y, xPercent: -50, yPercent: -50, scale: 0.2, opacity: 0, rotation: 0 });
   const tl = g.timeline({ delay, onComplete: () => { node.remove(); onDone?.(); } });
-  tl.to(node, { opacity, scale: 1.15, duration: duration * 0.2, ease: 'back.out(2.4)' })
-    .to(node, { motionPath: { path: [p0, ctrl, p1], curviness: 1.4 }, duration: duration * 0.8, ease: 'power2.inOut' }, duration * 0.12)
-    .to(node, { scale: 0.62, rotation: spin, duration: duration * 0.8, ease: 'sine.inOut' }, duration * 0.12)
-    .to(node, { opacity: 0, scale: 0.4, duration: duration * 0.12, ease: 'power1.in' }, '-=0.1');
+  tl.to(node, { opacity, scale: 1.1, duration: duration * 0.22, ease: 'sine.out' })
+    .to(node, { motionPath: { path: [p0, ctrl, p1], curviness: 1.25 }, duration: duration * 0.82, ease: 'sine.inOut' }, duration * 0.1)
+    .to(node, { scale: 0.62, rotation: spin, duration: duration * 0.82, ease: 'sine.inOut' }, duration * 0.1)
+    .to(node, { opacity: 0, scale: 0.5, duration: duration * 0.14, ease: 'sine.in' }, duration * 0.86);
   return tl;
 }
 
@@ -109,13 +109,13 @@ function ripple(rect, color, delay) {
  *   onLaunch?:(i:number,res:string)=>void, onArrive:(res:string, last:boolean)=>void}} o  Gibt die Gesamtdauer (ms) zurück.
  */
 export function produceFx(o) {
-  const { pid, src, delay = 0, stagger = 120 } = o;
+  const { pid, src, delay = 0, stagger = 170 } = o;
   const seenHex = new Set();
   const perRes = {};
   const total = {};
   for (const e of src) total[e.res] = (total[e.res] || 0) + e.n;
   let k = 0;
-  const FLY = 1000;
+  const FLY = 1550;
   for (const e of src) {
     const from = hexRect(e.hex);
     for (let j = 0; j < e.n; j++) {
@@ -140,7 +140,7 @@ export function produceFx(o) {
           return card;
         };
         // Bewegungsspur: zwei blasse Kopien kurz hinterher
-        [[0.07, 0.5], [0.14, 0.28]].forEach(([lag, op]) => arcFly(mk(true), p0, p1, { delay: lag, duration: FLY / 1000, lift, opacity: op, spin }));
+        [[0.09, 0.5], [0.18, 0.28]].forEach(([lag, op]) => arcFly(mk(true), p0, p1, { delay: lag, duration: FLY / 1000, lift, opacity: op, spin }));
         arcFly(mk(false), p0, p1, { duration: FLY / 1000, lift, spin, onDone: () => o.onArrive(e.res, slot === total[e.res] - 1, p1) });
       }, at);
     }

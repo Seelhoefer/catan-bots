@@ -274,7 +274,7 @@ class App {
       if (mine) this.inflightH[x.res] = (this.inflightH[x.res] || 0) + x.n;
       else this.inflightO[pid] = (this.inflightO[pid] || 0) + x.n;
     }
-    const stagger = Math.max(70, Math.min(150, 1400 / Math.max(1, n))) * (0.6 + 0.4 * this.sf);
+    const stagger = Math.max(110, Math.min(220, 2000 / Math.max(1, n))) * (0.6 + 0.4 * this.sf);
     const delay = Math.max(0, this.heroEnd - Date.now()) + 380 + (this.fxOffset || 0);
     this.fxOffset = (this.fxOffset || 0) + n * stagger + 160;
     const done = {};
