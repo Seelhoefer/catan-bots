@@ -35,9 +35,9 @@ export function renderHand(g, inflight = {}) {
  * `inflight`: Karten, die noch zur Hand fliegen (belegen schon ihren Platz, bleiben aber unsichtbar).
  * `landing`: je Rohstoff, wie viele der sichtbaren letzten Karten gerade ankommen (Aufpoppen).
  */
-export function renderHandBar(g, inflight = {}, landing = {}) {
+export function renderHandBar(g, inflight = {}, landing = {}, sel = null) {
   const p = g.s.players[HUMAN];
-  const resHtml = renderResGroups(g, p, inflight, landing);
+  const resHtml = renderResGroups(g, p, inflight, landing, sel);
   const devHtml = ['knight', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'victory'].map((t) => {
     const cards = p.dev.filter((c) => c.type === t);
     if (!cards.length) return '';
@@ -50,16 +50,16 @@ export function renderHandBar(g, inflight = {}, landing = {}) {
   return resHtml + (devHtml ? `<div class="hand-sep"></div>${devHtml}` : '');
 }
 
-function renderResGroups(g, p, inflight, landing) {
+function renderResGroups(g, p, inflight, landing, sel) {
   return RES.filter((r) => p.hand[r] > 0).map((r) => {
     const n = p.hand[r];
     const hidden = Math.min(inflight[r] || 0, n);
     const visible = n - hidden;
     const cards = Array.from({ length: n }, (_, i) => {
-      const cls = i >= visible ? ' incoming' : (landing[r] && i >= visible - landing[r] ? ' land' : '');
+      const cls = (i >= visible ? ' incoming' : (landing[r] && i >= visible - landing[r] ? ' land' : '')) + (sel && i >= n - (sel[r] || 0) ? ' sel' : '');
       return `<div class="rcard r-${r}${cls}" style="--i:${i}"><span class="rc-mark">${ic(r)}</span><span class="rc-art">${ic(r)}</span><span class="rc-name">${RES_INFO[r].name}</span></div>`;
     }).join('');
-    return `<div class="rgroup" data-res="${r}" title="${RES_INFO[r].name}: ${visible}">${cards}</div>`;
+    return `<div class="rgroup ${sel ? 'pickable' : ''}" data-res="${r}" title="${RES_INFO[r].name}: ${visible}">${cards}</div>`;
   }).join('');
 }
 

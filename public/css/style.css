@@ -1690,3 +1690,18 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .pk-banner-txt small { font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #c4b5fd; }
 .pk-banner-txt b { font-size: 20px; color: #fff; }
 @media (max-width: 860px) { .pk-banner-ico { width: 42px; height: 42px; } .pk-banner-txt b { font-size: 17px; } }
+
+/* Touch: Bau-Menü als Reihe über den Knöpfen, Kosten direkt unter jedem Symbol (kein Hover nötig) */
+@media (hover: none) and (pointer: coarse) {
+  .fab-stack.open { flex-direction: row; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+  .fab-item { flex-direction: column; align-items: center; gap: 5px; width: 74px; }
+  .fab-item .fi-ico { width: 58px; height: 58px; }
+  .fab-item .fi-cost { position: static; transform: none; opacity: 1; flex-wrap: wrap; justify-content: center; gap: 1px 6px; max-width: 74px; font-size: 13px; }
+  .fab-item:hover .fi-cost { transform: none; }
+  .fi-cost .cost-chip .ic { width: 18px; height: 18px; }
+  .fi-cost .cost-chip i { font-size: 13px; }
+}
+
+/* Handel: Karten im Fächer antippen = geben wollen */
+#game.trading .rgroup.pickable { cursor: pointer; }
+.rcard.sel { transform: translateY(-26px) rotate(0deg); z-index: 4; box-shadow: 0 0 0 2px var(--gold), 0 0 18px rgba(233, 185, 73, .55); }

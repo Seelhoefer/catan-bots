@@ -1,7 +1,7 @@
 // App-Controller: verbindet Engine, Bots und Oberfläche.
 import { Game } from './engine/game.js';
 import { botAct, botRespondOffer, botJudgeCounter } from './engine/bot.js';
-import { RES, DEV_INFO } from './engine/constants.js';
+import { RES, RES_INFO, DEV_INFO } from './engine/constants.js';
 import { missionById } from './engine/missions.js';
 import { BoardView } from './ui/boardView.js';
 import {
@@ -435,6 +435,45 @@ class App {
     this.queueRender();
   }
 
+  /** Wohin ein Klick auf eine Handkarte im Handel zählt: 'give' (eigenes Angebot), 'cgive' (Gegenangebot), 'bank' oder null. */
+  tradeHandSide() {
+    const g = this.game;
+    const s = g?.s;
+    const m = this.market;
+    if (!s || s.phase !== 'main') return null;
+    if (m.counterFor !== null && m.counterFor !== undefined && g.offerById(m.counterFor)) return 'cgive';
+    if (s.turn !== HUMAN || s.sub !== 'actions' || !m.open || g.openOfferOf(HUMAN)) return null;
+    return m.tab === 'bank' ? 'bank' : 'give';
+  }
+
+  /** Ausgewählte Karten (für die Hervorhebung im Kartenfächer). */
+  tradeSel() {
+    const side = this.tradeHandSide();
+    const m = this.market;
+    if (side === 'give') return m.give;
+    if (side === 'cgive') return m.counter.give;
+    if (side === 'bank') return m.bankGive ? { [m.bankGive]: this.game.portRatio(HUMAN, m.bankGive) } : {};
+    return null;
+  }
+
+  /** Klick auf eine Handkarte = diesen Rohstoff geben wollen; jeder weitere Klick erhöht die Menge. */
+  pickFromHand(res) {
+    const side = this.tradeHandSide();
+    const g = this.game;
+    const have = g.s.players[HUMAN].hand[res];
+    if (side === 'bank') {
+      if (have < g.portRatio(HUMAN, res)) { sfx.play('error'); this.toast(`Für die Bank brauchst du ${g.portRatio(HUMAN, res)} × ${RES_INFO[res].name}`, 'warn'); return; }
+      this.handleMarket('bank-give', { dataset: { res } });
+      sfx.play('tick');
+    } else {
+      const store = side === 'give' ? this.market.give : this.market.counter.give;
+      if ((store[res] || 0) >= have) { sfx.play('error'); return; }
+      this.handleMarket('mk-inc', { dataset: { side, res } });
+      sfx.play('tick');
+    }
+    this.queueRender();
+  }
+
   handleMarket(act, el) {
     const g = this.game;
     const m = this.market;
@@ -680,7 +719,7 @@ class App {
 
     $('#hudHand').innerHTML = renderHand(g, this.inflightH);
     $('#hudOpps').innerHTML = renderPlayers(g, this.busy, this.inflightO);
-    const fan = renderHandBar(g, this.inflightH, this.landing);
+    const fan = renderHandBar(g, this.inflightH, this.landing, this.tradeSel());
     if (fan !== this.hbHtml) { this.hbHtml = fan; $('#handFan').innerHTML = fan; }
     this.fitHand();
     this.renderControls();
@@ -896,6 +935,8 @@ class App {
     document.addEventListener('keydown', unlock, { once: true });
     document.addEventListener('click', (e) => {
       if (this.ui.fabOpen && !e.target.closest('#fab')) { this.ui.fabOpen = false; this.queueRender(); }
+      const handCard = e.target.closest('#handFan .rgroup[data-res]');
+      if (handCard && this.tradeHandSide()) { this.pickFromHand(handCard.dataset.res); return; }
       const devCard = e.target.closest('[data-dev]');
       if (devCard) { playDevCard(this, devCard.dataset.dev); return; }
       const pop = e.target.closest('[data-pop]');
