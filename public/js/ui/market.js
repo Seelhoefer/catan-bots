@@ -155,7 +155,7 @@ function awaitView(app, offer) {
       decline: `<span class="aw-badge no">${ic('close')}</span>`,
       counter: `<span class="aw-badge cnt">${ic('trade')}</span>`,
     }[st];
-    const label = { think: '', accept: 'einverstanden', decline: r?.reason || 'lehnt ab', counter: 'Gegenangebot' }[st];
+    const label = { think: '', accept: 'einverstanden', decline: '', counter: 'Gegenangebot' }[st];
     const clickable = st === 'accept' || st === 'counter';
     return `<button class="aw-p ${st}" ${clickable ? `data-act="mk-pick" data-pid="${p.id}"` : 'tabindex="-1" disabled'} style="--pc:${p.color}" title="${esc(p.name)}">
       <span class="aw-av">${avatarSVG(p.face, p.color, 76)}${badge}</span><b>${esc(p.name)}</b><small>${esc(label)}</small></button>`;

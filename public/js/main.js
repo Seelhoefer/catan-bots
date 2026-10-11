@@ -617,38 +617,38 @@ class App {
     this.queueRender();
   }
 
-  /** Ein Bot macht ein öffentliches Angebot: andere Bots antworten, danach hat der Mensch Zeit zu reagieren. */
+  /**
+   * Ein Bot macht ein öffentliches Angebot: es geht gleichzeitig an alle. Die anderen Bots überlegen parallel,
+   * der Mensch kann in der Zeit ebenfalls zusagen, ablehnen oder gegenbieten. Danach entscheidet der Anbieter
+   * (Mensch vor Bots, dann in der Reihenfolge der Antworten).
+   */
   async runBotOffer(pi, offer) {
     const g = this.game;
-    const created = g.createOffer(pi, offer.give, offer.get);
+    const created = g.createOffer(pi, offer.give, offer.get, { deferred: true });
     if (!created.ok) return;
     const id = created.offer.id;
     this.queueRender();
     await sleep(350 * this.sf + 200);
-    for (const o of g.s.players) {
-      if (this.game !== g) return;
-      if (o.id === pi || !o.isBot) continue;
-      const cur = g.offerById(id);
-      if (!cur) return;
+    if (this.game !== g) return;
+    const pace = { trader: 0.8, gambler: 0.9, expander: 1, builder: 1.05, knight: 1.1, strategist: 1.35 };
+    const order = []; // Bots in der Reihenfolge ihrer Zu-/Gegenangebote
+    const botsDone = Promise.all(g.s.players.filter((o) => o.isBot && o.id !== pi).map(async (o) => {
       this.busy.add(o.id);
       this.queueRender();
-      await sleep(450 * this.sf + 250);
+      await sleep((650 + Math.random() * 1900) * (pace[o.trait] || 1) * (0.5 + 0.5 * this.sf));
       this.busy.delete(o.id);
       if (this.game !== g) return;
-      const live = g.offerById(id);
-      if (!live) return;
-      const ans = botRespondOffer(g, o.id, live);
-      if (ans.type === 'accept') { g.respondOffer(o.id, id, 'accept'); this.queueRender(); return; }
-      if (ans.type === 'counter') {
-        g.respondOffer(o.id, id, 'counter', { give: ans.give, get: ans.get });
-        if (botJudgeCounter(g, pi, ans) && g.acceptCounter(pi, id, o.id).ok) { this.queueRender(); return; }
-      } else g.respondOffer(o.id, id, 'decline');
+      const cur = g.offerById(id);
+      if (!cur) { this.queueRender(); return; }
+      const ans = botRespondOffer(g, o.id, cur);
+      if (ans.type === 'accept') { g.respondOffer(o.id, id, 'accept', null, ans.reason); order.push(o.id); }
+      else if (ans.type === 'counter') { g.respondOffer(o.id, id, 'counter', { give: ans.give, get: ans.get }, ans.reason); order.push(o.id); }
+      else g.respondOffer(o.id, id, 'decline', null, ans.reason);
       this.queueRender();
-    }
+    }));
 
-    // Der Mensch ist an der Reihe, zu antworten
-    const live = g.offerById(id);
-    if (live && !live.responses[HUMAN] && g.handCount(HUMAN) > 0) {
+    // Der Mensch bekommt das Angebot sofort und kann mit entscheiden
+    if (g.handCount(HUMAN) > 0) {
       this.waitingOffer = id;
       sfx.play('offer');
       this.waitStart = Date.now();
@@ -657,16 +657,24 @@ class App {
       while (this.game === g && g.offerById(id) && !g.offerById(id).responses[HUMAN] && Date.now() - this.waitStart < this.offerWaitMs) await sleep(150);
       this.waitingOffer = null;
       if (this.game !== g) return;
-      const after = g.offerById(id);
-      const myResp = after && after.responses[HUMAN];
-      if (myResp && myResp.type === 'counter') {
-        await sleep(500);
-        if (botJudgeCounter(g, pi, myResp) && g.acceptCounter(pi, id, HUMAN).ok) { this.queueRender(); return; }
-        this.toast(`${g.s.players[pi].name} lehnt deinen Gegenvorschlag ab.`, 'info');
-      }
+      const mine = g.offerById(id)?.responses[HUMAN];
+      if (mine?.type === 'accept' && g.acceptResponse(pi, id, HUMAN).ok) { this.queueRender(); return; }
     }
-    const last = g.offerById(id);
-    if (last) g.withdrawOffer(pi, id);
+    await botsDone;
+    if (this.game !== g) return;
+    const live = g.offerById(id);
+    if (!live) { this.queueRender(); return; }
+    const accepter = order.find((b) => live.responses[b]?.type === 'accept');
+    if (accepter !== undefined && g.acceptResponse(pi, id, accepter).ok) { this.queueRender(); return; }
+    // Gegenvorschläge (Mensch zuerst), der Anbieter nimmt den ersten, der ihm passt
+    const counters = [HUMAN, ...order].filter((b) => live.responses[b]?.type === 'counter');
+    for (const b of counters) {
+      await sleep(500);
+      if (this.game !== g) return;
+      if (botJudgeCounter(g, pi, live.responses[b]) && g.acceptResponse(pi, id, b).ok) { this.queueRender(); return; }
+      if (b === HUMAN) this.toast(`${g.s.players[pi].name} lehnt deinen Gegenvorschlag ab.`, 'info');
+    }
+    if (g.offerById(id)) g.withdrawOffer(pi, id);
     this.queueRender();
   }
 
