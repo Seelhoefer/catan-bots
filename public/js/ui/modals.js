@@ -328,21 +328,41 @@ export function rulesModal() {
 }
 
 // ------------------------------------------------------------------ Spielende
+/** Siegerbildschirm: großes Portrait des Gewinners mit Konfetti, darunter die Platzierungen als schlichte Tabelle (ohne Kacheln). */
 export function gameOverModal(app, { onNew, onMenu }) {
   const g = app.game;
   const s = g.s;
   const winner = s.players[s.winner];
-  const m = openModal({ title: s.winner === HUMAN ? 'Du hast gewonnen!' : `${winner.name} gewinnt`, wide: true });
-  const rows = s.players.map((p) => ({ p, b: g.vpBreakdown(p.id) })).sort((a, b) => b.b.total - a.b.total);
-  if (art.ok) m.body.append(el('img', { class: 'modal-art trophy', src: IMG.trophy, alt: '' }));
+  const mine = s.winner === HUMAN;
+  const m = openModal({ title: mine ? 'Du hast gewonnen!' : `${winner.name} gewinnt`, dismissable: false, bare: true });
+  m.overlay.classList.add('victory');
+  const rows = s.players
+    .map((p) => {
+      const b = g.vpBreakdown(p.id);
+      return { p, total: b.total, houses: b.settlements, cities: b.cities, roads: g.roadsOf(p.id).length, dev: p.devBought || 0 };
+    })
+    .sort((a, b) => (b.p.id === s.winner) - (a.p.id === s.winner) || b.total - a.total);
+  const head = (icon, tip, short = tip) => `<th title="${tip}" aria-label="${tip}">${ic(icon)}<small>${short}</small></th>`;
   m.body.append(
-    el('p', { class: 'hint-text' }, s.winner === HUMAN ? 'Glückwunsch – du hast alle Bots hinter dir gelassen!' : `${winner.name} erreicht ${s.settings.targetVP} Siegpunkte.`),
-    el('table', { class: 'score', html: `
-      <thead><tr><th>Spieler</th><th title="Siedlungen">${ic('house', 'inline')}</th><th title="Städte">${ic('city', 'inline')}</th><th title="Längste Handelsstraße">${ic('road', 'inline')}</th><th title="Größte Rittermacht">${ic('sword', 'inline')}</th><th title="Siegpunktkarten">${ic('card', 'inline')}</th><th title="Missionen">${ic('flag', 'inline')}</th><th>Σ</th></tr></thead>
-      <tbody>${rows.map(({ p, b }) => `<tr class="${p.id === s.winner ? 'win' : ''}"><td class="who">${avatarSVG(p.face, p.color, 26)}${esc(p.name)}</td><td>${b.settlements}</td><td>${b.cities * 2}</td><td>${b.longestRoad}</td><td>${b.largestArmy}</td><td>${b.victoryCards}</td><td>${b.missions}</td><td><b>${b.total}</b></td></tr>`).join('')}</tbody>` }),
-    el('div', { class: 'modal-actions' },
-      el('button', { class: 'btn', onclick: () => m.close() }, 'Spielfeld ansehen'),
+    el('div', { class: 'vc-hero' },
+      el('div', { class: 'vc-rays' }),
+      el('div', { class: 'vc-portrait', style: `--pc:${winner.color}`, html: `${avatarSVG(winner.face, winner.color, 168)}${art.ok ? `<img class="vc-trophy" src="${IMG.trophy}" alt="" draggable="false">` : ''}` }),
+      el('div', { class: 'vc-name' }, el('small', {}, mine ? 'Sieg!' : 'Sieger'), el('h1', {}, mine ? 'Du hast gewonnen!' : `${winner.name} gewinnt`)),
+      el('div', { class: 'vc-vp', html: `${ic('trophy')}<b>${rows[0].total}</b><span>Siegpunkte</span>` })),
+    el('table', { class: 'vc-table', html: `
+      <thead><tr><th></th><th class="vc-who"></th>${head('house', 'Siedlungen')}${head('city', 'Städte')}${head('road', 'Straßen')}${head('cards', 'Entwicklungskarten', 'Karten')}${head('trophy', 'Siegpunkte', 'Punkte')}</tr></thead>
+      <tbody>${rows.map((r, i) => `<tr class="${r.p.id === s.winner ? 'first' : ''}"><td class="vc-rank">${i + 1}</td><td class="vc-who"><div>${avatarSVG(r.p.face, r.p.color, 34)}<span>${esc(r.p.name)}${r.p.id === HUMAN && r.p.name !== 'Du' ? ' <em>(Du)</em>' : ''}</span></div></td><td>${r.houses}</td><td>${r.cities}</td><td>${r.roads}</td><td>${r.dev}</td><td class="vc-pts">${r.total}</td></tr>`).join('')}</tbody>` }),
+    el('div', { class: 'vc-actions' },
+      el('button', { class: 'btn solid big', onclick: () => { m.close(); onNew(); } }, 'Nochmal spielen'),
       el('button', { class: 'btn', onclick: () => { m.close(); onMenu(); } }, 'Hauptmenü'),
-      el('button', { class: 'btn solid', onclick: () => { m.close(); onNew(); } }, 'Nochmal spielen')));
+      el('button', { class: 'btn quiet', onclick: () => m.close() }, 'Spielfeld ansehen')));
+  const gs = window.gsap;
+  if (gs) {
+    const q = (sel) => m.body.querySelectorAll(sel);
+    gs.from(q('.vc-portrait'), { scale: 0.2, opacity: 0, rotate: -8, duration: 0.9, ease: 'elastic.out(1, 0.55)' });
+    gs.from(q('.vc-name, .vc-vp'), { y: 18, opacity: 0, duration: 0.5, stagger: 0.12, delay: 0.35, ease: 'power2.out' });
+    gs.from(q('.vc-table thead th, .vc-table tbody tr'), { y: 14, opacity: 0, duration: 0.4, stagger: 0.07, delay: 0.7, ease: 'power2.out' });
+    gs.from(q('.vc-actions .btn'), { y: 10, opacity: 0, duration: 0.4, stagger: 0.08, delay: 1.2 });
+  }
   return m;
 }

@@ -352,6 +352,20 @@ export function celebrate(kind = 'vp') {
   const c = window.confetti;
   if (!c) return;
   const colors = ['#e9b949', '#f4efe3', '#ffffff', '#f3c969', '#8fd3ff'];
+  if (kind === 'final') {
+    // Siegerbildschirm: erst große Salven, dann Regen von beiden Seiten
+    const z = { zIndex: 9999 };
+    const burst = (x, y = 0.6) => c({ ...z, particleCount: 120, spread: 80, startVelocity: 55, origin: { x, y }, colors, ticks: 260, scalar: 1.15 });
+    burst(0.2); setTimeout(() => burst(0.8), 200); setTimeout(() => burst(0.5, 0.45), 450);
+    const end = Date.now() + 4200;
+    const rain = () => {
+      c({ ...z, particleCount: 4, angle: 60, spread: 60, origin: { x: 0, y: 0.7 }, colors, ticks: 300, startVelocity: 55 });
+      c({ ...z, particleCount: 4, angle: 120, spread: 60, origin: { x: 1, y: 0.7 }, colors, ticks: 300, startVelocity: 55 });
+      if (Date.now() < end) requestAnimationFrame(rain);
+    };
+    setTimeout(rain, 700);
+    return;
+  }
   if (kind === 'win') {
     const burst = (x) => c({ particleCount: 90, spread: 75, startVelocity: 48, origin: { x, y: 0.75 }, colors, ticks: 220, scalar: 1.1 });
     burst(0.2); setTimeout(() => burst(0.8), 180); setTimeout(() => burst(0.5), 380);

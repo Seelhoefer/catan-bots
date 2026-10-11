@@ -252,8 +252,7 @@ class App {
         break;
       case 'win':
         sfx.play(e.pi === HUMAN ? 'win' : 'lose', { delay: 300 });
-        if (e.pi === HUMAN) celebrate('win');
-        setTimeout(() => this.showGameOver(), 700);
+        setTimeout(() => { this.showGameOver(); celebrate('final'); }, 700);
         break;
       case 'robber': sfx.play('robber'); this.robberMoveAt = Date.now(); break;
       case 'monopoly': sfx.play('monopoly'); break;
