@@ -1545,9 +1545,7 @@ td.who { display: flex; align-items: center; gap: 8px; }
 #game.trading .bottombar .fab, #game.trading .bottombar .nextwrap { opacity: .28; pointer-events: none; }
 .tp-layer.dim { background: rgba(3, 8, 16, .56); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
 .oc { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; gap: 14px; width: 100%; }
-.oc-col { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 12px 18px; border-radius: 22px; background: rgba(8, 18, 30, .55); border: 2px solid transparent; }
-.oc-col.up { border-color: rgba(79, 209, 138, .55); box-shadow: 0 0 28px rgba(79, 209, 138, .12); }
-.oc-col.down { border-color: rgba(229, 72, 77, .5); box-shadow: 0 0 28px rgba(229, 72, 77, .1); }
+.oc-col { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 12px; background: none; border: 0; }
 .oc-tag { font-size: 13px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
 .oc-col.up .oc-tag { color: #6fe0a2; }
 .oc-col.down .oc-tag { color: #ff8f93; }
@@ -1570,7 +1568,7 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .rcirc.static.mini.none { opacity: .35; }
 @media (max-width: 860px) {
   .oc { gap: 6px; }
-  .oc-col { padding: 12px 6px 14px; }
+  .oc-col { padding: 6px 4px; }
   .oc .rcirc.static { width: 66px; height: 66px; }
   .oc .rcirc.static .ic { width: 40px; height: 40px; }
   .oc-mid .ic { width: 24px; height: 24px; }
