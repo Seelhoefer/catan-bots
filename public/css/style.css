@@ -1685,3 +1685,4 @@ td.who { display: flex; align-items: center; gap: 8px; }
 /* Räuber & Diebstahl */
 .flycard.fc.back { background: linear-gradient(160deg, #24457a, #122646); border-color: #c9a24a; }
 .flycard.fc.back .cb-mark { position: absolute; inset: 6px 5px; border: 1px solid rgba(201,162,74,.6); border-radius: 4px; background: radial-gradient(circle, #c9a24a 0 3px, transparent 4px); }
+.bottombar #fab:empty, .bottombar #nextWrap:empty { display: none; }

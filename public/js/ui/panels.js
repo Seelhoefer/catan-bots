@@ -156,6 +156,7 @@ export function renderFab(g, mode, open) {
   const p = s.players[HUMAN];
   if (s.phase !== 'main') return '';
   const mineTurn = s.turn === HUMAN;
+  if (!mineTurn) return ''; // bei fremden Zügen keine Bau-/Handelsknöpfe
   const canAct = mineTurn && s.sub === 'actions' && !(s.roadBuildingLeft > 0);
   const anyReady = canAct && BUILD_ITEMS.some(([k]) => buildReady(g, k));
   const canBank = canAct && RES.some((r) => p.hand[r] >= g.portRatio(HUMAN, r));
