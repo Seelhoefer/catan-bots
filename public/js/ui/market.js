@@ -151,12 +151,12 @@ function awaitView(app, offer) {
     const r = offer.responses[p.id];
     const st = !r ? 'think' : r.type;
     const badge = {
-      think: '<span class="aw-badge think"><i></i><i></i><i></i></span>',
+      think: '',
       accept: `<span class="aw-badge yes">${ic('check')}</span>`,
       decline: `<span class="aw-badge no">${ic('close')}</span>`,
       counter: `<span class="aw-badge cnt">${ic('trade')}</span>`,
     }[st];
-    const label = { think: 'überlegt …', accept: 'einverstanden', decline: r?.reason || 'lehnt ab', counter: 'Gegenangebot' }[st];
+    const label = { think: '', accept: 'einverstanden', decline: r?.reason || 'lehnt ab', counter: 'Gegenangebot' }[st];
     const clickable = st === 'accept' || st === 'counter';
     return `<button class="aw-p ${st}" ${clickable ? `data-act="mk-pick" data-pid="${p.id}"` : 'tabindex="-1" disabled'} style="--pc:${p.color}" title="${esc(p.name)}">
       <span class="aw-av">${avatarSVG(p.face, p.color, 76)}${badge}</span><b>${esc(p.name)}</b><small>${esc(label)}</small></button>`;
@@ -166,8 +166,8 @@ function awaitView(app, offer) {
     <div class="aw-row">${others.map(card).join('')}</div>
     ${finished && !actionable ? '<div class="aw-msg">Niemand tauscht zu diesen Bedingungen.</div>' : ''}
     <div class="aw-actions">${finished && !actionable
-    ? '<button class="btn" data-act="mk-retry">Angebot ändern</button><button class="btn quiet" data-act="mk-withdraw-close">Schließen</button>'
-    : `<button class="btn quiet" data-act="mk-withdraw" data-id="${offer.id}">Angebot zurückziehen</button>`}</div>
+    ? '<button class="btn gbtn" data-act="mk-retry">Angebot ändern</button><button class="btn gbtn soft" data-act="mk-withdraw-close">Schließen</button>'
+    : `<button class="btn gbtn soft" data-act="mk-withdraw" data-id="${offer.id}">Angebot zurückziehen</button>`}</div>
   </div>`;
 }
 

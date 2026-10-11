@@ -422,11 +422,8 @@ class App {
     m.tab = 'players';
     m.sel = null;
     m.confirm = null;
-    if (!sum(m.give) && !sum(m.get)) {
-      const sug = suggestTrade(this.game);
-      m.give = sug.give;
-      m.get = sug.get;
-    }
+    m.give = {};
+    m.get = {};
     this.queueRender();
   }
 
@@ -482,7 +479,13 @@ class App {
         if (r.ok) m.counterFor = null;
         break;
       }
-      case 'mk-pick': m.confirm = Number(d.pid); break;
+      case 'mk-pick': {
+        const mine = g.openOfferOf(HUMAN);
+        const r = mine && mine.responses[Number(d.pid)];
+        if (r && r.type === 'accept') { this.act('acceptResponse', HUMAN, mine.id, Number(d.pid)); m.confirm = null; } // Haken antippen = bestätigt
+        else m.confirm = Number(d.pid); // Gegenangebot: erst ansehen und bestätigen
+        break;
+      }
       case 'mk-confirm-cancel': m.confirm = null; break;
       case 'mk-confirm': {
         const r = this.act('acceptResponse', HUMAN, Number(d.id), Number(d.pid));
