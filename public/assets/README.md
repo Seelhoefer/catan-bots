@@ -17,6 +17,7 @@ Illustrierte Grafiken aus dem **Community Asset Pack** und dem **Devcards Pack**
 | `illustrated/special/harbor-3to1.webp` | Runder 3:1-Hafen-Marker (v2) | 3:1-Häfen auf dem Brett, Häfen |
 | `illustrated/special/resource-choice.svg` | Rohstoff nach Wahl | Anti-Pech-Marker |
 | `illustrated/special/wild-terrain.svg` | Unbekanntes Gelände | Nebelfelder |
+| `illustrated/special/build-hammer.webp`, `trade-scale.webp` | Hammer (Bauen) und Waage (Handeln), aus „Catan Build & Trade Icons v1“ | Bildknöpfe unten links |
 | `illustrated/special/ship.webp` | Schiff (v2) | noch nicht verwendet (kein Seeweg im Spiel) |
 | `illustrated/desert.webp` | Wüste (v2) | Wüstenfeld |
 | `illustrated/thief.webp` | Dieb | Räuber-Figur, Abwerfen/Stehlen-Dialoge |

@@ -6,7 +6,7 @@ import {
   esc, rich, ic, resSq, costHTML, dieHTML,
 } from './dom.js';
 import { avatarSVG } from './avatars.js';
-import { art, piece, COLOR_ID } from './assets.js';
+import { art, piece, COLOR_ID, IMG } from './assets.js';
 import { roadIconSVG } from './road.js';
 
 const HUMAN = 0;
@@ -161,37 +161,37 @@ export function renderFab(g, mode, open) {
   const canBank = canAct && RES.some((r) => p.hand[r] >= g.portRatio(HUMAN, r));
   const items = BUILD_ITEMS.map(([kind, label, icon]) => {
     const reason = canAct ? buildStatus(g, kind) : 'Nicht dein Zug';
-    return `<button class="fab-item ${!reason ? 'ready' : 'dis'} ${mode === kind ? 'on' : ''}" data-act="${kind === 'devcard' ? 'buy-dev' : `build-${kind}`}" ${reason ? 'data-disabled="1"' : ''} title="${esc(reason || label)}">
+    return `<button class="fab-item ${!reason ? 'ready' : 'dis'} ${mode === kind ? 'on' : ''}" data-act="${kind === 'devcard' ? 'buy-dev' : `build-${kind}`}" ${reason ? 'data-disabled="1"' : ''} title="${esc(reason || label)}" aria-label="${esc(label)}">
       <span class="fi-ico">${pieceIcon(g, kind) || ic(icon)}</span>
-      <span class="fi-text"><b>${label}</b><span class="fi-cost">${costChips(g, kind)}</span></span>
-      <span class="fi-state">${!reason ? ic('plus') : ''}</span></button>`;
+      <span class="fi-cost">${costChips(g, kind)}</span></button>`;
   }).join('');
   const dev = p.dev.length;
   return `
     <div class="fab-stack ${open && canAct ? 'open' : ''}">${items}</div>
     <div class="fab-row">
-      <div class="fab-cell"><button class="fab-btn main ${anyReady ? 'ready' : ''} ${mode || (open && canAct) ? 'on' : ''}" data-act="fab-toggle" ${canAct ? '' : 'data-disabled="1"'} title="${canAct ? 'Bauen' : 'Bauen: nur in deinem Zug'}" aria-expanded="${!!(open && canAct)}">${mode ? (pieceIcon(g, mode === 'devcard' ? 'devcard' : mode) || ic('hammer')) : ic(open && canAct ? 'close' : 'hammer')}</button><span class="fab-lbl">Bauen</span></div>
-      <div class="fab-cell"><button class="fab-btn ${canBank ? 'ready' : ''}" data-act="trade" ${canAct ? '' : 'data-disabled="1"'} title="${canAct ? 'Handeln' : 'Handeln: nur in deinem Zug'}">${ic('trade')}</button><span class="fab-lbl">Handeln</span></div>
-      ${dev ? `<div class="fab-cell dev-cell"><button class="fab-btn ${anyPlayable(g) ? 'ready' : ''}" data-act="dev" title="Entwicklungskarten">${ic('cards')}<i class="fab-badge">${dev}</i></button><span class="fab-lbl">Karten</span></div>` : ''}
+      <button class="fab-btn main ${anyReady ? 'ready' : ''} ${mode || (open && canAct) ? 'on' : ''}" data-act="fab-toggle" ${canAct ? '' : 'data-disabled="1"'} title="${canAct ? 'Bauen' : 'Bauen: nur in deinem Zug'}" aria-label="Bauen" aria-expanded="${!!(open && canAct)}">${mode ? (pieceIcon(g, mode === 'devcard' ? 'devcard' : mode) || '') : (art.ok ? `<img class="fb-img" src="${IMG.hammer}" alt="" draggable="false">` : ic('hammer'))}</button>
+      <button class="fab-btn ${canBank ? 'ready' : ''}" data-act="trade" ${canAct ? '' : 'data-disabled="1"'} title="${canAct ? 'Handeln' : 'Handeln: nur in deinem Zug'}" aria-label="Handeln">${art.ok ? `<img class="fb-img" src="${IMG.scale}" alt="" draggable="false">` : ic('trade')}</button>
+      ${dev ? `<button class="fab-btn dev-cell ${anyPlayable(g) ? 'ready' : ''}" data-act="dev" title="Entwicklungskarten" aria-label="Entwicklungskarten">${ic('cards')}<i class="fab-badge">${dev}</i></button>` : ''}
     </div>`;
 }
 
-/** „Weiter“-Knopf unten rechts: Zug beenden (bzw. Straßenbau überspringen). */
+/** „Zug beenden“: goldenes Siegel mit Pfeil (ohne Text). Leuchtet leise, wenn du nichts Bezahlbares mehr hast. */
 export function renderNext(g) {
   const s = g.s;
   if (s.phase !== 'main' || s.turn !== HUMAN) return '';
   if (s.roadBuildingLeft > 0) {
-    return `<button class="next-btn quiet" data-act="skip-roads"><span class="nb-text">Straßenbau überspringen</span></button>`;
+    return `<button class="seal skip" data-act="skip-roads" title="Straßenbau überspringen" aria-label="Straßenbau überspringen">${ic('close')}</button>`;
   }
   if (s.sub !== 'actions') return '';
-  return `<button class="next-btn" data-act="end-turn"><span class="nb-text">Zug beenden</span><span class="nb-arrow">${ic('arrow')}</span></button>`;
+  const idle = !['road', 'settlement', 'city', 'devcard'].some((k) => !buildStatus(g, k));
+  return `<button class="seal ${idle ? 'idle' : ''}" data-act="end-turn" title="Zug beenden" aria-label="Zug beenden"><span class="seal-ring"></span><span class="seal-core">${ic('arrow')}</span></button>`;
 }
 
 // ------------------------------------------------------------------ Hero: großer Würfeln-Button in der Mitte
 export function renderHeroRoll(g) {
   const s = g.s;
   if (s.phase !== 'main' || s.turn !== HUMAN || s.sub !== 'roll' || s.roadBuildingLeft > 0) return '';
-  return `<button class="hero-roll" data-act="roll"><span class="hr-dice">${ic('dice')}</span><span class="hr-text">Würfeln</span><small>oder Taste R</small></button>`;
+  return `<button class="hero-dice" data-act="roll" title="Würfeln (Taste R)" aria-label="Würfeln">${dieHTML(5)}${dieHTML(2)}</button>`;
 }
 
 // ------------------------------------------------------------------ Missionen (einklappbar)

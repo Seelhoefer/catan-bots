@@ -729,7 +729,7 @@ class App {
     if (next !== this.nextHtml) {
       this.nextHtml = next;
       $('#nextWrap').innerHTML = next;
-      const b = $('#nextWrap .next-btn');
+      const b = $('#nextWrap .seal');
       if (b && window.gsap) window.gsap.from(b, { x: 40, opacity: 0, duration: 0.4, ease: 'back.out(1.6)', clearProps: 'transform,opacity' });
     }
   }

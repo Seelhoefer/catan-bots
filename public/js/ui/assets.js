@@ -18,6 +18,8 @@ export const IMG = {
   choice: `${BASE}special/resource-choice.svg`,
   wild: `${BASE}special/wild-terrain.svg`,
   ship: `${BASE}special/ship.webp`,
+  hammer: `${BASE}special/build-hammer.webp`,
+  scale: `${BASE}special/trade-scale.webp`,
 };
 
 // ------------------------------------------------------------------ Grafikstile
@@ -108,7 +110,7 @@ export async function preloadArt() {
   const list = [
     ...PLAYER_COLORS.flatMap((c) => ['settlement', 'city'].map((k) => piece(c.id, k))),
     ...styleList(styleId),
-    IMG.thief, IMG.trophy, IMG.harbor, IMG.choice, IMG.wild, IMG.desert,
+    IMG.thief, IMG.trophy, IMG.hammer, IMG.scale, IMG.harbor, IMG.choice, IMG.wild, IMG.desert,
   ];
   const results = await Promise.all(list.map(load));
   art.ok = results.every(Boolean);

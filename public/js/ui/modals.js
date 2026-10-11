@@ -1,5 +1,6 @@
 // Dialoge: Handel, Entwicklungskarten, Anti-Pech, Abwerfen, Diebstahl, Angebote, Regeln, Spielende.
 import { avatarSVG } from './avatars.js';
+import { sfx } from './sfx.js';
 import { RES, RES_INFO, DEV_INFO } from '../engine/constants.js';
 import { MISSION_POOL } from '../engine/missions.js';
 import {
@@ -13,15 +14,15 @@ const root = () => document.getElementById('modalRoot');
 const HUMAN = 0;
 const stack = [];
 
-export function openModal({ title, dismissable = true, wide = false, onClose } = {}) {
+export function openModal({ title, dismissable = true, wide = false, bare = false, onClose } = {}) {
   const body = el('div', { class: 'modal-body' });
   const closeBtn = dismissable ? el('button', { class: 'icon-btn small', 'aria-label': 'Schließen', onclick: () => close(), html: ic('close') }) : null;
-  const modal = el('div', { class: `modal ${wide ? 'wide' : ''}`, role: 'dialog', 'aria-modal': 'true' },
-    el('header', {}, el('h2', {}, title || ''), closeBtn), body);
-  const overlay = el('div', { class: 'overlay' }, modal);
+  const modal = el('div', { class: `modal ${wide ? 'wide' : ''} ${bare ? 'bare' : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': title || undefined },
+    bare ? null : el('header', {}, el('h2', {}, title || ''), closeBtn), body);
+  const overlay = el('div', { class: `overlay ${bare ? 'dim' : ''}` }, modal);
   const handle = {
     body, overlay, closed: false,
-    setTitle(t) { modal.querySelector('h2').textContent = t; },
+    setTitle(t) { const h = modal.querySelector('h2'); if (h) h.textContent = t; },
     close,
   };
   function close() {
@@ -149,17 +150,18 @@ export function playDevCard(app, type) {
     return;
   }
   if (type === 'monopoly') {
-    const m = openModal({ title: 'Monopol – welchen Rohstoff einsammeln?' });
-    m.body.append(el('div', { class: 'res-row' }, RES.map((r) => resBtn(r, { onclick: () => { const x = app.act('playDev', HUMAN, 'monopoly', { res: r }); if (x.ok) m.close(); } }))));
+    const m = openModal({ title: 'Monopol', bare: true });
+    m.body.append(el('div', { class: 'pk-row' }, RES.map((r) => circPick(r, { onclick: () => { const x = app.act('playDev', HUMAN, 'monopoly', { res: r }); if (x.ok) m.close(); } }))));
     return;
   }
   if (type === 'plenty') {
-    const m = openModal({ title: 'Erfindung – wähle 2 Rohstoffe' });
+    const m = openModal({ title: 'Erfindung', bare: true });
     const chosen = [];
     const draw = () => {
+      const cnt = (r) => chosen.filter((c) => c === r).length;
       m.body.replaceChildren(
-        el('div', { class: 'res-row' }, RES.map((r) => resBtn(r, {
-          disabled: g.s.bank[r] < 1 + chosen.filter((c) => c === r).length || undefined,
+        el('div', { class: 'pk-row' }, RES.map((r) => circPick(r, {
+          count: cnt(r), disabled: chosen.length >= 2 || g.s.bank[r] < cnt(r) + 1,
           onclick: () => {
             chosen.push(r);
             if (chosen.length === 2) {
@@ -170,7 +172,7 @@ export function playDevCard(app, type) {
             draw();
           },
         }))),
-        el('div', { class: 'summary', html: `${chosen.length}/2 ${chosen.map((c) => ic(c, 'inline')).join(' ')}` }),
+        el('div', { class: 'pk-slots' }, [0, 1].map((i) => (chosen[i] ? el('span', { class: `rcirc static mini r-${chosen[i]}`, html: ic(chosen[i]) }) : el('span', { class: 'pk-slot' })))),
       );
     };
     draw();
@@ -239,25 +241,30 @@ export function discardModal(app, need) {
 }
 
 // ------------------------------------------------------------------ Wahlfeld: Rohstoff nach Wahl
+/** Rohstoff als großer Kreis (Klick = wählen). */
+const circPick = (r, { count = 0, disabled, onclick, title } = {}) => el('button', {
+  type: 'button', class: `rcirc r-${r} ${count ? 'has' : ''}`, disabled: disabled || undefined, title: title || RES_INFO[r].name, 'aria-label': RES_INFO[r].name, onclick,
+  html: `${ic(r)}${count ? `<b class="rc-n">${count}</b>` : ''}`,
+});
+
+/** Wahlfeld: nur Kreise – antippen wählt, unten füllen sich die Plätze; Haken bestätigt. */
 export function goldModal(app, n) {
-  const m = openModal({ title: 'Wahlfeld – Rohstoff nach Wahl', dismissable: false });
-  const chosen = {};
+  const m = openModal({ title: 'Rohstoff wählen', dismissable: false, bare: true });
+  const picks = [];
   const draw = () => {
     const g = app.game;
-    const k = RES.reduce((a, r) => a + (chosen[r] || 0), 0);
-    m.body.replaceChildren();
-    if (art.ok) m.body.append(el('img', { class: 'modal-art small', src: IMG.choice, alt: '' }));
-    m.body.append(el('p', { class: 'hint-text' }, `Auf dem Wahlfeld wurde gewürfelt. Du darfst ${n} Rohstoff${n > 1 ? 'e' : ''} frei wählen (${k}/${n}).`));
-    m.body.append(el('div', { class: 'res-row' }, RES.map((r) => resBtn(r, {
-      count: chosen[r] || 0,
-      selected: (chosen[r] || 0) > 0,
-      disabled: k >= n || g.s.bank[r] < (chosen[r] || 0) + 1,
-      title: `${RES_INFO[r].name} (Bank: ${g.s.bank[r]})`,
-      onclick: () => { chosen[r] = (chosen[r] || 0) + 1; draw(); },
-    }))));
-    m.body.append(el('div', { class: 'modal-actions' },
-      el('button', { class: 'btn', disabled: !k || undefined, onclick: () => { for (const r of RES) chosen[r] = 0; draw(); } }, 'Zurücksetzen'),
-      el('button', { class: 'btn solid', disabled: k !== n || undefined, onclick: () => { const x = app.act('chooseGold', HUMAN, { ...chosen }); if (x.ok) m.close(); } }, 'Nehmen')));
+    const count = (r) => picks.filter((x) => x === r).length;
+    m.body.replaceChildren(
+      el('div', { class: 'pk-row' }, RES.map((r) => circPick(r, {
+        count: count(r), disabled: picks.length >= n || g.s.bank[r] < count(r) + 1, title: `${RES_INFO[r].name} (Bank: ${g.s.bank[r]})`,
+        onclick: () => { picks.push(r); sfx.play('tick'); draw(); },
+      }))),
+      el('div', { class: 'pk-slots' }, Array.from({ length: n }, (_, i) => (picks[i]
+        ? el('button', { type: 'button', class: `rcirc static mini r-${picks[i]}`, title: 'Entfernen', 'aria-label': 'Entfernen', onclick: () => { picks.splice(i, 1); draw(); }, html: ic(picks[i]) })
+        : el('span', { class: 'pk-slot' })))),
+      el('button', { type: 'button', class: 'pk-ok', 'aria-label': 'Bestätigen', disabled: picks.length !== n || undefined,
+        onclick: () => { const chosen = {}; for (const r of picks) chosen[r] = (chosen[r] || 0) + 1; const x = app.act('chooseGold', HUMAN, chosen); if (x.ok) m.close(); }, html: ic('check') }),
+    );
   };
   draw();
   return m;
