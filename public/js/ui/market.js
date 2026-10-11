@@ -72,16 +72,16 @@ function incomingView(app, offer) {
 
   if (myResp) {
     return `<div class="tp-body">${who(from, 'überlegt …')}
-      ${terms('Gebe', myResp.get, 'Erhalte', myResp.give)}<div class="tp-wait"><i></i><i></i><i></i></div></div>`;
+      ${terms('Erhalte', myResp.give, 'Gebe', myResp.get)}<div class="tp-wait"><i></i><i></i><i></i></div></div>`;
   }
 
   if (m.counterFor === offer.id) {
     const c = m.counter;
     const ready = sum(c.give) > 0 && sum(c.get) > 0 && !g.validTradeShape(c.give, c.get);
     return `<div class="tp-body">${who(from, 'Gegenangebot')}
-      <div class="tp-lbl">Gebe</div>${circRow(app, 'cgive', me.hand, true)}
-      <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
       <div class="tp-lbl">Erhalte</div>${circRow(app, 'cget', me.hand, false)}
+      <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
+      <div class="tp-lbl">Gebe</div>${circRow(app, 'cgive', me.hand, true)}
       <div class="tp-actions"><button class="btn quiet" data-act="mk-counter-cancel">Zurück</button>
       <button class="btn solid grow" data-act="mk-counter-send" data-id="${offer.id}" ${ready ? '' : 'disabled'}>Gegenvorschlag senden</button></div></div>`;
   }
@@ -113,9 +113,9 @@ function composeView(app) {
   const m = app.market;
   const valid = sum(m.give) > 0 && sum(m.get) > 0 && !g.validTradeShape(m.give, m.get) && RES.every((r) => (m.give[r] || 0) <= me.hand[r]);
   return `<div class="tp-body">
-    <div class="tp-lbl">Gebe</div>${circRow(app, 'give', me.hand, true)}
-    <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
     <div class="tp-lbl">Erhalte</div>${circRow(app, 'get', me.hand, false)}
+    <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
+    <div class="tp-lbl">Gebe</div>${circRow(app, 'give', me.hand, true)}
     <div class="tp-actions"><button class="btn solid grow" data-act="mk-send" ${valid ? '' : 'disabled'}>An alle senden</button></div></div>`;
 }
 
@@ -129,11 +129,11 @@ function bankView(app) {
   const ok = give && get && give !== get;
   const pick = (act, sel, r, dis, tag, have) => `<div class="rc-wrap"><button class="rcirc r-${r} ${sel ? 'sel' : ''}" data-act="${act}" data-res="${r}" aria-label="${RES_INFO[r].name}" ${dis ? 'disabled' : ''}>${ic(r)}${tag}</button><small>${have}</small></div>`;
   return `<div class="tp-body">
-    <div class="tp-lbl">Gebe</div>
-    <div class="rc-row">${RES.map((r, i) => pick('bank-give', give === r, r, me.hand[r] < ports[i], `<b class="rc-n ratio">${ports[i]}:1</b>`, me.hand[r])).join('')}</div>
-    <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
     <div class="tp-lbl">Erhalte</div>
     <div class="rc-row">${RES.map((r) => pick('bank-get', get === r, r, !give || r === give || g.s.bank[r] < 1, '', '')).join('')}</div>
+    <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
+    <div class="tp-lbl">Gebe</div>
+    <div class="rc-row">${RES.map((r, i) => pick('bank-give', give === r, r, me.hand[r] < ports[i], `<b class="rc-n ratio">${ports[i]}:1</b>`, me.hand[r])).join('')}</div>
     <div class="tp-actions"><button class="btn solid grow" data-act="bank-do" ${ok ? '' : 'disabled'}>${ok ? `${ports[RES.indexOf(give)]} ${RES_INFO[give].name} → 1 ${RES_INFO[get].name}` : 'Mit der Bank tauschen'}</button></div></div>`;
 }
 
@@ -161,7 +161,7 @@ function awaitView(app, offer) {
       <span class="aw-av">${avatarSVG(p.face, p.color, 76)}${badge}</span><b>${esc(p.name)}</b><small>${esc(label)}</small></button>`;
   };
   return `<div class="aw">
-    <div class="aw-offer">${terms('Gebe', offer.give, 'Erhalte', offer.get)}</div>
+    <div class="aw-offer">${terms('Erhalte', offer.get, 'Gebe', offer.give)}</div>
     <div class="aw-row">${others.map(card).join('')}</div>
     ${finished && !actionable ? '<div class="aw-msg">Niemand tauscht zu diesen Bedingungen.</div>' : ''}
     <div class="aw-actions">${finished && !actionable
@@ -180,7 +180,7 @@ function confirmView(app, offer, pid) {
   const give = counter ? r.give : offer.give; // Gegenangebote stehen aus Sicht des Anbieters (= du)
   const get = counter ? r.get : offer.get;
   return `<div class="tp-body">${who(p, counter ? 'Gegenangebot' : 'einverstanden')}
-    ${terms('Gebe', give, 'Erhalte', get)}
+    ${terms('Erhalte', get, 'Gebe', give)}
     <div class="tp-actions"><button class="btn quiet" data-act="mk-confirm-cancel">Zurück</button>
     <button class="btn solid grow" data-act="mk-confirm" data-id="${offer.id}" data-pid="${pid}">${counter ? 'Gegenangebot annehmen' : 'Handel bestätigen'}</button></div></div>`;
 }

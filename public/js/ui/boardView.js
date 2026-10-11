@@ -438,24 +438,15 @@ export class BoardView {
     const dx = x - from.x;
     const dy = y - (from.y + 0.8);
     const dist = Math.hypot(dx, dy);
-    const T = Math.min(2.1, 1.05 + dist * 0.17);
-    const hops = dist > 2.4 ? 2 : 1;
-    this.robberEnd = Date.now() + T * 1000 + 450;
+    const T = Math.min(1.9, 0.95 + dist * 0.15);
+    this.robberEnd = Date.now() + T * 1000 + 350;
     g.killTweensOf([el, body, shadow]);
     el.setAttribute('transform', `translate(${x},${y})`);
     const tl = g.timeline();
-    // Der Räuber (inkl. Schatten) gleitet vom alten zum neuen Feld; der Körper hüpft dabei in Bögen
+    // Der Räuber wird (samt Schatten) gleichmäßig vom alten zum neuen Feld geschoben – kein Hüpfen
     tl.fromTo(el.querySelector('.robber-in'), { x: -dx, y: -dy }, { x: 0, y: 0, duration: T, ease: 'power2.inOut' }, 0);
-    const hop = Math.min(1.1, 0.55 + dist * 0.14);
-    for (let i = 0; i < hops; i++) {
-      const t0 = (T / hops) * i;
-      const d = T / hops;
-      tl.to(body, { y: -hop, duration: d * 0.5, ease: 'power2.out' }, t0);
-      tl.to(body, { y: 0, duration: d * 0.5, ease: 'power2.in' }, t0 + d * 0.5);
-      if (shadow) { tl.to(shadow, { scaleX: 0.6, opacity: 0.45, transformOrigin: '50% 50%', duration: d * 0.5, ease: 'power2.out' }, t0); tl.to(shadow, { scaleX: 1, opacity: 1, duration: d * 0.5, ease: 'power2.in' }, t0 + d * 0.5); }
-    }
-    // Landung: federn
-    tl.fromTo(body, { scaleY: 0.82, scaleX: 1.12, transformOrigin: '50% 100%' }, { scaleY: 1, scaleX: 1, duration: 0.45, ease: 'elastic.out(1, 0.45)' }, T);
+    // Landung: ruhiges Absetzen
+    tl.fromTo(body, { scaleY: 0.95, scaleX: 1.03, transformOrigin: '50% 100%' }, { scaleY: 1, scaleX: 1, duration: 0.3, ease: 'power2.out' }, T);
     tl.call(() => { this.onRobberLand?.(x, y); }, null, T);
   }
 
