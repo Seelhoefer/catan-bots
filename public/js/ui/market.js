@@ -96,7 +96,6 @@ function incomingView(app, offer) {
       <div class="oc-mid">${ic('trade')}</div>
       <div class="oc-col down"><span class="oc-tag">Du gibst</span>${circs(offer.get, me.hand)}</div>
     </div>
-    ${can ? '' : `<div class="tp-hint">Dir fehlt: ${missingText(me.hand, offer.get)}</div>`}
     <div class="tp-actions pair">
       <button class="btn big no" data-act="mk-decline" data-id="${offer.id}">Ablehnen</button>
       <button class="btn big solid" data-act="mk-accept" data-id="${offer.id}" ${can ? '' : 'disabled'}>Annehmen</button>

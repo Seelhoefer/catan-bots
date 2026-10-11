@@ -431,3 +431,32 @@ export function buildFxRoad(a, b, color, u) {
     g.fromTo(ring, { xPercent: -50, yPercent: -50, scale: 0.2, opacity: 0.9 }, { scale: 1.6, opacity: 0, duration: 0.5, delay: k ? 0.3 : 0, ease: 'power2.out', onComplete: () => ring.remove() });
   });
 }
+
+/** Diebstahl: Das Opfer „zuckt“, die Karte (Rückseite, wenn Bots untereinander) löst sich im Bogen und landet beim Dieb. */
+export function stealFx({ from, to, res, onArrive }) {
+  const g = gs();
+  const a = rectOfPlayer(from, res);
+  const b = rectOfPlayer(to, res);
+  if (!g || !a || !b) { onArrive?.(); return; }
+  const p0 = { x: a.left + a.width / 2, y: a.top + a.height / 2 };
+  const p1 = { x: b.left + b.width / 2, y: b.top + b.height / 2 };
+  // Opfer: kurzes Wackeln + roter Ring
+  const victim = document.querySelector(`.pcard[data-pid="${from}"]`);
+  if (victim) g.fromTo(victim, { x: -5 }, { x: 0, duration: 0.55, ease: 'elastic.out(1, 0.25)', clearProps: 'transform' });
+  const ring = mkEl('bf-ring small', `left:${p0.x}px;top:${p0.y}px;border-color:#ff6b6b;`);
+  g.fromTo(ring, { xPercent: -50, yPercent: -50, scale: 0.3, opacity: 0.95 }, { scale: 2.2, opacity: 0, duration: 0.6, ease: 'power2.out', onComplete: () => ring.remove() });
+  const lift = 90 + Math.random() * 40;
+  const mk = (ghost) => {
+    const c = document.createElement('div');
+    c.className = `flycard fc ${res ? `r-${res}` : 'back'}${ghost ? ' ghost' : ''}`;
+    c.innerHTML = res ? `<span class="rc-art">${ic(res)}</span>` : '<span class="cb-mark"></span>';
+    layer().append(c);
+    return c;
+  };
+  [[0.1, 0.5], [0.2, 0.28]].forEach(([lag, op]) => arcFly(mk(true), p0, p1, { delay: lag + 0.15, duration: 1.3, lift, opacity: op, spin: 14 }));
+  arcFly(mk(false), p0, p1, { delay: 0.15, duration: 1.3, lift, spin: 14, onDone: () => {
+    const flash = mkEl('bf-flash', `left:${p1.x}px;top:${p1.y}px;`);
+    g.fromTo(flash, { xPercent: -50, yPercent: -50, scale: 0.3, opacity: 0.8 }, { scale: 1.2, opacity: 0, duration: 0.45, ease: 'power2.out', onComplete: () => flash.remove() });
+    onArrive?.();
+  } });
+}

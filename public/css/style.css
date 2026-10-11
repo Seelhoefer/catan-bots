@@ -1681,3 +1681,7 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .pk-ok:hover:not(:disabled) { transform: scale(1.08); }
 .pk-ok:disabled { opacity: .35; filter: grayscale(.6); cursor: not-allowed; }
 @media (max-width: 860px) { .pk-row .rcirc { width: 64px; height: 64px; } .pk-row .rcirc .ic { width: 40px; height: 40px; } .pk-row { gap: 10px; } .modal.bare { width: 100%; } .overlay.dim { place-items: center; } }
+
+/* Räuber & Diebstahl */
+.flycard.fc.back { background: linear-gradient(160deg, #24457a, #122646); border-color: #c9a24a; }
+.flycard.fc.back .cb-mark { position: absolute; inset: 6px 5px; border: 1px solid rgba(201,162,74,.6); border-radius: 4px; background: radial-gradient(circle, #c9a24a 0 3px, transparent 4px); }

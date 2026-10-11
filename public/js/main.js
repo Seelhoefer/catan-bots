@@ -18,7 +18,7 @@ import { music } from './ui/music.js';
 import { preloadDice3d } from './ui/dice3d.js';
 import { avatarSVG } from './ui/avatars.js';
 import {
-  floatGain, flyCards, showDiceHero, showCardHero, lastDice, whirlHexes, celebrate, buildFxPiece, buildFxRoad, produceFx, bumpPlayer,
+  floatGain, flyCards, showDiceHero, showCardHero, lastDice, whirlHexes, celebrate, buildFxPiece, buildFxRoad, stealFx, produceFx, bumpPlayer,
 } from './ui/fx.js';
 import { preloadArt, ART_STYLES, artStyle, setArtStyle } from './ui/assets.js';
 import {
@@ -64,6 +64,7 @@ class App {
     try { this.speed = localStorage.getItem(SPEED_KEY) || 'normal'; } catch { /* egal */ }
     if (!SPEEDS[this.speed]) this.speed = 'normal';
     this.view = new BoardView($('#board'), (k, id) => this.onPick(k, id));
+    this.view.onRobberLand = (x, y) => { const pt = this.view.screenPoint(x, y); buildFxPiece('settlement', pt, '#2b303a', this.view.pxPerUnit()); sfx.play('robberLand'); };
     $('#btnMenu').innerHTML = ic('gear');
     this.syncMusicBtn();
     $('#zoomIn').innerHTML = ic('plus');
@@ -227,11 +228,18 @@ class App {
         break;
       }
       case 'harvest': this.flash([e.hex], 2400); sfx.play('harvest'); break;
-      case 'steal':
-        sfx.play('steal');
-        if (e.from === HUMAN) this.toastHTML(`${esc(name(e.to))} hat dir 1${ic(e.res, 'inline')} gestohlen`, 'warn');
-        else if (e.to === HUMAN) this.toastHTML(`Du hast 1${ic(e.res, 'inline')} gestohlen`, 'gain');
+      case 'steal': {
+        // nach dem Sprung des Räubers fliegt die Karte vom Opfer zum Dieb
+        const wait = Math.max(0, this.view.robberEnd - Date.now(), (this.robberMoveAt || 0) + 1500 - Date.now()) + 120;
+        const known = e.from === HUMAN || e.to === HUMAN;
+        this.inflightSteal = (this.inflightSteal || 0) + 1;
+        setTimeout(() => {
+          sfx.play('steal');
+          stealFx({ from: e.from, to: e.to, res: known ? e.res : null, onArrive: () => { bumpPlayer(e.to, e.res); sfx.play('land'); this.inflightSteal -= 1; this.queueRender(); } });
+        }, wait);
+        this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + wait + 1500);
         break;
+      }
       case 'trade':
         sfx.play('trade');
         flyCards(e.from, e.to, e.give);
@@ -247,7 +255,7 @@ class App {
         if (e.pi === HUMAN) celebrate('win');
         setTimeout(() => this.showGameOver(), 700);
         break;
-      case 'robber': sfx.play('robber'); break;
+      case 'robber': sfx.play('robber'); this.robberMoveAt = Date.now(); break;
       case 'monopoly': sfx.play('monopoly'); break;
       case 'turn': if (e.pi === HUMAN) sfx.play('turn', { delay: 250 }); break;
       case 'change': {

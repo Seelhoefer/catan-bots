@@ -90,6 +90,12 @@ function noise(t0, {
   s.stop(t0 + dur + 0.05);
 }
 
+/** Harter Klick: sehr kurzer Impuls mit hellem, schnell abklingendem Resonanzton (Würfel auf Holz/Brett). */
+function click(t0, { f = 3000, gain = 0.3 } = {}) {
+  noise(t0, { dur: 0.012, f, q: 1.2, gain, attack: 0.0008 });
+  tone(t0, { f: f * 0.55, to: f * 0.3, dur: 0.035, gain: gain * 0.55, type: 'triangle', attack: 0.0008 });
+}
+
 /** Holz-Klopfen: kurzer, tiefer Körper + heller Anschlag. */
 function knock(t0, { pitch = 190, gain = 0.5 } = {}) {
   tone(t0, { f: pitch * 1.5, to: pitch * 0.6, dur: 0.09, gain });
@@ -129,15 +135,15 @@ const SOUNDS = {
     [67, 71, 74].forEach((n, i) => bell(t + 0.28 + i * 0.07, N(n), { gain: 0.09, dur: 0.6 }));
   },
 
-  dice: (t) => {
-    // Würfel rasseln, werden langsamer und bleiben liegen
+  dice: (t) => { // Würfel im Becher: kurzes trockenes Klackern
     let at = t;
-    for (let i = 0; i < 9; i += 1) {
-      noise(at, { dur: 0.035, f: 2200 + Math.random() * 2500, q: 3, gain: 0.22 * (1 - i / 14) });
-      tone(at, { f: 160 + Math.random() * 90, dur: 0.04, gain: 0.07 });
-      at += 0.03 + i * 0.01 + Math.random() * 0.02;
+    for (let i = 0; i < 11; i += 1) {
+      click(at, { f: 2600 + Math.random() * 2200, gain: 0.2 * (1 - i / 16) });
+      at += 0.028 + i * 0.006 + Math.random() * 0.02;
     }
   },
+  diceLand: (t) => { click(t, { f: 3200, gain: 0.16 }); }, // letztes leises Klicken beim Liegenbleiben
+  robberLand: (t) => { tone(t, { f: 130, to: 60, dur: 0.25, gain: 0.5 }); noise(t, { dur: 0.08, f: 500, type: 'lowpass', gain: 0.35 }); },
   deal: (t, o) => { // Karte löst sich vom Feld
     const k = o.pitch || 1;
     noise(t, { dur: 0.1, f: 900 * k, sweep: 3600 * k, q: 0.9, gain: 0.22 });
@@ -160,7 +166,12 @@ const SOUNDS = {
   },
   gather: (t) => { noise(t, { dur: 0.35, f: 600, sweep: 5200, q: 1, gain: 0.25 }); tone(t, { f: 300, to: 900, dur: 0.3, gain: 0.12, type: 'triangle' }); tone(t + 0.28, { f: 1760, dur: 0.25, gain: 0.08 }); },
   whirl: (t) => { noise(t, { dur: 1, f: 300, sweep: 2600, q: 1.4, gain: 0.2, attack: 0.5 }); [72, 76, 79, 84].forEach((n, i) => tone(t + 0.4 + i * 0.07, { f: 440 * 2 ** ((n - 69) / 12), dur: 0.4, gain: 0.06 })); },
-  diceHit: (t, o) => { knock(t, { pitch: 215 * (o.pitch || 1), gain: 0.55 }); tone(t, { f: 120, to: 70, dur: 0.12, gain: 0.25 }); },
+  diceHit: (t, o) => { // Würfel schlägt auf: heller „Klack“ (Hartplastik) + kurzer Tischton
+    const k = o.pitch || 1;
+    click(t, { f: 3300 * k, gain: 0.55 });
+    tone(t, { f: 190 * k, to: 110, dur: 0.07, gain: 0.3 });
+    noise(t, { dur: 0.04, f: 900, type: 'lowpass', gain: 0.18 });
+  },
   gain: (t) => { tone(t, { f: 660, to: 990, dur: 0.09, gain: 0.1, type: 'triangle' }); tone(t + 0.07, { f: 1320, dur: 0.1, gain: 0.06, type: 'triangle' }); },
   token: (t) => { [84, 88, 91, 96].forEach((n, i) => tone(t + i * 0.05, { f: N(n), dur: 0.25, gain: 0.07 })); },
 

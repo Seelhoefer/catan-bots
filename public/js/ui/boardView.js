@@ -66,8 +66,12 @@ export class BoardView {
           <feDropShadow dx="0" dy="0.05" stdDeviation="0.05" flood-color="#000" flood-opacity="0.55"/>
         </filter>
       </defs>
-      <g id="world"></g>`;
+      <g id="world"></g>
+      <g id="robberLayer" pointer-events="none"></g>`;
     this.world = svg.querySelector('#world');
+    this.robberLayer = svg.querySelector('#robberLayer');
+    this.robberAt = null;
+    this.robberEnd = 0;
     this.bindEvents();
   }
 
@@ -360,9 +364,8 @@ export class BoardView {
     }
     out.push('</g>');
 
-    // Räuber
-    const rh = board.hexes[s.robber];
-    out.push(`<g transform="translate(${rh.x},${rh.y + 0.8})" class="robber"><g class="robber-in">${art.ok ? `<ellipse cx="0" cy="0" rx="0.4" ry="0.115" fill="rgba(0,0,0,.4)"/>${thiefImage()}` : `<g transform="translate(0,-.34)">${ROBBER}</g>`}</g></g>`);
+    // Räuber: eigene, dauerhafte Ebene (damit sein Sprung beim Neuzeichnen nicht abbricht)
+    this.placeRobber(board, s.robber);
 
     // Hervorhebungen (klickbar) – ruhig, mit Vorschau der Figur beim Darüberfahren
     const ghost = ui.ghost || {};
@@ -410,6 +413,50 @@ export class BoardView {
     this.world.innerHTML = out.join('');
     this.svg.classList.toggle('picking', picking);
     this.svg.dataset.ghost = ghost.kind || '';
+  }
+
+  /** Setzt den Räuber; bei Positionswechsel springt er in einem Bogen auf das neue Feld. Dauer in `robberEnd` (Zeitstempel). */
+  placeRobber(board, hexId) {
+    const h = board.hexes[hexId];
+    const x = h.x;
+    const y = h.y + 0.8;
+    const g = window.gsap;
+    if (!this.robberEl) {
+      this.robberLayer.innerHTML = `<g class="robber"><g class="robber-in">${art.ok ? `<ellipse class="rb-shadow" cx="0" cy="0" rx="0.4" ry="0.115" fill="rgba(0,0,0,.4)"/><g class="rb-body">${thiefImage()}</g>` : `<g transform="translate(0,-.34)">${ROBBER}</g>`}</g></g>`;
+      this.robberEl = this.robberLayer.firstChild;
+      this.robberEl.setAttribute('transform', `translate(${x},${y})`);
+      this.robberAt = hexId;
+      return;
+    }
+    if (this.robberAt === hexId) return;
+    const from = board.hexes[this.robberAt];
+    this.robberAt = hexId;
+    const el = this.robberEl;
+    const body = el.querySelector('.rb-body') || el.querySelector('.robber-in');
+    const shadow = el.querySelector('.rb-shadow');
+    if (!g || !from) { el.setAttribute('transform', `translate(${x},${y})`); return; }
+    const dx = x - from.x;
+    const dy = y - (from.y + 0.8);
+    const dist = Math.hypot(dx, dy);
+    const T = Math.min(1.25, 0.6 + dist * 0.11);
+    const hops = dist > 2.4 ? 2 : 1;
+    this.robberEnd = Date.now() + T * 1000 + 450;
+    g.killTweensOf([el, body, shadow]);
+    el.setAttribute('transform', `translate(${x},${y})`);
+    const tl = g.timeline();
+    // Der Räuber (inkl. Schatten) gleitet vom alten zum neuen Feld; der Körper hüpft dabei in Bögen
+    tl.fromTo(el.querySelector('.robber-in'), { x: -dx, y: -dy }, { x: 0, y: 0, duration: T, ease: 'power2.inOut' }, 0);
+    const hop = Math.min(0.9, 0.45 + dist * 0.12);
+    for (let i = 0; i < hops; i++) {
+      const t0 = (T / hops) * i;
+      const d = T / hops;
+      tl.to(body, { y: -hop, duration: d * 0.5, ease: 'power2.out' }, t0);
+      tl.to(body, { y: 0, duration: d * 0.5, ease: 'power2.in' }, t0 + d * 0.5);
+      if (shadow) { tl.to(shadow, { scaleX: 0.6, opacity: 0.45, transformOrigin: '50% 50%', duration: d * 0.5, ease: 'power2.out' }, t0); tl.to(shadow, { scaleX: 1, opacity: 1, duration: d * 0.5, ease: 'power2.in' }, t0 + d * 0.5); }
+    }
+    // Landung: federn
+    tl.fromTo(body, { scaleY: 0.82, scaleX: 1.12, transformOrigin: '50% 100%' }, { scaleY: 1, scaleX: 1, duration: 0.45, ease: 'elastic.out(1, 0.45)' }, T);
+    tl.call(() => { this.onRobberLand?.(x, y); }, null, T);
   }
 
   hexPoints(board, h, scale) {
