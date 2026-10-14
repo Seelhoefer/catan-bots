@@ -10,7 +10,7 @@ import {
 import { installIcons } from './ui/icons.js';
 import { renderMenu, rememberLast } from './ui/menu.js';
 import {
-  renderHand, renderHandBar, renderPlayers, renderFab, renderNext, renderDice, renderMissionBox, renderHeroRoll,
+  renderHand, renderHandBar, renderPlayers, renderFab, renderNext, renderDice, renderMissionBox, renderAwards, renderHeroRoll,
 } from './ui/panels.js';
 import { renderMarket, suggestTrade } from './ui/market.js';
 import { sfx } from './ui/sfx.js';
@@ -260,6 +260,22 @@ class App {
         this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + ms + 250);
         break;
       }
+      case 'award': {
+        const road = e.kind === 'road';
+        const label = road ? 'die Längste Handelsstraße' : 'die Größte Rittermacht';
+        if (e.holder !== null) {
+          const who = e.holder === HUMAN ? 'Du hast' : `${name(e.holder)} hat`;
+          this.toastHTML(`${ic(road ? 'road' : 'sword', 'inline')} ${who} jetzt ${label} – <b>+2 Siegpunkte</b>${e.prev !== null && e.prev !== undefined ? ` (${e.prev === HUMAN ? 'dir' : name(e.prev)} abgenommen)` : ''}`, 'big');
+          sfx.play(e.holder === HUMAN ? 'vp' : 'vpOther', { delay: 200 });
+          if (e.holder === HUMAN) setTimeout(celebrate, 250);
+        } else this.toast(`${road ? 'Die Längste Handelsstraße' : 'Die Größte Rittermacht'} ist wieder frei.`, 'info');
+        setTimeout(() => {
+          const card = document.querySelector(`.award.${e.kind}`);
+          if (card && window.gsap) window.gsap.fromTo(card, { scale: 1.25 }, { scale: 1, duration: 0.9, ease: 'elastic.out(1, 0.4)', clearProps: 'transform' });
+        }, 80);
+        this.queueRender();
+        break;
+      }
       case 'robber': sfx.play('robber'); this.robberMoveAt = Date.now(); break;
       case 'monopoly': sfx.play('monopoly'); break;
       case 'turn': if (e.pi === HUMAN) sfx.play('turn', { delay: 250 }); break;
@@ -390,6 +406,16 @@ class App {
     if (act.startsWith('mk-') || act.startsWith('bank-')) { this.handleMarket(act, el); return; }
     this.closePopover();
     switch (act) {
+      case 'award-info': {
+        const road = el.dataset.kind === 'road';
+        const st = g.s;
+        const h = road ? st.longestRoad.holder : st.largestArmy.holder;
+        const mine = road ? (st.roadLengths?.[HUMAN] || 0) : st.players[HUMAN].playedKnights;
+        const need = road ? 5 : 3;
+        const holderTxt = h === null ? 'Noch niemand hat sie' : `${h === HUMAN ? 'Du hältst' : `${st.players[h].name} hält`} sie (${road ? st.longestRoad.len : st.largestArmy.count})`;
+        this.toast(`${road ? 'Längste Handelsstraße' : 'Größte Rittermacht'}: +2 Siegpunkte. Ab ${need} ${road ? 'zusammenhängenden Straßen' : 'ausgespielten Rittern'}, mehr als der Halter. ${holderTxt}. Dein Stand: ${mine}.`, 'info');
+        break;
+      }
       case 'roll': this.act('rollDice', HUMAN); break;
       case 'end-turn': this.mode = null; this.act('endTurn', HUMAN); break;
       case 'fab-toggle':
@@ -739,6 +765,8 @@ class App {
     $('#heroRoll').innerHTML = renderHeroRoll(g);
     $('#diceBox').innerHTML = renderDice(g, this.rolling);
     this.renderMarketLayer();
+    const awards = renderAwards(g);
+    if (awards !== this.awardHtml) { this.awardHtml = awards; $('#awardBox').innerHTML = awards; }
     $('#missionBox').innerHTML = renderMissionBox(g, this.ui.missionsOpen);
 
     if (s.phase === 'main' && s.sub === 'discard' && s.discard[HUMAN] !== undefined) {

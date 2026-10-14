@@ -947,8 +947,9 @@ export class Game {
       }
     }
     if (holder !== prev) {
-      if (holder !== null) this.log(`🛣️ ${s.players[holder].name} hat jetzt die Längste Handelsstraße (${max}).`, holder);
+      if (holder !== null) this.log(`🛣️ ${s.players[holder].name} hat jetzt die Längste Handelsstraße (${max}) – +2 Siegpunkte.`, holder);
       else if (prev !== null) this.log('🛣️ Die Längste Handelsstraße geht verloren.');
+      this.emit({ type: 'award', kind: 'road', holder, prev, value: max });
     }
     s.longestRoad = { holder, len: holder === null ? Math.max(0, max) : max };
   }
@@ -958,7 +959,10 @@ export class Game {
     let { holder, count } = s.largestArmy;
     for (const p of s.players) {
       if (p.playedKnights >= 3 && p.playedKnights > count) {
-        if (holder !== p.id) this.log(`⚔️ ${p.name} hat jetzt die Größte Rittermacht (${p.playedKnights}).`, p.id);
+        if (holder !== p.id) {
+          this.log(`⚔️ ${p.name} hat jetzt die Größte Rittermacht (${p.playedKnights}) – +2 Siegpunkte.`, p.id);
+          this.emit({ type: 'award', kind: 'army', holder: p.id, prev: holder, value: p.playedKnights });
+        }
         holder = p.id; count = p.playedKnights;
       }
     }

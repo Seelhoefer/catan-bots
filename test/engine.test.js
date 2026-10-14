@@ -500,3 +500,18 @@ test('Bots nutzen einen 2:1-Hafen, um Überschuss in Fehlendes zu tauschen', () 
   assert.ok(g.player(1).hand[res] < before, `${res} wurde über den Hafen getauscht`);
   assert.ok(other);
 });
+
+test('Größte Rittermacht: Wechsel löst ein Award-Event aus und zählt +2 Siegpunkte', () => {
+  const g = afterSetup({}, 5);
+  const events = [];
+  g.on((e) => { if (e.type === 'award') events.push(e); });
+  const before = g.vp(1);
+  g.player(1).playedKnights = 3;
+  g.updateLargestArmy();
+  assert.equal(g.s.largestArmy.holder, 1);
+  assert.equal(g.vp(1), before + 2);
+  g.player(0).playedKnights = 4;
+  g.updateLargestArmy();
+  assert.deepEqual(events.map((e) => [e.kind, e.holder, e.prev]), [['army', 1, null], ['army', 0, 1]]);
+  assert.equal(g.s.largestArmy.holder, 0);
+});

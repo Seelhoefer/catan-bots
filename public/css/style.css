@@ -1780,3 +1780,31 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .bot-diff button.lit::before { background: #f1c95a; border-color: #f1c95a; box-shadow: 0 0 8px rgba(233, 185, 73, .5); }
 .bot-diff button:hover::before { transform: scale(1.35); }
 @media (hover: none) and (pointer: coarse) { .bot-diff button { width: 30px; height: 30px; } .bot-diff button::before { width: 12px; height: 12px; } }
+
+/* Auszeichnungen: Längste Handelsstraße / Größte Rittermacht (je +2 Siegpunkte), immer sichtbar */
+.awards { display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100vw - 28px); }
+.awards:empty { display: none; }
+.award { position: relative; display: flex; align-items: center; gap: 8px; padding: 5px 48px 5px 6px; min-height: 46px; border-radius: 999px; background: var(--glass); border: 1.5px solid var(--line); color: var(--text); text-align: left; backdrop-filter: blur(8px); box-shadow: 0 6px 16px rgba(0, 0, 0, .35); }
+.award .awd-ico { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none; background: radial-gradient(circle at 35% 28%, #2f527c, #0f1f34 75%); border: 1.5px solid #6d7f9a; color: #e8eef7; }
+.award .awd-ico .ic { width: 16px; height: 16px; }
+.award .awd-av { line-height: 0; flex: none; }
+.award .awd-av.empty { width: 26px; height: 26px; border-radius: 50%; border: 1.5px dashed rgba(255, 255, 255, .45); }
+.award .awd-txt { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.award .awd-txt b { font-size: 13px; color: #fff; white-space: nowrap; }
+.award .awd-txt small { font-size: 11px; color: #c4d0e0; white-space: nowrap; }
+.award .awd-n { display: none; font-weight: 800; font-size: 14px; color: #fff; }
+.award .awd-pts { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); padding: 2px 7px; border-radius: 99px; background: var(--ivory); color: var(--ivory-ink); font-size: 12px; font-weight: 800; }
+.award.free { opacity: .92; }
+.award.held { border-color: #e9b949; box-shadow: 0 0 0 1px rgba(233, 185, 73, .35), 0 6px 18px rgba(233, 185, 73, .22); }
+.award.held .awd-ico { border-color: #e9b949; background: radial-gradient(circle at 35% 28%, #7a5d22, #2c200b 75%); color: #ffe9a6; }
+.award.mine { background: linear-gradient(180deg, rgba(90, 70, 24, .92), rgba(40, 30, 10, .92)); }
+@media (max-width: 860px) {
+  .awards { gap: 6px; }
+  .award { min-height: 38px; gap: 5px; padding: 4px 6px 4px 5px; }
+  .award .awd-pts { position: static; transform: none; margin-left: 2px; }
+  .award .awd-ico { width: 26px; height: 26px; }
+  .award .awd-av .avatar-svg { width: 24px; height: 24px; }
+  .award .awd-txt { display: none; }
+  .award .awd-n { display: block; }
+  .award .awd-av.empty { width: 22px; height: 22px; }
+}

@@ -196,6 +196,29 @@ export function renderHeroRoll(g) {
 }
 
 // ------------------------------------------------------------------ Missionen (einklappbar)
+/** Auszeichnungen (je +2 Siegpunkte): wer hält die Längste Handelsstraße / Größte Rittermacht – immer sichtbar. */
+export function renderAwards(g) {
+  const s = g.s;
+  if (s.phase === 'setup') return '';
+  const lens = s.roadLengths || s.players.map(() => 0);
+  const mk = (cls, icon, title, need, unit, holder, best, mineVal, hint) => {
+    const p = holder !== null && holder !== undefined ? s.players[holder] : null;
+    const mine = holder === HUMAN;
+    const lead = best.val > 0 ? `${esc(s.players[best.pi].name)} ${best.val}` : '–';
+    const body = p
+      ? `<span class="awd-av">${avatarSVG(p.face, p.color, 26)}</span><span class="awd-txt"><b>${mine ? 'Du' : esc(p.name)}</b><small>${best.val} ${unit}</small></span>`
+      : `<span class="awd-av empty"></span><span class="awd-txt"><b>noch frei</b><small>ab ${need} ${unit} · ${lead}</small></span>`;
+    const tip = `${title}: +2 Siegpunkte. ${hint} Dein Stand: ${mineVal}.${p ? ` Aktuell: ${p.name} (${best.val}).` : ' Noch niemand hat sie.'}`;
+    return `<button type="button" class="award ${cls} ${p ? 'held' : 'free'} ${mine ? 'mine' : ''}" data-act="award-info" data-kind="${cls}" title="${esc(tip)}" aria-label="${esc(tip)}">
+      <span class="awd-ico">${ic(icon)}</span>${body}<span class="awd-n">${p ? best.val : `${best.val}/${need}`}</span><span class="awd-pts">+2</span></button>`;
+  };
+  const roadBest = lens.reduce((b, v, i) => (v > b.val ? { pi: i, val: v } : b), { pi: 0, val: 0 });
+  const road = mk('road', 'road', 'Längste Handelsstraße', 5, 'Straßen', s.longestRoad.holder, s.longestRoad.holder !== null ? { pi: s.longestRoad.holder, val: s.longestRoad.len } : roadBest, lens[HUMAN] || 0, 'Ab 5 zusammenhängenden Straßen – du brauchst mehr als der Halter.');
+  const armyBest = s.players.reduce((b, p) => (p.playedKnights > b.val ? { pi: p.id, val: p.playedKnights } : b), { pi: 0, val: 0 });
+  const army = mk('army', 'sword', 'Größte Rittermacht', 3, 'Ritter', s.largestArmy.holder, s.largestArmy.holder !== null ? { pi: s.largestArmy.holder, val: s.largestArmy.count } : armyBest, s.players[HUMAN].playedKnights, 'Ab 3 ausgespielten Rittern – du brauchst mehr als der Halter.');
+  return road + army;
+}
+
 export function renderMissionBox(g, open) {
   const s = g.s;
   if (!s.missions.length || s.phase === 'setup') return '';
