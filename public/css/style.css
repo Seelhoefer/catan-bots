@@ -13,7 +13,7 @@
   --line: rgba(255, 255, 255, 0.10);
   --text: #eef2f7;
   --muted: #94a5b9;
-  --faint: #60728a;
+  --faint: #8496ad;
   --ivory: #f4efe3;
   --ivory-ink: #2a2418;
   --gold: #e9b949;
@@ -1369,7 +1369,7 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .ts-btn:hover .ts-go { opacity: 1; transform: translateX(4px); }
 .ts-btn.primary { padding: 16px 20px 16px 16px; background: linear-gradient(180deg, #fff6dc, #ecd9a2 58%, #d6b872); border-color: #b98a2e; color: #3a2a0c; box-shadow: 0 0 0 3px rgba(185,138,46,.28), 0 14px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.85); animation: pulseGold 2.8s ease-in-out infinite; }
 .ts-btn.primary .ts-lbl b { font-family: Georgia, serif; font-size: 24px; }
-.ts-btn.primary .ts-lbl small { color: #6b5628; }
+.ts-btn.primary .ts-lbl small { color: #4a3a12; }
 .ts-btn.primary .ts-ico { background: radial-gradient(circle at 35% 28%, #e0b44c, #8a6220 85%); color: #fff; border-color: #6e4a12; }
 @keyframes pulseGold { 50% { box-shadow: 0 0 0 6px rgba(233,185,73,.26), 0 14px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.85); } }
 .ts-btn.minor { padding: 10px 16px 10px 12px; background: rgba(10, 22, 36, .55); border-color: var(--line); }
@@ -1808,3 +1808,8 @@ td.who { display: flex; align-items: center; gap: 8px; }
   .award .awd-n { display: block; }
   .award .awd-av.empty { width: 22px; height: 22px; }
 }
+
+/* Lesbarkeit: Texte direkt über dem Brett bekommen einen dunklen Grund (helles Meer / helle Felder dahinter) */
+.fab-item .fi-cost { background: rgba(8, 18, 30, .78); padding: 3px 9px; border-radius: 999px; text-shadow: none; }
+@media (hover: none) and (pointer: coarse) { .fab-item .fi-cost { padding: 2px 7px; } }
+.toast.warn { color: #cbd7e6; }
