@@ -15,7 +15,8 @@ const DIFF = {
   hard: { noise: 0.25, trade: 1, smart: true },
 };
 
-const cfg = (g) => DIFF[g.s.settings.difficulty] || DIFF.normal;
+// Schwierigkeit pro Bot (Spieler-Feld `difficulty`), sonst die Grundeinstellung des Spiels
+const cfg = (g, pi) => DIFF[(pi != null && g.s.players[pi]?.difficulty) || g.s.settings.difficulty] || DIFF.normal;
 const traitOf = (g, pi) => g.player(pi).trait;
 const rnd = (g, n = 1) => (g.rng() - 0.5) * 2 * n;
 
@@ -154,7 +155,7 @@ function topGoals(g, pi) {
       if (rts.length) goals.push({ kind: 'road', id: rts[Math.floor(g.rng() * rts.length)], score: 8 });
     }
   }
-  for (const goal of goals) goal.score += rnd(g, cfg(g).noise * 0.4);
+  for (const goal of goals) goal.score += rnd(g, cfg(g, pi).noise * 0.4);
   goals.sort((a, b) => b.score - a.score);
   return goals;
 }
@@ -197,7 +198,7 @@ function setupSettlement(g, pi) {
   const owned = ownedTypes(g, pi);
   let best = null;
   for (const vid of g.legalSettlementSpots(pi)) {
-    const val = vertexValue(g, vid, pi, owned) + rnd(g, cfg(g).noise);
+    const val = vertexValue(g, vid, pi, owned) + rnd(g, cfg(g, pi).noise);
     if (!best || val > best.val) best = { vid, val };
   }
   return best.vid;
@@ -272,7 +273,7 @@ function chooseRobberHex(g, pi) {
       if (b.owner === pi) score -= w * 1.8;
       else score += w * (1 + g.vp(b.owner, true) / target) + (g.handCount(b.owner) > 0 ? 0.5 : 0);
     }
-    score += rnd(g, cfg(g).noise * 0.5);
+    score += rnd(g, cfg(g, pi).noise * 0.5);
     if (!best || score > best.score) best = { hid, score };
   }
   return best.hid;
@@ -287,7 +288,7 @@ function chooseVictim(g, pi) {
 function tryPlayDev(g, pi, beforeRoll) {
   const s = g.s;
   const p = g.player(pi);
-  const c = cfg(g);
+  const c = cfg(g, pi);
   if (s.devPlayed || s.roadBuildingLeft > 0) return false;
 
   if (g.playableDev(pi, 'knight')) {
@@ -427,7 +428,7 @@ export function botAct(g, pi) {
   }
 
   // 4) Spielertausch anbieten
-  if (goals.length && mem.offers < (p.trait === 'trader' ? 3 : 2) && g.rng() < Math.min(1, cfg(g).trade * (p.trait === 'trader' ? 1.4 : 1))) {
+  if (goals.length && mem.offers < (p.trait === 'trader' ? 3 : 2) && g.rng() < Math.min(1, cfg(g, pi).trade * (p.trait === 'trader' ? 1.4 : 1))) {
     const goal = goals[0];
     const cost = costOf(goal);
     const miss = missingFor(p.hand, cost);
@@ -483,7 +484,7 @@ function tradeBalance(g, bi, receive, giveAway) {
 }
 
 function acceptThreshold(g, bi) {
-  const smart = cfg(g).smart;
+  const smart = cfg(g, bi).smart;
   if (!smart) return 0.6;
   return traitOf(g, bi) === 'trader' ? 0.85 : 1.05;
 }
@@ -494,7 +495,7 @@ export function botEvaluateOffer(g, bi, from, give, get) {
   for (const r of RES) {
     if ((get[r] || 0) > p.hand[r]) return { accept: false, reason: 'Hat nicht genug Karten.' };
   }
-  if (cfg(g).smart && g.vp(from, true) >= g.s.settings.targetVP - 2) {
+  if (cfg(g, bi).smart && g.vp(from, true) >= g.s.settings.targetVP - 2) {
     return { accept: false, reason: 'Hilft dir nicht beim Gewinnen!' };
   }
   const { gain, loss } = tradeBalance(g, bi, give, get);
@@ -512,7 +513,7 @@ export function botRespondOffer(g, bi, offer) {
   const p = g.player(bi);
   const canGive = RES.every((r) => (offer.get[r] || 0) <= p.hand[r]);
   // Gegenvorschlag: eine zusätzliche Karte des Anbieters verlangen
-  if (canGive && cfg(g).smart && ev.reason === 'Lohnt sich nicht.' && g.rng() < (p.trait === 'trader' ? 0.9 : 0.55)) {
+  if (canGive && cfg(g, bi).smart && ev.reason === 'Lohnt sich nicht.' && g.rng() < (p.trait === 'trader' ? 0.9 : 0.55)) {
     const proposer = g.player(offer.from);
     const options = RES.filter((r) => !(offer.get[r] > 0) && proposer.hand[r] > (offer.give[r] || 0));
     for (const r of options.sort(() => g.rng() - 0.5)) {

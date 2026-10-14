@@ -83,7 +83,8 @@ export const DEFAULT_SETTINGS = {
   avatarPortrait: null, // BOT_ROSTER-ID: der Mensch spielt mit einem der Bot-Gesichter (dieser Bot ist dann nicht dabei)
   botIds: null, // Liste von BOT_ROSTER-IDs oder null = die ersten N
   bots: 3,
-  difficulty: 'normal', // easy | normal | hard
+  difficulty: 'normal', // easy | normal | hard (Vorgabe für alle Bots)
+  botDifficulty: {}, // BOT_ROSTER-ID → easy | normal | hard (überschreibt die Vorgabe für einzelne Bots)
   size: 'small',
   variant: 'classic', // classic | fog
   targetVP: 10,

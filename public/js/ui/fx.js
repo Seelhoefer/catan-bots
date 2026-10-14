@@ -474,3 +474,42 @@ export function stealFx({ from, to, res, onArrive }) {
     onArrive?.();
   } });
 }
+
+/**
+ * Abwerfen bei einer 7: Kartenrücken (bei dir die echten Karten) fliegen vom Spieler zur Brettmitte und lösen sich dort auf;
+ * der Spieler wackelt kurz mit rotem Ring. Gibt die Dauer in ms zurück.
+ */
+export function discardFx({ pid, n, cards = null }) {
+  const g = gs();
+  const board = document.querySelector('#board');
+  if (!g || !board) return 0;
+  const br = board.getBoundingClientRect();
+  const dest = { x: br.left + br.width / 2, y: br.top + br.height * 0.55 };
+  const list = [];
+  if (cards && pid === 0) for (const r of Object.keys(cards)) for (let i = 0; i < cards[r]; i++) list.push(r);
+  while (list.length < n) list.push(null);
+  const shownN = Math.min(list.length, 8);
+  const who = document.querySelector(`.pcard[data-pid="${pid}"]`);
+  const a0 = rectOfPlayer(pid);
+  if (who) g.fromTo(who, { x: -5 }, { x: 0, duration: 0.55, ease: 'elastic.out(1, 0.25)', clearProps: 'transform' });
+  if (a0) {
+    const ring = mkEl('bf-ring small', `left:${a0.left + a0.width / 2}px;top:${a0.top + a0.height / 2}px;border-color:#ff6b6b;`);
+    g.fromTo(ring, { xPercent: -50, yPercent: -50, scale: 0.3, opacity: 0.95 }, { scale: 2.2, opacity: 0, duration: 0.6, ease: 'power2.out', onComplete: () => ring.remove() });
+  }
+  let total = 0;
+  for (let i = 0; i < shownN; i++) {
+    const res = list[i];
+    const a = rectOfPlayer(pid, res) || a0;
+    if (!a) continue;
+    const p0 = { x: a.left + a.width / 2, y: a.top + a.height / 2 };
+    const p1 = { x: dest.x + (i - shownN / 2) * 16 + (Math.random() - 0.5) * 24, y: dest.y + (Math.random() - 0.5) * 30 };
+    const c = document.createElement('div');
+    c.className = `flycard fc ${res ? `r-${res}` : 'back'}`;
+    c.innerHTML = res ? `<span class="rc-art">${ic(res)}</span>` : '<span class="cb-mark"></span>';
+    layer().append(c);
+    const delay = 0.12 * i;
+    arcFly(c, p0, p1, { delay, duration: 1.0, lift: 70 + Math.random() * 40, spin: (Math.random() - 0.5) * 60 });
+    total = Math.max(total, (delay + 1.0) * 1000);
+  }
+  return total;
+}

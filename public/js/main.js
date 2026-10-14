@@ -18,7 +18,7 @@ import { music } from './ui/music.js';
 import { preloadDice3d } from './ui/dice3d.js';
 import { avatarSVG } from './ui/avatars.js';
 import {
-  floatGain, flyCards, showDiceHero, showCardHero, lastDice, whirlHexes, celebrate, buildFxPiece, buildFxRoad, stealFx, produceFx, bumpPlayer,
+  floatGain, flyCards, showDiceHero, showCardHero, lastDice, whirlHexes, celebrate, buildFxPiece, buildFxRoad, stealFx, discardFx, produceFx, bumpPlayer,
 } from './ui/fx.js';
 import { preloadArt, ART_STYLES, artStyle, setArtStyle } from './ui/assets.js';
 import {
@@ -254,6 +254,12 @@ class App {
         sfx.play(e.pi === HUMAN ? 'win' : 'lose', { delay: 300 });
         setTimeout(() => { this.showGameOver(); celebrate('final'); }, 700);
         break;
+      case 'discard': {
+        const ms = discardFx({ pid: e.pi, n: e.n, cards: e.cards });
+        if (e.pi !== HUMAN) { this.toast(`${name(e.pi)} wirft ${e.n} ${e.n === 1 ? 'Karte' : 'Karten'} ab.`, 'info'); sfx.play('cardplay', { vol: 0.7 }); }
+        this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + ms + 250);
+        break;
+      }
       case 'robber': sfx.play('robber'); this.robberMoveAt = Date.now(); break;
       case 'monopoly': sfx.play('monopoly'); break;
       case 'turn': if (e.pi === HUMAN) sfx.play('turn', { delay: 250 }); break;
@@ -735,7 +741,11 @@ class App {
     this.renderMarketLayer();
     $('#missionBox').innerHTML = renderMissionBox(g, this.ui.missionsOpen);
 
-    if (s.phase === 'main' && s.sub === 'discard' && s.discard[HUMAN] !== undefined) this.ensure('discard', () => discardModal(this, s.discard[HUMAN]));
+    if (s.phase === 'main' && s.sub === 'discard' && s.discard[HUMAN] !== undefined) {
+      const rest = this.rollPauseUntil + 300 - Date.now();
+      if (rest > 0) { clearTimeout(this.discTimer); this.discTimer = setTimeout(() => this.queueRender(), rest + 30); }
+      else this.ensure('discard', () => discardModal(this, s.discard[HUMAN]));
+    }
     if (s.phase === 'main' && s.sub === 'gold' && s.gold[HUMAN]) {
       // erst auswählen lassen, nachdem Würfel, Wirbel und Kartenflug zu sehen waren
       const rest = this.rollPauseUntil + 350 - Date.now();

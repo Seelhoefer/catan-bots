@@ -1769,3 +1769,14 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .lb-rule { flex: 0 0 33.333%; }
 @media (max-width: 960px) { .lb-rule { flex-basis: 20%; } }
 @media (max-height: 520px) and (orientation: landscape) { .lb-rule { flex-basis: 33.333%; } }
+
+/* Schwierigkeit pro Gegner: drei kleine Punkte unter dem Portrait */
+.bot-wrap { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.bot-wrap .bot { flex: 1; }
+.bot-diff { display: flex; justify-content: center; gap: 4px; }
+.bot-diff.off { visibility: hidden; }
+.bot-diff button { width: 22px; height: 22px; padding: 0; border: 0; background: none; display: grid; place-items: center; border-radius: 50%; }
+.bot-diff button::before { content: ''; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid rgba(233, 185, 73, .55); background: transparent; transition: all .15s; }
+.bot-diff button.lit::before { background: #f1c95a; border-color: #f1c95a; box-shadow: 0 0 8px rgba(233, 185, 73, .5); }
+.bot-diff button:hover::before { transform: scale(1.35); }
+@media (hover: none) and (pointer: coarse) { .bot-diff button { width: 30px; height: 30px; } .bot-diff button::before { width: 12px; height: 12px; } }

@@ -46,6 +46,7 @@ export class Game {
         tagline: bot ? bot.tagline : '',
         face: bot ? bot.face : (mine ? mine.face : HUMAN_FACES[(settings.avatar || 0) % HUMAN_FACES.length]),
         isBot: i !== 0,
+        difficulty: bot ? ((settings.botDifficulty || {})[bot.id] || settings.difficulty) : null,
         color: PLAYER_COLORS[i].hex,
         hand: emptyHand(),
         dev: [],
@@ -458,6 +459,7 @@ export class Game {
     for (const r of RES) { p.hand[r] -= cards[r] || 0; s.bank[r] += cards[r] || 0; }
     delete s.discard[pi];
     this.log(`${p.name} wirft ${n} Karten ab.`, pi);
+    this.emit({ type: 'discard', pi, n, cards: { ...cards } });
     if (Object.keys(s.discard).length === 0) {
       s.sub = 'robber';
       this.log(`${this.cur.name} versetzt den Räuber.`, s.turn);

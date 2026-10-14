@@ -394,3 +394,28 @@ test('Angebote (deferred): Zusagen werden nur vorgemerkt, getauscht wird erst na
   assert.equal(g.player(1).hand.wood, 1);
   assert.equal(g.s.offers.length, 0);
 });
+
+test('Schwierigkeit lässt sich pro Gegner einstellen', () => {
+  const g = newGame({ difficulty: 'normal', botIds: ['fritz', 'greta', 'otto'], botDifficulty: { greta: 'hard', otto: 'easy' } });
+  const byName = Object.fromEntries(g.s.players.filter((p) => p.isBot).map((p) => [p.name, p.difficulty]));
+  assert.deepEqual(byName, { Fritz: 'normal', Greta: 'hard', Otto: 'easy' });
+  assert.equal(g.player(0).difficulty, null);
+});
+
+test('Bei einer 7 werfen alle Gegner mit mehr als 7 Karten die Hälfte (abgerundet) ab', () => {
+  const g = afterSetup({}, 7);
+  g.player(0).hand = { wood: 1, brick: 0, sheep: 0, wheat: 0, ore: 0 };
+  g.player(1).hand = { wood: 4, brick: 3, sheep: 2, wheat: 1, ore: 1 }; // 11 → 5
+  g.player(2).hand = { wood: 2, brick: 2, sheep: 2, wheat: 1, ore: 0 }; // 7 → nichts
+  g.player(3).hand = { wood: 2, brick: 2, sheep: 2, wheat: 1, ore: 1 }; // 8 → 4
+  const events = [];
+  g.on((e) => events.push(e));
+  assert.equal(g.rollDice(0, [3, 4]).ok, true);
+  assert.deepEqual(g.s.discard, { 1: 5, 3: 4 });
+  for (const pi of [1, 3]) botAct(g, pi);
+  assert.equal(g.handCount(1), 6);
+  assert.equal(g.handCount(2), 7);
+  assert.equal(g.handCount(3), 4);
+  assert.equal(g.s.sub, 'robber');
+  assert.deepEqual(events.filter((e) => e.type === 'discard').map((e) => [e.pi, e.n]), [[1, 5], [3, 4]]);
+});

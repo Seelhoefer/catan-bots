@@ -73,6 +73,8 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
   let step = 0;
 
   const maxBots = () => SIZES[settings.size].maxPlayers - 1;
+  const LEVELS = [['easy', 'Leicht'], ['normal', 'Normal'], ['hard', 'Schwer']];
+  const diffOf = (id) => (settings.botDifficulty && settings.botDifficulty[id]) || settings.difficulty;
   const ensureCast = () => {
     if (!BOT_ROSTER.some((b) => b.id === settings.avatarPortrait)) settings.avatarPortrait = BOT_ROSTER[BOT_ROSTER.length - 1].id; // dein Gesicht: immer eines der Portraits
     const others = BOT_ROSTER.filter((b) => b.id !== settings.avatarPortrait); // das eigene Gesicht spielt nicht als Gegner mit
@@ -187,15 +189,23 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
         const you = settings.avatarPortrait === b.id;
         const on = sel.has(b.id) && !you;
         const full = !on && sel.size >= max;
-        return el('button', {
-          type: 'button', class: `bot ${on ? 'on' : ''} ${you ? 'you' : ''}`, disabled: full || you || undefined, title: you ? 'Das bist du' : `${b.name} – ${b.tagline}`,
-          style: `--pc:${PLAYER_COLORS[(i + 1) % 6].hex}`,
-          onclick: () => { if (on) { if (sel.size > 1) sel.delete(b.id); } else sel.add(b.id); settings.botIds = BOT_ROSTER.map((x) => x.id).filter((id) => sel.has(id)); ensureCast(); draw(); },
-          html: `${avatarSVG(b.face, PLAYER_COLORS[(i + 1) % 6].hex, 58)}<small>${b.name}</small>`,
-        });
+        const lvl = diffOf(b.id);
+        return el('div', { class: 'bot-wrap' },
+          el('button', {
+            type: 'button', class: `bot ${on ? 'on' : ''} ${you ? 'you' : ''}`, disabled: full || you || undefined, title: you ? 'Das bist du' : `${b.name} – ${b.tagline}`,
+            style: `--pc:${PLAYER_COLORS[(i + 1) % 6].hex}`,
+            onclick: () => { if (on) { if (sel.size > 1) sel.delete(b.id); } else sel.add(b.id); settings.botIds = BOT_ROSTER.map((x) => x.id).filter((id) => sel.has(id)); ensureCast(); draw(); },
+            html: `${avatarSVG(b.face, PLAYER_COLORS[(i + 1) % 6].hex, 58)}<small>${b.name}</small>`,
+          }),
+          // Schwierigkeit pro Gegner: 1–3 Punkte
+          el('div', { class: `bot-diff ${on ? '' : 'off'}`, role: 'group', 'aria-label': `Schwierigkeit ${b.name}` }, LEVELS.map(([v, l], k) => el('button', {
+            type: 'button', class: `${LEVELS.findIndex(([x]) => x === lvl) >= k ? 'lit' : ''} ${lvl === v ? 'cur' : ''}`, title: `${b.name}: ${l}`, 'aria-label': `${b.name}: ${l}`, tabindex: on ? undefined : -1,
+            onclick: () => { settings.botDifficulty = { ...(settings.botDifficulty || {}), [b.id]: v }; draw(); },
+          }))));
       })),
-      el('div', { class: 'lb-diff' }, [['easy', 'Leicht'], ['normal', 'Normal'], ['hard', 'Schwer']].map(([v, l]) => el('button', {
-        type: 'button', class: `${settings.difficulty === v ? 'on' : ''}`, onclick: () => { settings.difficulty = v; draw(); },
+      el('div', { class: 'lb-diff' }, LEVELS.map(([v, l]) => el('button', {
+        type: 'button', class: `${[...sel].filter((id) => id !== settings.avatarPortrait).every((id) => diffOf(id) === v) ? 'on' : ''}`, title: `Alle Gegner: ${l}`,
+        onclick: () => { settings.difficulty = v; settings.botDifficulty = {}; draw(); },
       }, l))));
 
     const rules = card('trophy', 'Regeln',
