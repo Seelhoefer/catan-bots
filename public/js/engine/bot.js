@@ -427,25 +427,27 @@ export function botAct(g, pi) {
     if (step && g.bankTrade(pi, step.give, step.get).ok) return { did: true };
   }
 
-  // 4) Spielertausch anbieten
+  // 4) Spielertausch anbieten: für das nächstliegende Ziel fehlt eine/zwei Karte(n) – anbieten, was übrig ist.
+  //    Klappt das nicht, wird das zweite Angebot großzügiger (2 für 1).
   if (goals.length && mem.offers < (p.trait === 'trader' ? 3 : 2) && g.rng() < Math.min(1, cfg(g, pi).trade * (p.trait === 'trader' ? 1.4 : 1))) {
-    const goal = goals[0];
-    const cost = costOf(goal);
-    const miss = missingFor(p.hand, cost);
-    const wants = Object.keys(miss);
-    if (wants.length >= 1 && wants.length <= 2) {
-      const want = wants[0];
-      let give = null;
-      let bestSurplus = 0;
-      for (const r of RES) {
-        if (r === want) continue;
-        const surplus = p.hand[r] - (cost[r] || 0);
-        if (surplus > bestSurplus) { bestSurplus = surplus; give = r; }
+    const top = goals.slice(0, 3);
+    const reserve = {};
+    top.slice(0, 2).forEach((goal, i) => { for (const [r, n] of Object.entries(costOf(goal))) reserve[r] = Math.max(reserve[r] || 0, Math.ceil(n * (i === 0 ? 1 : 0.6))); });
+    for (const goal of top) {
+      const miss = missingFor(p.hand, costOf(goal));
+      const wants = Object.keys(miss);
+      if (wants.length < 1 || wants.length > 2) continue;
+      const want = wants.sort((x, y) => resourcePips(g, pi, x) - resourcePips(g, pi, y))[0]; // was ich am wenigsten selbst erzeuge
+      const spare = RES.filter((r) => r !== want && !(miss[r] > 0)).map((r) => ({ r, n: p.hand[r] - (reserve[r] || 0) })).filter((x) => x.n > 0).sort((x, y) => y.n - x.n);
+      if (!spare.length) continue;
+      const give = { [spare[0].r]: 1 };
+      if (mem.offers >= 1) { // großzügiger: zwei Karten für eine
+        if (spare[0].n >= 2) give[spare[0].r] = 2;
+        else if (spare[1]) give[spare[1].r] = 1;
+        else continue;
       }
-      if (give) {
-        mem.offers++;
-        return { offer: { give: { [give]: 1 }, get: { [want]: 1 } } };
-      }
+      mem.offers++;
+      return { offer: { give, get: { [want]: 1 } } };
     }
   }
 
@@ -463,30 +465,68 @@ function finish(g, pi) {
 }
 
 // ------------------------------------------------------------------ Antworten auf Angebote
-/** Wert eines Tauschs aus Sicht von Bot `bi`: er erhält `receive` und gibt `giveAway` ab. */
-function tradeBalance(g, bi, receive, giveAway) {
-  const p = g.player(bi);
-  const goals = topGoals(g, bi);
-  const cost = goals.length ? costOf(goals[0]) : {};
-  const need = missingFor(p.hand, cost);
-  let gain = 0;
-  let loss = 0;
-  for (const r of RES) {
-    const gv = receive[r] || 0;
-    const lv = giveAway[r] || 0;
-    if (gv) gain += gv * (need[r] ? 3 : p.hand[r] === 0 ? 1.6 : 0.8);
-    if (lv) {
-      const after = p.hand[r] - lv;
-      loss += lv * ((cost[r] || 0) > after ? 3 : after >= 2 ? 0.7 : 1.3);
-    }
+// Bewertung über den Abstand zu den wichtigsten Zielen: ein Tausch ist gut, wenn er die Hand näher an
+// Stadt / Siedlung / Straße / Entwicklungskarte bringt – auch für das zweit- und drittwichtigste Ziel.
+const GOAL_W = [1, 0.55, 0.3];
+
+function planGoals(g, pi) {
+  const seen = new Set();
+  const list = [];
+  for (const goal of topGoals(g, pi)) { // pro Art nur das beste Ziel (mehrere Bauplätze derselben Art zählen nicht doppelt)
+    if (seen.has(goal.kind)) continue;
+    seen.add(goal.kind);
+    list.push({ kind: goal.kind, cost: costOf(goal), w: GOAL_W[list.length] });
+    if (list.length === 3) break;
   }
-  return { gain, loss };
+  return list;
 }
 
-function acceptThreshold(g, bi) {
-  const smart = cfg(g, bi).smart;
-  if (!smart) return 0.6;
-  return traitOf(g, bi) === 'trader' ? 0.85 : 1.05;
+/** Wie gut passt `hand` zu den Zielen? Höher = näher dran (fehlende Karten zählen negativ, Bank/Hafen mildert). */
+function handScore(g, pi, hand, goals) {
+  let sc = 0;
+  for (const { cost, w } of goals) {
+    let miss = 0;
+    let conv = 0;
+    for (const r of RES) {
+      miss += Math.max(0, (cost[r] || 0) - hand[r]);
+      const spare = hand[r] - (cost[r] || 0);
+      if (spare > 0) conv += Math.floor(spare / g.portRatio(pi, r));
+    }
+    const viaBank = Math.min(miss, conv);
+    sc += w * (-(miss - viaBank) - 0.45 * viaBank + (miss === 0 ? 2 : 0));
+  }
+  const total = RES.reduce((a, r) => a + hand[r], 0);
+  if (total > 7) sc -= 0.2 * (total - 7); // Räuber-Risiko: zu viele Karten sind unpraktisch
+  return sc;
+}
+
+/** Gewinn (positiv) oder Verlust des Bots `bi`, wenn er `receive` bekommt und `giveAway` abgibt. */
+function tradeDelta(g, bi, receive, giveAway, goals = planGoals(g, bi)) {
+  const before = { ...g.player(bi).hand };
+  const after = { ...before };
+  for (const r of RES) after[r] += (receive[r] || 0) - (giveAway[r] || 0);
+  if (!goals.length) return RES.reduce((a, r) => a + (receive[r] || 0) - (giveAway[r] || 0), 0) * 0.2;
+  return handScore(g, bi, after, goals) - handScore(g, bi, before, goals);
+}
+
+function acceptMargin(g, bi) {
+  if (!cfg(g, bi).smart) return -0.35; // Anfänger tauschen auch mal schlecht
+  const tr = traitOf(g, bi);
+  return tr === 'trader' ? 0.3 : tr === 'strategist' ? 0.6 : 0.45;
+}
+
+/** Würde der Anbieter durch den Tausch ein Siegpunkt-Gebäude bezahlbar, obwohl er schon nah am Sieg ist? */
+function helpsLeaderWin(g, from, give, get) {
+  const target = g.s.settings.targetVP;
+  const vp = g.vp(from, true);
+  if (vp < target - 2) return false;
+  const hand = { ...g.player(from).hand };
+  const after = { ...hand };
+  for (const r of RES) after[r] += (get[r] || 0) - (give[r] || 0);
+  const vpKinds = ['city', 'settlement'].filter((k) => g.player(from).pieces[k] > 0);
+  const affords = (h, k) => RES.every((r) => h[r] >= (COSTS[k][r] || 0));
+  if (vpKinds.some((k) => affords(after, k) && !affords(hand, k))) return true;
+  return vp >= target - 1 && vpKinds.length > 0 && tradeDelta(g, from, get, give) > 1;
 }
 
 /** Bewertet ein Angebot: `from` gibt `give` und möchte `get` vom Bot `bi`. */
@@ -495,12 +535,42 @@ export function botEvaluateOffer(g, bi, from, give, get) {
   for (const r of RES) {
     if ((get[r] || 0) > p.hand[r]) return { accept: false, reason: 'Hat nicht genug Karten.' };
   }
-  if (cfg(g, bi).smart && g.vp(from, true) >= g.s.settings.targetVP - 2) {
+  if (cfg(g, bi).smart && helpsLeaderWin(g, from, give, get)) {
     return { accept: false, reason: 'Hilft dir nicht beim Gewinnen!' };
   }
-  const { gain, loss } = tradeBalance(g, bi, give, get);
-  if (gain > loss * acceptThreshold(g, bi)) return { accept: true, reason: 'Einverstanden.' };
-  return { accept: false, reason: 'Lohnt sich nicht.' };
+  const delta = tradeDelta(g, bi, give, get);
+  if (delta >= acceptMargin(g, bi)) return { accept: true, reason: 'Einverstanden.', delta };
+  return { accept: false, reason: 'Lohnt sich nicht.', delta };
+}
+
+/** Mögliche Gegenvorschläge zu `offer` (aus Sicht des Anbieters: er gibt `give`, bekommt `get`), die dem Anbieter möglichst wenig abverlangen. */
+function counterCandidates(g, bi, offer) {
+  const p = g.player(bi);
+  const proposer = g.player(offer.from);
+  const goals = planGoals(g, bi);
+  const reserve = {};
+  for (const { cost, w } of goals) if (w >= 0.55) for (const r of RES) reserve[r] = Math.max(reserve[r] || 0, cost[r] || 0);
+  const out = [];
+  const sum = (o) => RES.reduce((a, r) => a + (o[r] || 0), 0);
+  // a) der Bot gibt etwas weniger ab
+  if (sum(offer.get) > 1) {
+    for (const r of RES) if (offer.get[r] > 0) out.push({ give: { ...offer.give }, get: { ...offer.get, [r]: offer.get[r] - 1 } });
+  }
+  // b) der Bot gibt statt des gewünschten Rohstoffs einen anderen ab, den er übrig hat
+  for (const r of RES) {
+    if (!(offer.get[r] > 0)) continue;
+    for (const r2 of RES) {
+      if (r2 === r || offer.give[r2] > 0 || p.hand[r2] - (offer.get[r2] || 0) <= (reserve[r2] || 0)) continue;
+      const get = { ...offer.get, [r]: offer.get[r] - 1, [r2]: (offer.get[r2] || 0) + 1 };
+      if (get[r] === 0) delete get[r];
+      out.push({ give: { ...offer.give }, get });
+    }
+  }
+  // c) der Anbieter legt eine Karte drauf
+  for (const r of RES) {
+    if (!(offer.get[r] > 0) && proposer.hand[r] > (offer.give[r] || 0)) out.push({ give: { ...offer.give, [r]: (offer.give[r] || 0) + 1 }, get: { ...offer.get } });
+  }
+  return out.filter((c) => !g.validTradeShape(c.give, c.get));
 }
 
 /**
@@ -512,14 +582,11 @@ export function botRespondOffer(g, bi, offer) {
   if (ev.accept) return { type: 'accept', reason: ev.reason };
   const p = g.player(bi);
   const canGive = RES.every((r) => (offer.get[r] || 0) <= p.hand[r]);
-  // Gegenvorschlag: eine zusätzliche Karte des Anbieters verlangen
-  if (canGive && cfg(g, bi).smart && ev.reason === 'Lohnt sich nicht.' && g.rng() < (p.trait === 'trader' ? 0.9 : 0.55)) {
-    const proposer = g.player(offer.from);
-    const options = RES.filter((r) => !(offer.get[r] > 0) && proposer.hand[r] > (offer.give[r] || 0));
-    for (const r of options.sort(() => g.rng() - 0.5)) {
-      const give = { ...offer.give, [r]: (offer.give[r] || 0) + 1 };
-      if (botEvaluateOffer(g, bi, offer.from, give, offer.get).accept) {
-        return { type: 'counter', give, get: { ...offer.get }, reason: 'Mit einer Karte mehr bin ich dabei.' };
+  // Gegenvorschlag: lieber verhandeln als pauschal ablehnen
+  if (canGive && cfg(g, bi).smart && ev.reason === 'Lohnt sich nicht.' && g.rng() < (p.trait === 'trader' ? 0.95 : 0.75)) {
+    for (const c of counterCandidates(g, bi, offer)) {
+      if (botEvaluateOffer(g, bi, offer.from, c.give, c.get).accept) {
+        return { type: 'counter', give: c.give, get: c.get, reason: 'Mit kleiner Änderung bin ich dabei.' };
       }
     }
   }
@@ -527,7 +594,7 @@ export function botRespondOffer(g, bi, offer) {
 }
 
 /** Der Bot ist Anbieter und bekommt einen Gegenvorschlag: er gibt `c.give` ab, erhält `c.get`. */
-export function botJudgeCounter(g, bi, c) {
-  const { gain, loss } = tradeBalance(g, bi, c.get, c.give);
-  return gain > loss * acceptThreshold(g, bi);
+export function botJudgeCounter(g, bi, c, responder = null) {
+  if (responder !== null && cfg(g, bi).smart && helpsLeaderWin(g, responder, c.get, c.give)) return false;
+  return tradeDelta(g, bi, c.get, c.give) >= acceptMargin(g, bi);
 }

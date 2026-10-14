@@ -677,7 +677,7 @@ class App {
     for (const b of counters) {
       await sleep(500);
       if (this.game !== g) return;
-      if (botJudgeCounter(g, pi, live.responses[b]) && g.acceptResponse(pi, id, b).ok) { this.queueRender(); return; }
+      if (botJudgeCounter(g, pi, live.responses[b], b) && g.acceptResponse(pi, id, b).ok) { this.queueRender(); return; }
       if (b === HUMAN) this.toast(`${g.s.players[pi].name} lehnt deinen Gegenvorschlag ab.`, 'info');
     }
     if (g.offerById(id)) g.withdrawOffer(pi, id);

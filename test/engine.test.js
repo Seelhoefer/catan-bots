@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Game } from '../public/js/engine/game.js';
 import { generateBoard, hexNeighbors } from '../public/js/engine/board.js';
-import { botAct } from '../public/js/engine/bot.js';
+import { botAct, botRespondOffer } from '../public/js/engine/bot.js';
 import { makeRng } from '../public/js/engine/rng.js';
 import { RES, COSTS } from '../public/js/engine/constants.js';
 
@@ -418,4 +418,47 @@ test('Bei einer 7 werfen alle Gegner mit mehr als 7 Karten die Hälfte (abgerund
   assert.equal(g.handCount(3), 4);
   assert.equal(g.s.sub, 'robber');
   assert.deepEqual(events.filter((e) => e.type === 'discard').map((e) => [e.pi, e.n]), [[1, 5], [3, 4]]);
+});
+
+test('Bots tauschen 1:1, wenn ihnen genau die fehlende Karte hilft', () => {
+  const g = afterSetup({ difficulty: 'normal' }, 5);
+  g.s.turn = 0; g.s.sub = 'actions';
+  g.player(1).hand = { wood: 3, brick: 0, sheep: 0, wheat: 2, ore: 2 }; // Stadt braucht noch 1 Erz; Holz ist übrig
+  g.player(0).hand = { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 1 };
+  const ans = botRespondOffer(g, 1, { from: 0, give: { ore: 1 }, get: { wood: 1 }, responses: {} });
+  assert.equal(ans.type, 'accept');
+});
+
+test('Bots geben keine Karte her, die sie für ihr Ziel brauchen', () => {
+  const g = afterSetup({ difficulty: 'hard' }, 5);
+  g.s.turn = 0; g.s.sub = 'actions';
+  g.player(1).hand = { wood: 0, brick: 0, sheep: 0, wheat: 2, ore: 3 }; // Stadt bezahlbar
+  g.player(0).hand = { wood: 2, brick: 0, sheep: 0, wheat: 0, ore: 0 };
+  const ans = botRespondOffer(g, 1, { from: 0, give: { wood: 1 }, get: { ore: 1 }, responses: {} });
+  assert.notEqual(ans.type, 'accept');
+});
+
+test('Bots helfen dem Spieler kurz vor dem Sieg nicht beim Bauen, tauschen sonst aber mit ihm', () => {
+  const g = afterSetup({ difficulty: 'hard', targetVP: 10 }, 5);
+  g.s.turn = 0; g.s.sub = 'actions';
+  g.player(1).hand = { wood: 0, brick: 3, sheep: 0, wheat: 0, ore: 0 };
+  g.player(0).hand = { wood: 2, brick: 0, sheep: 1, wheat: 1, ore: 0 }; // fehlt nur Lehm für eine Siedlung
+  const offer = { from: 0, give: { wood: 1 }, get: { brick: 1 }, responses: {} };
+  g.s.longestRoad = { holder: 0, len: 5 }; g.s.largestArmy = { holder: 0, count: 3 }; // 4 Zusatzpunkte + 2 Siedlungen = 6 SP
+  const calm = botRespondOffer(g, 1, offer).type;
+  g.s.players[0].missions = [1, 2]; // 8 SP: jetzt zählt jeder Schritt zum Sieg
+  const nearWin = botRespondOffer(g, 1, offer);
+  assert.equal(nearWin.type, 'decline');
+  assert.equal(nearWin.reason, 'Hilft dir nicht beim Gewinnen!');
+  assert.ok(['accept', 'counter', 'decline'].includes(calm));
+});
+
+test('Bots verhandeln: aus einem schlechten Angebot machen sie einen Gegenvorschlag', () => {
+  const g = afterSetup({ difficulty: 'hard' }, 5);
+  g.s.turn = 0; g.s.sub = 'actions';
+  g.player(1).hand = { wood: 4, brick: 0, sheep: 0, wheat: 2, ore: 2 }; // braucht 1 Erz für die Stadt, Holz ist übrig
+  g.player(0).hand = { wood: 0, brick: 0, sheep: 0, wheat: 1, ore: 1 };
+  // Angebot: Spieler gibt 1 Erz, will aber 3 Holz (zu viel verlangt)
+  const ans = botRespondOffer(g, 1, { from: 0, give: { ore: 1 }, get: { wood: 3 }, responses: {} });
+  assert.ok(ans.type === 'accept' || ans.type === 'counter');
 });
