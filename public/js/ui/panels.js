@@ -1,5 +1,5 @@
 // HUD (Kopfzeile), Aktionsleiste, Missionen, Verlauf – als HTML-Strings.
-import { RES, RES_INFO, COSTS, DEV_INFO } from '../engine/constants.js';
+import { RES, RES_INFO, COSTS, DEV_INFO, STRATEGY_LABEL } from '../engine/constants.js';
 import { cardHTML } from './cards.js';
 import { missionById } from '../engine/missions.js';
 import {
@@ -74,7 +74,7 @@ export function renderPlayers(g, busy = new Set(), inflight = {}) {
       + (s.largestArmy.holder === p.id ? `<span class="badge" title="Größte Rittermacht">${ic('sword')}</span>` : '');
     const think = busy.has(p.id) ? '<span class="pc-think" title="überlegt …"><i></i><i></i><i></i></span>' : '';
     return `
-      <div class="pcard ${active ? 'active' : ''} ${mine ? 'mine' : ''}" data-pid="${p.id}" style="--pc:${p.color}" title="${esc(p.name)}${p.tagline ? ` – ${esc(p.tagline)}` : ''}${active ? ' (am Zug)' : ''}">
+      <div class="pcard ${active ? 'active' : ''} ${mine ? 'mine' : ''}" data-pid="${p.id}" style="--pc:${p.color}" title="${esc(p.name)}${p.tagline ? ` – ${esc(p.tagline)}` : ''}${p.strategy && STRATEGY_LABEL[p.strategy.id] ? ` · Plan: ${STRATEGY_LABEL[p.strategy.id]}` : ''}${active ? ' (am Zug)' : ''}">
         <span class="pc-av">${avatarSVG(p.face, p.color, 48)}</span>
         <div class="pc-body">
           <div class="pc-name">${esc(p.name)}${badges}${think}</div>

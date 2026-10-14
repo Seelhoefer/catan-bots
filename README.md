@@ -64,6 +64,11 @@ Gold umrandete Karten sind spielbar – Anklicken spielt sie (bei Monopol/Erfind
 **🙂 Charaktere:** Die Bots haben illustrierte Portraits (du ein generiertes Avatar-Gesicht). Sie haben Namen, Eigenschaft und Spielstil
 (Fritz expandiert, Greta handelt fair, Otto baut Straßen, Mira spart auf Städte, Lea liebt Ritter, Amir zieht Karten).
 
+**🧠 Bot-Pläne:** Jeder Bot verfolgt einen Plan (Expansion, Städtebau, Hafenhandel oder Rittermacht), der aus seiner Eigenschaft und der Lage auf dem Brett entsteht
+und sich ändern kann (z. B. wenn kein Platz mehr zum Siedeln da ist). Der aktuelle Plan steht im Tooltip der Spielerkarte, Wechsel erscheinen im Verlauf.
+Häfen zählen bei der Platzwahl nach der eigenen Produktion; Hafen-Bots tauschen Überschuss 2:1 / 3:1 in fehlende Rohstoffe. Tauschangebote bewerten Bots nach der Nähe
+zu ihren Zielen (auch zweit- und drittwichtigen), machen Gegenvorschläge und helfen nur dem Spieler kurz vor dem Sieg nicht beim Bauen. Die Stärke lässt sich pro Gegner einstellen.
+
 **🌍 Weltenwandel (neue Entwicklungskarte):** Alle Landfelder (Rohstoff + Zahlenchip) werden komplett zufällig neu
 verteilt. Siedlungen und Straßen bleiben an ihren Positionen, der Räuber bleibt auf seiner Position, Nebelfelder bleiben verdeckt.
 

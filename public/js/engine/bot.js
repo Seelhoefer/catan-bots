@@ -4,7 +4,7 @@
 //   { offer: {give, get} } – der Bot möchte einen Spielertausch anbieten
 //   { wait: true }         – der Bot ist gerade nicht an der Reihe
 
-import { RES, COSTS, PIP } from './constants.js';
+import { RES, COSTS, PIP, STRATEGY_LABEL } from './constants.js';
 
 const RES_W = {
   wood: 1, brick: 1, sheep: 0.85, wheat: 1.1, ore: 1.1, gold: 1.3,
@@ -55,8 +55,12 @@ function vertexValue(g, vid, pi, owned = ownedTypes(g, pi)) {
   }
   val += seen.size * 0.8;
   if (v.port) {
-    if (v.port === 'any') val += 1.2;
-    else val += 1 + (owned.has(v.port) || seen.has(v.port) ? 2 : 0);
+    // Ein Hafen lohnt, wenn man viel von dem Rohstoff erzeugt (2:1) bzw. insgesamt viel produziert (3:1)
+    if (v.port === 'any') val += 0.9 + Math.min(1.6, productionPips(g, pi) / 14);
+    else {
+      const here = v.hexes.reduce((a, hid) => { const h = g.board.hexes[hid]; return a + (h.type === v.port && !h.fog ? PIP[h.num] : 0); }, 0);
+      val += 0.5 + Math.min(4.2, (resourcePips(g, pi, v.port) + here) * 0.5);
+    }
   }
   return val;
 }
@@ -121,6 +125,66 @@ function roadTarget(g, pi) {
   return best;
 }
 
+// ------------------------------------------------------------------ Strategien
+// Jeder Bot verfolgt einen Plan, der sich mit dem Spielverlauf ändern kann (Platz zum Bauen, Häfen, Erträge, Rittermacht).
+//   expand  – Siedlungen & Straßen, Längste Handelsstraße
+//   cities  – Städte ausbauen (Erz/Getreide), dazu Entwicklungskarten
+//   harbor  – Häfen nutzen: überschüssige Rohstoffe 2:1/3:1 in das Fehlende tauschen
+//   army    – Entwicklungskarten/Ritter für die Größte Rittermacht
+/** Ports des Spielers: Liste von { type, pips } (pips = eigene Erträge des Rohstoffs bzw. insgesamt bei 3:1). */
+function myPorts(g, pi) {
+  const seen = new Set();
+  const out = [];
+  for (const b of g.buildingsOf(pi)) {
+    const port = g.board.vertices[b.vid].port;
+    if (!port || seen.has(port)) continue;
+    seen.add(port);
+    out.push({ type: port, pips: port === 'any' ? productionPips(g, pi) : resourcePips(g, pi, port) });
+  }
+  return out;
+}
+
+function strategyScores(g, pi) {
+  const s = g.s;
+  const p = g.player(pi);
+  const tr = traitOf(g, pi);
+  const owned = ownedTypes(g, pi);
+  const builds = g.buildingsOf(pi);
+  const settlements = builds.filter((b) => b.type === 'settlement').length;
+  const spots = p.pieces.settlement > 0 ? g.legalSettlementSpots(pi) : [];
+  const bestSpot = spots.reduce((m, v) => Math.max(m, vertexValue(g, v, pi, owned)), 0);
+  const rt = p.pieces.road > 0 ? roadTarget(g, pi) : null;
+  const cityOk = p.pieces.city > 0 && g.legalCitySpots(pi).length > 0;
+  const pips = (r) => resourcePips(g, pi, r);
+  const knights = p.playedKnights + p.dev.filter((c) => c.type === 'knight').length;
+
+  const expand = 1.5 + (spots.length ? 2 + Math.min(2, bestSpot / 7) : rt ? 1.2 + Math.min(1.5, rt.val / 8) : -2)
+    - settlements * 0.3 + (tr === 'expander' ? 1.6 : tr === 'builder' ? 1.1 : 0) + (g.longestRoadFor(pi) >= 4 ? 0.8 : 0);
+  const cities = 1.5 + (cityOk ? 1.8 : -3) + Math.min(3, (pips('ore') + pips('wheat')) / 5)
+    + (settlements >= 3 ? 1.2 : 0) + (tr === 'strategist' ? 1.6 : 0) + (!spots.length && !rt ? 1.5 : 0);
+  const ports = myPorts(g, pi);
+  const portVal = ports.reduce((a, x) => a + (x.type === 'any' ? 0.7 + Math.min(1.2, x.pips / 14) : 0.8 + Math.min(2.6, x.pips * 0.35)), 0);
+  const harbor = 0.8 + portVal * 1.1 + (tr === 'trader' ? 1.8 : 0) + (ports.length ? 0.5 : -1.5);
+  const army = (s.devDeck.length ? 1.2 : -6) + knights * 0.9 + (s.largestArmy.holder === pi ? 1 : s.largestArmy.count >= 3 && knights < s.largestArmy.count ? -1.2 : 0)
+    + Math.min(2, (pips('ore') + pips('wheat') + pips('sheep')) / 9) + (tr === 'knight' ? 2 : tr === 'gambler' ? 1.6 : 0);
+  return { expand, cities, harbor, army };
+}
+
+/** Einmal pro eigenem Zug neu bewerten; gewechselt wird nur bei deutlichem Vorsprung (kein Hin und Her). */
+function updateStrategy(g, pi) {
+  const p = g.player(pi);
+  if (p.strategy && p.strategy.turn === g.s.turnNumber) return p.strategy.id;
+  const sc = strategyScores(g, pi);
+  const bestId = Object.keys(sc).sort((a, b) => sc[b] - sc[a])[0];
+  const cur = p.strategy?.id;
+  if (!cur) p.strategy = { id: bestId, since: g.s.turnNumber, turn: g.s.turnNumber };
+  else if (bestId !== cur && sc[bestId] > sc[cur] + 1.3) {
+    g.log(`🧭 ${p.name} setzt jetzt auf ${STRATEGY_LABEL[bestId]}.`, pi);
+    p.strategy = { id: bestId, since: g.s.turnNumber, turn: g.s.turnNumber };
+  } else p.strategy.turn = g.s.turnNumber;
+  return p.strategy.id;
+}
+
 function topGoals(g, pi) {
   const s = g.s;
   const p = g.player(pi);
@@ -153,6 +217,19 @@ function topGoals(g, pi) {
     if (len >= 4 && s.longestRoad.holder !== pi) {
       const rts = g.legalRoadSpots(pi);
       if (rts.length) goals.push({ kind: 'road', id: rts[Math.floor(g.rng() * rts.length)], score: 8 });
+    }
+  }
+  const plan = p.strategy?.id;
+  if (plan) {
+    const bump = {
+      expand: { settlement: 2.2, road: 1.4, devcard: -0.5 },
+      cities: { city: 2.5, settlement: -0.4, devcard: 0.6, road: -0.8 },
+      harbor: { settlement: 0.6, city: 0.6 },
+      army: { devcard: 3, city: 0.5, road: -0.5 },
+    }[plan];
+    for (const goal of goals) goal.score += bump[goal.kind] || 0;
+    if (plan === 'harbor') { // Siedlungsplätze mit passendem Hafen werden bevorzugt
+      for (const goal of goals) if (goal.kind === 'settlement' && g.board.vertices[goal.id].port) goal.score += 1.6;
     }
   }
   for (const goal of goals) goal.score += rnd(g, cfg(g, pi).noise * 0.4);
@@ -392,6 +469,7 @@ export function botAct(g, pi) {
     return { did: true };
   }
   if (s.sub === 'roll') {
+    updateStrategy(g, pi);
     if (tryPlayDev(g, pi, true)) return { did: true };
     g.rollDice(pi);
     return { did: true };
@@ -425,6 +503,18 @@ export function botAct(g, pi) {
     if (g.canAfford(pi, costOf(goal))) continue;
     const step = planBankTrades(g, pi, goal);
     if (step && g.bankTrade(pi, step.give, step.get).ok) return { did: true };
+  }
+
+  // 3b) Hafen nutzen: Überschuss ab der Hafenquote (2:1 / 3:1) in das tauschen, was für die nächsten Ziele fehlt
+  {
+    const reserve = {};
+    goals.slice(0, 2).forEach((goal, i) => { for (const [r, n] of Object.entries(costOf(goal))) reserve[r] = Math.max(reserve[r] || 0, Math.ceil(n * (i === 0 ? 1 : 0.6))); });
+    const wantList = [];
+    for (const goal of goals.slice(0, 3)) for (const r of Object.keys(missingFor(p.hand, costOf(goal)))) if (!wantList.includes(r) && s.bank[r] > 0) wantList.push(r);
+    const donors = RES.map((r) => ({ r, ratio: g.portRatio(pi, r), spare: p.hand[r] - (reserve[r] || 0) }))
+      .filter((x) => x.ratio < 4 && x.spare >= x.ratio && !wantList.includes(x.r))
+      .sort((a, b) => (b.spare / b.ratio) - (a.spare / a.ratio));
+    if (donors.length && wantList.length && g.bankTrade(pi, donors[0].r, wantList[0]).ok) return { did: true };
   }
 
   // 4) Spielertausch anbieten: für das nächstliegende Ziel fehlt eine/zwei Karte(n) – anbieten, was übrig ist.

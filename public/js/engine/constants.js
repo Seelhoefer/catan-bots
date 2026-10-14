@@ -94,3 +94,6 @@ export const DEFAULT_SETTINGS = {
   harvestCard: true,
   goldField: true, // Feld mit freier Rohstoffwahl
 };
+
+/** Spielpläne der Bots (siehe bot.js). */
+export const STRATEGY_LABEL = { expand: 'Expansion', cities: 'Städtebau', harbor: 'Hafenhandel', army: 'Rittermacht' };

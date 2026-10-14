@@ -163,7 +163,6 @@ function awaitView(app, offer) {
   return `<div class="aw">
     <div class="aw-offer">${terms('Erhalte', offer.get, 'Gebe', offer.give)}</div>
     <div class="aw-row">${others.map(card).join('')}</div>
-    ${finished && !actionable ? '<div class="aw-msg">Niemand tauscht zu diesen Bedingungen.</div>' : ''}
     <div class="aw-actions">${finished && !actionable
     ? '<button class="btn gbtn" data-act="mk-retry">Angebot ändern</button><button class="btn gbtn soft" data-act="mk-withdraw-close">Schließen</button>'
     : `<button class="btn gbtn soft" data-act="mk-withdraw" data-id="${offer.id}">Angebot zurückziehen</button>`}</div>

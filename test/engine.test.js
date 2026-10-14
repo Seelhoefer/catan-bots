@@ -462,3 +462,41 @@ test('Bots verhandeln: aus einem schlechten Angebot machen sie einen Gegenvorsch
   const ans = botRespondOffer(g, 1, { from: 0, give: { ore: 1 }, get: { wood: 3 }, responses: {} });
   assert.ok(ans.type === 'accept' || ans.type === 'counter');
 });
+
+test('Bots haben einen Plan, der sich ändern kann', () => {
+  const g = afterSetup({}, 9);
+  g.s.turn = 1; g.s.sub = 'roll';
+  botAct(g, 1);
+  const first = g.player(1).strategy;
+  assert.ok(first && ['expand', 'cities', 'harbor', 'army'].includes(first.id));
+  // Kein Platz mehr zum Siedeln, aber Städte möglich → Plan wechselt zu Städten
+  g.player(1).pieces.settlement = 0;
+  g.player(1).pieces.road = 0;
+  g.s.turnNumber += 1;
+  g.s.sub = 'roll'; g.s.turn = 1;
+  botAct(g, 1);
+  assert.notEqual(g.player(1).strategy.id, 'expand');
+});
+
+test('Bots nutzen einen 2:1-Hafen, um Überschuss in Fehlendes zu tauschen', () => {
+  const g = afterSetup({}, 5);
+  const b = g.board;
+  const portVertex = b.vertices.find((v) => v.port && v.port !== 'any' && !g.s.buildings[v.id] && v.adj.every((n) => !g.s.buildings[n]));
+  assert.ok(portVertex);
+  g.s.buildings[portVertex.id] = { owner: 1, type: 'settlement' };
+  const res = portVertex.port;
+  const other = RES.find((r) => r !== res);
+  assert.equal(g.portRatio(1, res), 2);
+  g.s.turn = 1; g.s.sub = 'actions';
+  g.player(1).hand = { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 };
+  g.player(1).hand[res] = 5;
+  const before = g.player(1).hand[res];
+  let traded = false;
+  for (let i = 0; i < 12 && !traded; i++) {
+    botAct(g, 1);
+    traded = g.player(1).bankTrades > 0;
+  }
+  assert.equal(traded, true);
+  assert.ok(g.player(1).hand[res] < before, `${res} wurde über den Hafen getauscht`);
+  assert.ok(other);
+});
