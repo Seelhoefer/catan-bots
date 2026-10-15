@@ -229,14 +229,32 @@ class App {
       }
       case 'harvest': this.flash([e.hex], 2400); sfx.play('harvest'); break;
       case 'steal': {
-        // nach dem Sprung des Räubers fliegt die Karte vom Opfer zum Dieb
+        // nach dem Sprung des Räubers fliegt die Karte vom Opfer zum Dieb; beim Dieb zählt sie erst bei der Ankunft
         const wait = Math.max(0, this.view.robberEnd - Date.now(), (this.robberMoveAt || 0) + 2300 - Date.now()) + 120;
         const known = e.from === HUMAN || e.to === HUMAN;
-        this.inflightSteal = (this.inflightSteal || 0) + 1;
+        const mine = e.to === HUMAN;
+        if (mine) this.inflightH[e.res] = (this.inflightH[e.res] || 0) + 1;
+        else this.inflightO[e.to] = (this.inflightO[e.to] || 0) + 1;
+        let released = false;
+        const release = () => {
+          if (released) return;
+          released = true;
+          if (mine) this.inflightH[e.res] = Math.max(0, (this.inflightH[e.res] || 0) - 1);
+          else this.inflightO[e.to] = Math.max(0, (this.inflightO[e.to] || 0) - 1);
+          this.queueRender();
+        };
         setTimeout(() => {
           sfx.play('steal');
-          stealFx({ from: e.from, to: e.to, res: known ? e.res : null, onArrive: () => { bumpPlayer(e.to, e.res); sfx.play('land'); this.inflightSteal -= 1; this.queueRender(); } });
+          stealFx({ from: e.from, to: e.to, res: known ? e.res : null, onArrive: () => {
+            release();
+            bumpPlayer(e.to, e.res); sfx.play('land');
+            const rn = RES_INFO[e.res].name;
+            if (mine) this.toastHTML(`${ic(e.res, 'inline')} Du stiehlst 1× ${esc(rn)} von ${esc(name(e.from))}`, 'gain');
+            else if (e.from === HUMAN) this.toastHTML(`${ic(e.res, 'inline')} ${esc(name(e.to))} stiehlt dir 1× ${esc(rn)}`, 'info');
+            else this.toast(`${name(e.to)} stiehlt eine Karte von ${name(e.from)}.`, 'info');
+          } });
         }, wait);
+        setTimeout(release, wait + 4500); // Sicherheitsnetz
         this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + wait + 1500);
         break;
       }
@@ -276,7 +294,14 @@ class App {
         this.queueRender();
         break;
       }
-      case 'robber': sfx.play('robber'); this.robberMoveAt = Date.now(); break;
+      case 'robber': {
+        sfx.play('robber'); this.robberMoveAt = Date.now();
+        if (g.s.turn === HUMAN && !g.stealTargets(e.id).length) {
+          const owners = new Set(g.board.hexes[e.id].verts.map((v) => g.s.buildings[v]?.owner).filter((o) => o !== undefined && o !== HUMAN));
+          setTimeout(() => this.toast(owners.size ? `${[...owners].map(name).join(' und ')} ${owners.size > 1 ? 'haben' : 'hat'} keine Karten – nichts zu stehlen.` : 'Hier baut niemand – nichts zu stehlen.', 'info'), 900);
+        }
+        break;
+      }
       case 'monopoly': sfx.play('monopoly'); break;
       case 'turn': if (e.pi === HUMAN) sfx.play('turn', { delay: 250 }); break;
       case 'change': {
@@ -728,7 +753,10 @@ class App {
         ui.selected = new Set([s.setup.lastSettlement]);
       }
     } else if (s.phase === 'main' && s.turn === HUMAN) {
-      if (s.sub === 'robber') ui.hexes = new Set(g.legalRobberHexes());
+      if (s.sub === 'robber') {
+        ui.hexes = new Set(g.legalRobberHexes());
+        ui.victims = new Map([...ui.hexes].map((hid) => [hid, g.stealTargets(hid).map((pid) => ({ pid, color: s.players[pid].color, cards: g.handCount(pid) }))]));
+      }
       else if (s.roadBuildingLeft > 0) ui.edges = new Set(g.legalRoadSpots(HUMAN));
       else if (this.mode === 'harvest') { ui.hexes = new Set(g.harvestHexes(HUMAN)); ui.ghost.hexKind = 'harvest'; } else if (s.sub === 'actions') {
         if (this.mode === 'road') ui.edges = new Set(g.legalRoadSpots(HUMAN));
@@ -753,6 +781,12 @@ class App {
     root.dataset.phase = s.phase;
     root.dataset.mine = s.turn === HUMAN ? '1' : '0';
 
+    if (s.phase === 'main' && s.turn === HUMAN && s.sub === 'robber') {
+      if (!this.robberHinted) {
+        this.robberHinted = true;
+        setTimeout(() => { if (this.game === g && g.s.sub === 'robber' && g.s.turn === HUMAN) this.toast('Räuber versetzen: Felder mit Gegnern zeigen, wie viele Karten sie haben – davon stiehlst du eine.', 'info'); }, 700);
+      }
+    } else this.robberHinted = false;
     this.view.render(g, this.highlights());
     this.fresh = { pieces: new Set(), hexes: new Set(), remap: false };
 

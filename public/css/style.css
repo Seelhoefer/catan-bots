@@ -1813,3 +1813,9 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .fab-item .fi-cost { background: rgba(8, 18, 30, .78); padding: 3px 9px; border-radius: 999px; text-shadow: none; }
 @media (hover: none) and (pointer: coarse) { .fab-item .fi-cost { padding: 2px 7px; } }
 .toast.warn { color: #cbd7e6; }
+
+/* Räuber setzen: Felder mit Opfern zeigen Spielerfarbe + Kartenzahl, leere Felder sind gedämpft */
+.vic-n { fill: #fff; font-size: .22px; font-weight: 800; text-anchor: middle; paint-order: stroke; stroke: rgba(0, 0, 0, .55); stroke-width: .03; pointer-events: none; }
+.hl-hex .victims { pointer-events: none; }
+.hl-hex.has-victim .hl-hex-vis { stroke: rgba(255, 214, 120, .85); stroke-width: .05; fill: rgba(255, 214, 120, .08); }
+.hl-hex.no-victim { opacity: .55; }

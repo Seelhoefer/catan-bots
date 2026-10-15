@@ -381,7 +381,11 @@ export class BoardView {
       for (const id of ui.hexes) {
         const h = board.hexes[id];
         const pend = ui.pending && ui.pending.kind === 'hex' && ui.pending.id === id;
-        out.push(`<g class="hl-hex${pend ? ' pending' : ''}" data-h="${id}"><polygon points="${this.hexPoints(board, h, 0.93)}" class="hl-hex-vis"/>`
+        const vic = ui.victims ? ui.victims.get(id) || [] : null;
+        const marks = vic && vic.length
+          ? `<g class="victims" transform="translate(${h.x},${h.y - 0.62})">${vic.map((v, i) => `<g transform="translate(${((i - (vic.length - 1) / 2) * 0.46).toFixed(2)},0)"><circle r="0.21" fill="${v.color}" stroke="#fff" stroke-width="0.04"/><text class="vic-n" y="0.075">${v.cards}</text></g>`).join('')}</g>`
+          : '';
+        out.push(`<g class="hl-hex${pend ? ' pending' : ''}${vic ? (vic.length ? ' has-victim' : ' no-victim') : ''}" data-h="${id}"><polygon points="${this.hexPoints(board, h, 0.93)}" class="hl-hex-vis"/>${marks}`
           + `<circle cx="${h.x}" cy="${h.y}" r="0.5" class="hl-pulse"/><circle cx="${h.x}" cy="${h.y}" r="0.5" class="hl-pulse p2"/>`
           + (ghost.hexKind === 'harvest' ? '' : `<g transform="translate(${h.x},${h.y + 0.8})" class="ghost${pend ? ' on' : ''}">${art.ok ? thiefImage() : `<g transform="translate(0,-.34)">${ROBBER}</g>`}</g>`) + '</g>');
       }
