@@ -97,3 +97,15 @@ export const DEFAULT_SETTINGS = {
 
 /** Spielpläne der Bots (siehe bot.js). */
 export const STRATEGY_LABEL = { expand: 'Expansion', cities: 'Städtebau', harbor: 'Hafenhandel', army: 'Rittermacht' };
+
+/** Obergrenze für das Siegpunktziel. */
+export const MAX_TARGET_VP = 50;
+
+/** Grobe Schätzung, bis zu welchem Siegpunktziel eine Partie auf dieser Karte realistisch endet (Bauplätze sind begrenzt). */
+export function realisticVP(sizeId, players) {
+  const size = SIZES[sizeId] || SIZES.small;
+  const r = size.radius;
+  const sites = (6 * r * r + 12 * r + 6) / 2; // Bauplätze mit Abstandsregel
+  const perPlayer = (sites / Math.max(1, players)) * 2 * 0.85; // fast alles zu Städten ausgebaut
+  return Math.floor(perPlayer + 4 + (5 * size.factor) / Math.max(1, players));
+}

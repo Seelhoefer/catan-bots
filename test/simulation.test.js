@@ -8,6 +8,7 @@ const configs = [
   { size: 'small', variant: 'classic', bots: 1, targetVP: 8, difficulty: 'easy' },
   { size: 'large', variant: 'fog', bots: 4, targetVP: 12 },
   { size: 'huge', variant: 'classic', bots: 5, targetVP: 15 },
+  { size: 'huge', variant: 'classic', bots: 3, targetVP: 50 },
   { size: 'small', variant: 'classic', bots: 3, targetVP: 10, antiBad: false, missions: false, remapCard: false },
 ];
 
@@ -16,7 +17,7 @@ for (const [i, cfg] of configs.entries()) {
     for (const seed of [11, 22, 33]) {
       const { g, steps } = runBotGame(cfg, seed);
       assert.equal(g.s.phase, 'over', `Seed ${seed}: Spiel nicht beendet nach ${steps} Schritten (Zug ${g.s.turnNumber})`);
-      assert.ok(g.vp(g.s.winner) >= cfg.targetVP);
+      assert.ok(g.vp(g.s.winner) >= cfg.targetVP || g.s.stalemate, `Seed ${seed}: Sieger ohne Ziel und ohne Patt`);
       // Bank-Invariante: Rohstoffe bleiben erhalten
       const factor = { small: 1, large: 2, huge: 3 }[cfg.size];
       for (const r of ['wood', 'brick', 'sheep', 'wheat', 'ore']) {

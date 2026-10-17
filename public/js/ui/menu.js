@@ -1,5 +1,5 @@
 // Startseite (Hero) und Einstellungs-Assistent in drei Schritten: Karte → Spieler → Regeln.
-import { SIZES, DEFAULT_SETTINGS, BOT_ROSTER, HUMAN_FACES, PLAYER_COLORS, PIP } from '../engine/constants.js';
+import { SIZES, DEFAULT_SETTINGS, BOT_ROSTER, HUMAN_FACES, PLAYER_COLORS, PIP, MAX_TARGET_VP, realisticVP } from '../engine/constants.js';
 import { generateBoard, hexCorner } from '../engine/board.js';
 import { makeRng } from '../engine/rng.js';
 import { el, ic, esc } from './dom.js';
@@ -154,7 +154,7 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
     const i = BOT_ROSTER.findIndex((b) => b.id === settings.avatarPortrait);
     pickFace(BOT_ROSTER[(i + d + BOT_ROSTER.length) % BOT_ROSTER.length].id);
   };
-  const setVP = (v) => { settings.targetVP = Math.max(5, Math.min(20, Math.round(v) || 10)); saveSettings(settings); };
+  const setVP = (v) => { settings.targetVP = Math.max(5, Math.min(MAX_TARGET_VP, Math.round(v) || 10)); saveSettings(settings); };
   const card = (icon, title, ...kids) => el('section', { class: 'lb-card' },
     el('header', {}, el('span', { class: 'lb-hico', html: ic(icon) }), el('b', {}, title)), ...kids);
   const rule = (key, icon, title) => el('button', {
@@ -213,11 +213,20 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
         el('button', { type: 'button', class: 'vp-b', 'aria-label': 'Weniger Siegpunkte', onclick: () => { setVP(settings.targetVP - 1); draw(); }, html: ic('minus') }),
         el('label', { class: 'vp-c' }, el('span', { class: 'vp-t', html: ic('trophy') }),
           el('input', {
-            type: 'number', inputmode: 'numeric', min: 5, max: 20, value: settings.targetVP, class: 'vp-input', 'aria-label': 'Siegpunkte',
-            oninput: (e) => { const v = Math.round(Number(e.target.value)); if (v >= 5 && v <= 20) { settings.targetVP = v; saveSettings(settings); } },
+            type: 'number', inputmode: 'numeric', min: 5, max: MAX_TARGET_VP, value: settings.targetVP, class: 'vp-input', 'aria-label': 'Siegpunkte',
+            oninput: (e) => { const v = Math.round(Number(e.target.value)); if (v >= 5 && v <= MAX_TARGET_VP) { settings.targetVP = v; saveSettings(settings); } },
             onblur: (e) => { setVP(Number(e.target.value)); e.target.value = settings.targetVP; },
           })),
         el('button', { type: 'button', class: 'vp-b', 'aria-label': 'Mehr Siegpunkte', onclick: () => { setVP(settings.targetVP + 1); draw(); }, html: ic('plus') })),
+      el('div', { class: 'vp-presets' }, [10, 15, 20, 30, 50].map((v) => el('button', {
+        type: 'button', class: settings.targetVP === v ? 'on' : '', 'aria-label': `${v} Siegpunkte`, onclick: () => { setVP(v); draw(); },
+      }, String(v)))),
+      (() => {
+        const cap = realisticVP(settings.size, settings.bots + 1);
+        return settings.targetVP > cap + 2
+          ? el('p', { class: 'vp-hint', title: 'Die Bauplätze sind begrenzt: mit mehr Feldern oder weniger Spielern sind höhere Ziele erreichbar.' }, `Auf dieser Insel realistisch bis ca. ${cap} SP`)
+          : null;
+      })(),
       el('div', { class: 'lb-rules' },
         rule('antiBad', 'clover', 'Anti-Pech'),
         rule('missions', 'flag', 'Missionen'),

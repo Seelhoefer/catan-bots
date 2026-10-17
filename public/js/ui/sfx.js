@@ -11,6 +11,7 @@ const files = {}; // name -> AudioBuffer (optionale Aufnahmen)
 const last = {};
 let enabled = true;
 let volume = 0.7;
+const MASTER_SOFT = 0.62; // Gesamtpegel: dezenter als früher
 try {
   const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
   if (saved) { enabled = saved.on !== false; if (typeof saved.vol === 'number') volume = saved.vol; }
@@ -26,11 +27,17 @@ function ensure() {
   if (!AC) return null;
   ctx = new AC();
   master = ctx.createGain();
-  master.gain.value = volume;
+  master.gain.value = volume * MASTER_SOFT;
+  const soft = ctx.createBiquadFilter(); // nimmt die Schärfe aus den synthetischen Klängen
+  soft.type = 'lowpass';
+  soft.frequency.value = 5200;
+  soft.Q.value = 0.4;
   const comp = ctx.createDynamicsCompressor();
-  comp.threshold.value = -16;
-  comp.ratio.value = 4;
-  master.connect(comp).connect(ctx.destination);
+  comp.threshold.value = -20;
+  comp.ratio.value = 3;
+  comp.attack.value = 0.01;
+  comp.release.value = 0.2;
+  master.connect(soft).connect(comp).connect(ctx.destination);
   // 1 s weißes Rauschen als Rohmaterial für Klopfen, Würfeln, Wischen …
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const d = noiseBuf.getChannelData(0);
@@ -204,6 +211,13 @@ const BOOST = {
   steal: 2.4, deal: 2.6, land: 2.2, dice: 2.4, turn: 2.2, remap: 1.6, monopoly: 1.5, vpOther: 2, trade: 1.2, lose: 1.5, offer: 1.4, robber: 0.9,
 };
 
+// Dezenter: häufige Klänge sehr leise, Ereignisse mittel, nur Sieg/Höhepunkte etwas präsenter
+const SOFT = {
+  tick: 0.55, select: 0.6, error: 0.6, deal: 0.5, land: 0.5, gain: 0.65, token: 0.7, dice: 0.7, diceHit: 0.55, diceLand: 0.65, whirl: 0.6, gather: 0.6,
+  turn: 0.6, offer: 0.7, trade: 0.7, card: 0.7, cardplay: 0.7, steal: 0.55, robber: 0.7, robberLand: 0.6, harvest: 0.7, remap: 0.75, monopoly: 0.75,
+  road: 0.7, settlement: 0.75, city: 0.75, vp: 0.8, vpOther: 0.6, lose: 0.7, win: 0.85, jackpot: 0.75,
+};
+
 // ------------------------------------------------------------------ API
 export const sfx = {
   /** `opts.delay` in ms, `opts.vol` 0–1 (relative Lautstärke). */
@@ -212,13 +226,13 @@ export const sfx = {
     const c = ensure();
     if (!c || !SOUNDS[name]) return;
     const now = performance.now();
-    if (now - (last[name] || 0) < 45) return; // keine Doppelklänge
+    if (now - (last[name] || 0) < (name === 'deal' || name === 'land' || name === 'tick' ? 70 : 45)) return; // keine Doppelklänge
     last[name] = now;
     if (c.state === 'suspended') c.resume();
     const t = c.currentTime + 0.01 + (opts.delay || 0) / 1000;
     // alle Bausteine hängen am `master`; für relative Lautstärke kurz auf einen Zwischenregler umleiten
     const prev = master;
-    const vol = (opts.vol ?? 1) * (BOOST[name] ?? 1);
+    const vol = (opts.vol ?? 1) * (BOOST[name] ?? 1) * (SOFT[name] ?? 0.7);
     if (vol !== 1) {
       const out = c.createGain();
       out.gain.value = vol;
@@ -258,7 +272,7 @@ export const sfx = {
 
   setVolume(v) {
     volume = Math.max(0, Math.min(1, v));
-    if (master) master.gain.value = volume;
+    if (master) master.gain.value = volume * MASTER_SOFT;
     persist();
   },
 

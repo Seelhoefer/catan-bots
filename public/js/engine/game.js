@@ -25,7 +25,7 @@ export class Game {
     const size = SIZES[settings.size];
     const r = rng || makeRng(settings.seed);
     settings.bots = Math.max(1, Math.min(settings.bots, size.maxPlayers - 1));
-    settings.targetVP = Math.max(4, Math.min(30, settings.targetVP));
+    settings.targetVP = Math.max(4, Math.min(50, settings.targetVP));
 
     const board = generateBoard(settings.size, settings.variant, r, { gold: settings.goldField });
     const extra = size.sizeBonus + Math.ceil(Math.max(0, settings.targetVP - 10) / 2);
@@ -62,7 +62,7 @@ export class Game {
     const f = size.factor;
     const deck = [];
     const add = (t, c) => { for (let i = 0; i < c; i++) deck.push(t); };
-    add('knight', 14 * f); add('victory', 5 * f); add('roadbuilding', 2 * f);
+    add('knight', 14 * f); add('victory', 5 * f + Math.round(Math.max(0, settings.targetVP - 10) / 4)); add('roadbuilding', 2 * f);
     add('plenty', 2 * f); add('monopoly', 2 * f);
     if (settings.remapCard) add('remap', 2 * f);
     if (settings.harvestCard) add('harvest', 2 * f);
@@ -389,10 +389,11 @@ export class Game {
       }
     }
     s.gold = {};
-    const bankTotal = RES.reduce((a, r) => a + s.bank[r], 0);
+    let bankTotal = RES.reduce((a, r) => a + s.bank[r], 0); // der Vorrat der Bank wird unter allen Wählern aufgeteilt
     for (const [pid, n] of Object.entries(goldPick)) {
       const amount = Math.min(n, bankTotal);
       if (amount <= 0) continue;
+      bankTotal -= amount;
       s.gold[pid] = amount;
       received[pid] += amount; // zählt als Ertrag (kein Anti-Pech-Marker)
       this.log(`✨ ${s.players[pid].name} darf ${amount} Rohstoff${amount > 1 ? 'e' : ''} frei wählen (Wahlfeld).`, Number(pid));
@@ -430,6 +431,17 @@ export class Game {
   chooseGold(pi, cards) {
     const s = this.s;
     if (s.sub !== 'gold' || !s.gold[pi]) return fail('Du musst keinen Rohstoff wählen.');
+    // Sicherheitsnetz: nie mehr verlangen, als die Bank noch hat (sonst hinge das Spiel fest)
+    const avail = RES.reduce((a, r) => a + s.bank[r], 0);
+    if (s.gold[pi] > avail) {
+      s.gold[pi] = avail;
+      if (avail === 0) {
+        delete s.gold[pi];
+        if (Object.keys(s.gold).length === 0) s.sub = 'actions';
+        this.afterAction();
+        return ok();
+      }
+    }
     const n = RES.reduce((a, r) => a + (cards[r] || 0), 0);
     if (n !== s.gold[pi]) return fail(`Wähle genau ${s.gold[pi]} Rohstoff${s.gold[pi] > 1 ? 'e' : ''}.`);
     for (const r of RES) {
@@ -893,8 +905,32 @@ export class Game {
     s.roadBuildingLeft = 0;
     this.log(`${this.cur.name} ist am Zug.`, s.turn);
     this.emit({ type: 'turn', pi: s.turn });
+    this.checkStalemate();
     this.afterAction();
     return ok();
+  }
+
+  /**
+   * Patt: Sind alle Bauplätze vergeben (bzw. die Spielstücke aufgebraucht) und hat sich 30 Runden lang bei keinem Spieler die
+   * Punktzahl geändert, kann das Ziel nicht mehr erreicht werden – dann gewinnt, wer führt.
+   */
+  checkStalemate() {
+    const s = this.s;
+    if (s.phase !== 'main' || s.winner !== null && s.winner !== undefined) return;
+    const sig = s.players.map((p) => this.vp(p.id)).join(',');
+    if (!s.stall || s.stall.sig !== sig) { s.stall = { sig, since: s.turnNumber }; return; }
+    if (s.turnNumber - s.stall.since < s.players.length * 30) return;
+    const canGrow = s.players.some((p) => (p.pieces.settlement > 0 && this.legalSettlementSpots(p.id).length > 0)
+      || (p.pieces.city > 0 && this.legalCitySpots(p.id).length > 0)
+      || (s.devDeck.includes('victory') && this.canAfford(p.id, COSTS.devcard)));
+    if (canGrow) { s.stall.since = s.turnNumber - s.players.length * 15; return; } // noch Luft: später erneut prüfen
+    const top = Math.max(...s.players.map((p) => this.vp(p.id)));
+    const winner = s.players.find((p) => this.vp(p.id) === top).id;
+    s.phase = 'over';
+    s.winner = winner;
+    s.stalemate = true;
+    this.log(`🏁 Patt: Es lässt sich kein Punkt mehr gewinnen – ${s.players[winner].name} führt mit ${top} Siegpunkten und gewinnt.`, winner);
+    this.emit({ type: 'win', pi: winner, stalemate: true });
   }
 
   // ---------------------------------------------------------------- Auswertung
@@ -909,26 +945,39 @@ export class Game {
   longestRoadFor(pi) {
     const s = this.s;
     const adj = {};
+    const mine = [];
     for (const [eid, o] of Object.entries(s.roads)) {
       if (o !== pi) continue;
       const e = this.board.edges[eid];
+      mine.push(e.id);
       (adj[e.a] ||= []).push(e);
       (adj[e.b] ||= []).push(e);
     }
-    let best = 0;
-    const used = new Set();
+    if (!mine.length) return 0;
     const blocked = (v) => { const b = s.buildings[v]; return b && b.owner !== pi; };
+    // Ergebnis merken: ändert sich weder das eigene Straßennetz noch eine Sperre durch fremde Gebäude, bleibt die Länge gleich
+    const cut = Object.keys(adj).filter((v) => blocked(Number(v)));
+    const key = `${mine.join(',')}|${cut.join(',')}`;
+    this._lr ||= {};
+    if (this._lr[pi]?.key === key) return this._lr[pi].val;
+    let best = 0;
+    let budget = 400000; // Netze mit vielen Kreisen: nach dieser Suchtiefe gilt das bisher beste Ergebnis
+    const used = new Set();
     const dfs = (v, len) => {
       if (len > best) best = len;
+      if (best >= mine.length || budget <= 0) return;
       for (const e of adj[v] || []) {
         if (used.has(e.id)) continue;
         const nv = e.a === v ? e.b : e.a;
         used.add(e.id);
+        budget -= 1;
         if (blocked(nv)) { if (len + 1 > best) best = len + 1; } else dfs(nv, len + 1);
         used.delete(e.id);
+        if (best >= mine.length || budget <= 0) return;
       }
     };
-    for (const v of Object.keys(adj)) dfs(Number(v), 0);
+    for (const v of Object.keys(adj)) { if (budget <= 0 || best >= mine.length) break; dfs(Number(v), 0); }
+    this._lr[pi] = { key, val: best };
     return best;
   }
 

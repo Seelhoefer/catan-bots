@@ -515,3 +515,45 @@ test('Größte Rittermacht: Wechsel löst ein Award-Event aus und zählt +2 Sieg
   assert.deepEqual(events.map((e) => [e.kind, e.holder, e.prev]), [['army', 1, null], ['army', 0, 1]]);
   assert.equal(g.s.largestArmy.holder, 0);
 });
+
+test('Siegpunktziel bis 50: Spielstücke und Siegpunktkarten wachsen mit', () => {
+  const g50 = newGame({ size: 'huge', targetVP: 50 });
+  const g10 = newGame({ size: 'huge', targetVP: 10 });
+  assert.equal(g50.s.settings.targetVP, 50);
+  assert.ok(g50.player(0).pieces.road > g10.player(0).pieces.road);
+  assert.ok(g50.player(0).pieces.city > g10.player(0).pieces.city);
+  const victory = (g) => g.s.devDeck.filter((t) => t === 'victory').length;
+  assert.ok(victory(g50) > victory(g10));
+  assert.equal(newGame({ targetVP: 99 }).s.settings.targetVP, 50, 'mehr als 50 wird gekappt');
+});
+
+test('Patt: ohne Bauplätze und ohne Punktänderung gewinnt nach 30 Runden der Führende', () => {
+  const g = afterSetup({ targetVP: 50 }, 5);
+  // Alle Bauplätze und Spielstücke weg, Bank leer, keine Karten – nichts kann sich mehr ändern
+  for (const p of g.s.players) { p.pieces.settlement = 0; p.pieces.city = 0; }
+  g.s.devDeck = [];
+  g.s.sub = 'actions'; g.s.turn = 0;
+  const events = [];
+  g.on((e) => { if (e.type === 'win') events.push(e); });
+  let guard = 0;
+  while (g.s.phase !== 'over' && guard++ < g.s.players.length * 40) {
+    g.s.sub = 'actions';
+    assert.equal(g.endTurn(g.s.turn).ok, true);
+  }
+  assert.equal(g.s.phase, 'over');
+  assert.equal(g.s.stalemate, true);
+  assert.equal(events.length, 1);
+  assert.ok(g.s.winner !== null);
+  assert.ok(g.vp(g.s.winner) < 50);
+});
+
+test('Wahlfeld: bei knapper Bank hängt das Spiel nicht fest', () => {
+  const g = afterSetup({}, 5);
+  g.s.sub = 'gold';
+  g.s.gold = { 1: 3 };
+  for (const r of RES) g.s.bank[r] = 0;
+  g.s.bank.wood = 1; // nur noch 1 Karte da, verlangt sind 3
+  assert.equal(g.chooseGold(1, { wood: 1 }).ok, true);
+  assert.equal(g.s.sub, 'actions');
+  assert.equal(g.s.gold[1], undefined);
+});

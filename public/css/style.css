@@ -1819,3 +1819,10 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .hl-hex .victims { pointer-events: none; }
 .hl-hex.has-victim .hl-hex-vis { stroke: rgba(255, 214, 120, .85); stroke-width: .05; fill: rgba(255, 214, 120, .08); }
 .hl-hex.no-victim { opacity: .55; }
+
+/* Siegpunktziel bis 50: Schnellwahl und Hinweis */
+.vp-presets { display: flex; justify-content: center; gap: 8px; margin-top: 2px; }
+.vp-presets button { min-width: 40px; height: 30px; padding: 0 10px; border-radius: 999px; border: 1.5px solid rgba(233, 185, 73, .35); background: rgba(10, 22, 36, .6); color: var(--muted); font-weight: 700; font-size: 13px; transition: background .2s, color .2s, border-color .2s; }
+.vp-presets button:hover { color: var(--text); border-color: rgba(233, 185, 73, .7); }
+.vp-presets button.on { background: var(--ivory); color: var(--ivory-ink); border-color: transparent; }
+.vp-hint { margin: 2px 0 0; text-align: center; font-size: 12.5px; color: #e9c46a; }

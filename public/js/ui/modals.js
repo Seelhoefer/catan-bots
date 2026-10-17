@@ -347,7 +347,7 @@ export function gameOverModal(app, { onNew, onMenu }) {
     el('div', { class: 'vc-hero' },
       el('div', { class: 'vc-rays' }),
       el('div', { class: 'vc-portrait', style: `--pc:${winner.color}`, html: `${avatarSVG(winner.face, winner.color, 168)}${art.ok ? `<img class="vc-trophy" src="${IMG.trophy}" alt="" draggable="false">` : ''}` }),
-      el('div', { class: 'vc-name' }, el('small', {}, mine ? 'Sieg!' : 'Sieger'), el('h1', {}, mine ? 'Du hast gewonnen!' : `${winner.name} gewinnt`)),
+      el('div', { class: 'vc-name' }, el('small', {}, s.stalemate ? 'Patt – alle Bauplätze vergeben' : mine ? 'Sieg!' : 'Sieger'), el('h1', {}, mine ? 'Du hast gewonnen!' : `${winner.name} gewinnt`)),
       el('div', { class: 'vc-vp', html: `${ic('trophy')}<b>${rows[0].total}</b><span>Siegpunkte</span>` })),
     el('table', { class: 'vc-table', html: `
       <thead><tr><th></th><th class="vc-who"></th>${head('house', 'Siedlungen')}${head('city', 'Städte')}${head('road', 'Straßen')}${head('cards', 'Entwicklungskarten', 'Karten')}${head('trophy', 'Siegpunkte', 'Punkte')}</tr></thead>
