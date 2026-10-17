@@ -207,7 +207,7 @@ export function renderAwards(g) {
     const lead = best.val > 0 ? `${esc(s.players[best.pi].name)} ${best.val}` : '–';
     const body = p
       ? `<span class="awd-av">${avatarSVG(p.face, p.color, 26)}</span><span class="awd-txt"><b>${mine ? 'Du' : esc(p.name)}</b><small>${best.val} ${unit}</small></span>`
-      : `<span class="awd-av empty"></span><span class="awd-txt"><b>noch frei</b><small>ab ${need} ${unit} · ${lead}</small></span>`;
+      : `<span class="awd-av none"></span><span class="awd-txt"><b>noch frei</b><small>ab ${need} ${unit} · ${lead}</small></span>`;
     const tip = `${title}: +2 Siegpunkte. ${hint} Dein Stand: ${mineVal}.${p ? ` Aktuell: ${p.name} (${best.val}).` : ' Noch niemand hat sie.'}`;
     return `<button type="button" class="award ${cls} ${p ? 'held' : 'free'} ${mine ? 'mine' : ''}" data-act="award-info" data-kind="${cls}" title="${esc(tip)}" aria-label="${esc(tip)}">
       <span class="awd-ico">${ic(icon)}</span>${body}<span class="awd-n">${p ? best.val : `${best.val}/${need}`}</span><span class="awd-pts">+2</span></button>`;

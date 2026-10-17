@@ -144,3 +144,10 @@ Die Tests spielen komplette Partien (alle Feldgrößen, mit/ohne Nebel) nur mit 
 (z. B. Rohstofferhaltung) sowie die neuen Mechaniken einzeln.
 
 *Fan-Projekt für den privaten Gebrauch; „Catan“ ist eine Marke der jeweiligen Rechteinhaber.*
+
+## 📱 Handy-Bedienung
+
+- **Brett:** Mit einem Finger wischen (gleitet nach, wie bei Karten-Apps), mit zwei Fingern zoomen und gleichzeitig verschieben, Doppeltipp auf freie Fläche zoomt hinein und wieder heraus. Das Brett lässt sich nicht aus dem Bild schieben.
+- **Layout hochkant:** Oben nur die Spieler als runde Bilder (Punkte-Marke, Kartenzahl; ein Tipp zeigt Details und Plan), unten die Rohstoffleiste und darunter Bauen, Handeln, Entwicklungskarten und der große Weiter-Knopf. Auszeichnungen und Missionen sind kompakte Symbole oben links, die Einstellungen (inkl. Musik) liegen hinter dem Zahnrad.
+- **Flüssig:** Auf Touch-Geräten sind Unschärfe-Effekte und Dauer-Animationen aus; Listen und Fenster scrollen weich ohne Gummiband. Der Desktop sieht weiter aus wie bisher.
+

@@ -1,7 +1,7 @@
 // App-Controller: verbindet Engine, Bots und Oberfläche.
 import { Game } from './engine/game.js';
 import { botAct, botRespondOffer, botJudgeCounter } from './engine/bot.js';
-import { RES, RES_INFO, DEV_INFO } from './engine/constants.js';
+import { RES, RES_INFO, DEV_INFO, STRATEGY_LABEL } from './engine/constants.js';
 import { missionById } from './engine/missions.js';
 import { BoardView } from './ui/boardView.js';
 import {
@@ -1020,6 +1020,14 @@ class App {
     document.addEventListener('keydown', unlock, { once: true });
     document.addEventListener('click', (e) => {
       if (this.ui.fabOpen && !e.target.closest('#fab')) { this.ui.fabOpen = false; this.queueRender(); }
+      const pcard = e.target.closest('.pcard[data-pid]');
+      if (pcard && this.game && window.matchMedia('(max-width: 860px)').matches) {
+        const g = this.game; const p = g.s.players[Number(pcard.dataset.pid)];
+        if (p && p.id !== HUMAN) {
+          const plan = p.strategy && STRATEGY_LABEL[p.strategy.id] ? ` · Plan: ${STRATEGY_LABEL[p.strategy.id]}` : '';
+          this.toast(`${p.name}: ${g.handCount(p.id)} Karten, ${p.dev.length} Entwicklungskarten, ${p.playedKnights} Ritter, ${g.roadsOf(p.id).length} Straßen${plan}`, 'info');
+        }
+      }
       const handCard = e.target.closest('#handFan .rgroup[data-res]');
       if (handCard && this.tradeHandSide()) { this.pickFromHand(handCard.dataset.res); return; }
       const devCard = e.target.closest('[data-dev]');

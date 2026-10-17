@@ -86,23 +86,31 @@ export class BoardView {
     svg.addEventListener('pointerdown', (e) => {
       if (e.button !== 0 && e.pointerType === 'mouse') return;
       this.stopZoom();
-      this.drag = { x: e.clientX, y: e.clientY, vb: this.getVB(), id: e.pointerId };
+      this.stopInertia();
+      this.drag = { x: e.clientX, y: e.clientY, vb: this.getVB(), id: e.pointerId, type: e.pointerType };
+      this.samples = [{ t: performance.now(), x: e.clientX, y: e.clientY }];
       this.moved = false;
     });
     svg.addEventListener('pointermove', (e) => {
-      if (!this.drag) return;
+      if (!this.drag || this.pinching) return;
       const dx = e.clientX - this.drag.x;
       const dy = e.clientY - this.drag.y;
       if (!this.moved && Math.hypot(dx, dy) < 6) return;
       if (!this.moved) { this.moved = true; svg.classList.add('panning'); try { svg.setPointerCapture(e.pointerId); } catch { /* egal */ } }
+      const now = performance.now();
+      this.samples.push({ t: now, x: e.clientX, y: e.clientY });
+      while (this.samples.length > 2 && now - this.samples[0].t > 100) this.samples.shift();
       const rect = svg.getBoundingClientRect();
       const vb = this.drag.vb;
       const k = Math.max(vb.w / rect.width, vb.h / rect.height);
-      this.setVB({ x: vb.x - dx * k, y: vb.y - dy * k, w: vb.w, h: vb.h });
+      this.queueVB(this.clampVB({ x: vb.x - dx * k, y: vb.y - dy * k, w: vb.w, h: vb.h }));
     });
-    const end = () => {
+    const end = (e) => {
+      const wasMoved = this.moved;
+      const drag = this.drag;
       this.drag = null;
       svg.classList.remove('panning');
+      if (wasMoved && drag && drag.type === 'touch' && e && e.type === 'pointerup' && !this.pinching) this.startInertia();
       setTimeout(() => { this.moved = false; }, 0);
     };
     svg.addEventListener('pointerup', end);
@@ -111,15 +119,29 @@ export class BoardView {
     svg.addEventListener('click', (e) => {
       if (this.moved) return;
       const t = e.target.closest('[data-v],[data-e],[data-h]');
-      if (!t) return;
+      if (!t) {
+        // Doppeltipp auf freie Fläche: näher heranzoomen bzw. wieder alles zeigen
+        if (e.pointerType !== 'touch') return;
+        const now = performance.now();
+        const prev = this.lastTap;
+        this.lastTap = { t: now, x: e.clientX, y: e.clientY };
+        if (prev && now - prev.t < 320 && Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < 32) {
+          this.lastTap = null;
+          const vb = this.getVB();
+          const fitW = this.fitW || vb.w;
+          if (vb.w < fitW * 0.75) this.fit(this.board, true); else this.zoomAt(e.clientX, e.clientY, 0.45);
+        }
+        return;
+      }
       if (t.dataset.v !== undefined) this.onPick('vertex', Number(t.dataset.v));
       else if (t.dataset.e !== undefined) this.onPick('edge', Number(t.dataset.e));
       else if (t.dataset.h !== undefined) this.onPick('hex', Number(t.dataset.h));
     });
 
-    // Pinch-Zoom für Touch
+    // Pinch-Zoom für Touch (zoomt um die Mitte der Finger und verschiebt mit ihr)
     const pts = new Map();
     let pinch = null;
+    let mid = null;
     svg.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') pts.set(e.pointerId, e); });
     svg.addEventListener('pointermove', (e) => {
       if (e.pointerType !== 'touch' || !pts.has(e.pointerId)) return;
@@ -127,14 +149,79 @@ export class BoardView {
       if (pts.size === 2) {
         const [a, b] = [...pts.values()];
         const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-        if (pinch) this.zoomAt((a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2, pinch / d, false);
-        pinch = d;
+        const m = { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+        this.pinching = true;
+        this.stopInertia();
+        if (pinch) {
+          this.zoomAt(m.x, m.y, pinch / d, false);
+          if (mid) this.panByPx(m.x - mid.x, m.y - mid.y);
+        }
+        pinch = d; mid = m;
         this.moved = true;
       }
     });
-    const up = (e) => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; };
+    const up = (e) => {
+      pts.delete(e.pointerId);
+      if (pts.size < 2) { pinch = null; mid = null; setTimeout(() => { this.pinching = false; }, 120); }
+    };
     svg.addEventListener('pointerup', up);
     svg.addEventListener('pointercancel', up);
+  }
+
+  /** Änderungen der Sicht bündeln: höchstens eine Aktualisierung pro Bild (weicheres Wischen auf dem Handy). */
+  queueVB(vb) {
+    this._pendVB = vb;
+    if (this._rafVB) return;
+    this._rafVB = requestAnimationFrame(() => { this._rafVB = 0; if (this._pendVB) this.setVB(this._pendVB); this._pendVB = null; });
+  }
+
+  /** Bildmitte darf das Brett nur ein Stück weit verlassen. */
+  clampVB(vb) {
+    const b = this.board?.bounds;
+    if (!b) return vb;
+    const mx = (b.maxX - b.minX) * 0.35;
+    const my = (b.maxY - b.minY) * 0.35;
+    const cx = Math.min(b.maxX + mx, Math.max(b.minX - mx, vb.x + vb.w / 2));
+    const cy = Math.min(b.maxY + my, Math.max(b.minY - my, vb.y + vb.h / 2));
+    return { ...vb, x: cx - vb.w / 2, y: cy - vb.h / 2 };
+  }
+
+  panByPx(dx, dy) {
+    const vb = this.getVB();
+    const rect = this.svg.getBoundingClientRect();
+    const k = Math.max(vb.w / rect.width, vb.h / rect.height);
+    this.setVB(this.clampVB({ x: vb.x - dx * k, y: vb.y - dy * k, w: vb.w, h: vb.h }));
+  }
+
+  /** Nachlauf nach dem Wischen: gleitet mit abnehmender Geschwindigkeit weiter (wie bei Karten-Apps). */
+  startInertia() {
+    const sm = this.samples || [];
+    if (sm.length < 2) return;
+    const a = sm[0];
+    const z = sm[sm.length - 1];
+    const dt = z.t - a.t;
+    if (dt < 8 || performance.now() - z.t > 80) return; // am Ende gestoppt → kein Nachlauf
+    let vx = (z.x - a.x) / dt; // Pixel pro ms
+    let vy = (z.y - a.y) / dt;
+    if (Math.hypot(vx, vy) < 0.18) return;
+    const cap = 3.2;
+    const sp = Math.hypot(vx, vy);
+    if (sp > cap) { vx *= cap / sp; vy *= cap / sp; }
+    let last = performance.now();
+    const step = (t) => {
+      const d = Math.min(40, t - last);
+      last = t;
+      this.panByPx(vx * d, vy * d);
+      const f = Math.exp(-d / 320); // Auslaufzeit
+      vx *= f; vy *= f;
+      if (Math.hypot(vx, vy) > 0.02) this._inertia = requestAnimationFrame(step); else this._inertia = 0;
+    };
+    this._inertia = requestAnimationFrame(step);
+  }
+
+  stopInertia() {
+    if (this._inertia) cancelAnimationFrame(this._inertia);
+    this._inertia = 0;
   }
 
   getVB() {
@@ -184,6 +271,7 @@ export class BoardView {
   }
 
   stopZoom() {
+    this.stopInertia();
     if (this.zoomTween) this.zoomTween.kill();
     this.zoomTween = null;
     this.zoomTarget = null;
@@ -216,6 +304,7 @@ export class BoardView {
     const w = b.maxX - b.minX + pad * 2;
     const h = b.maxY - b.minY + top + bottom;
     this.minW = w * 0.1;
+    this.fitW = w;
     const target = { x: b.minX - pad, y: b.minY - top, w, h };
     if (animate && window.gsap) this.animateTo(target); else { this.stopZoom(); this.setVB(target); }
     this.maxW = w * 1.8;

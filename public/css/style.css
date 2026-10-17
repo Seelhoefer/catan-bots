@@ -1788,7 +1788,7 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .award .awd-ico { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none; background: radial-gradient(circle at 35% 28%, #2f527c, #0f1f34 75%); border: 1.5px solid #6d7f9a; color: #e8eef7; }
 .award .awd-ico .ic { width: 16px; height: 16px; }
 .award .awd-av { line-height: 0; flex: none; }
-.award .awd-av.empty { width: 26px; height: 26px; border-radius: 50%; border: 1.5px dashed rgba(255, 255, 255, .45); }
+.award .awd-av.none { width: 26px; height: 26px; border-radius: 50%; border: 1.5px dashed rgba(255, 255, 255, .45); }
 .award .awd-txt { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
 .award .awd-txt b { font-size: 13px; color: #fff; white-space: nowrap; }
 .award .awd-txt small { font-size: 11px; color: #c4d0e0; white-space: nowrap; }
@@ -1806,7 +1806,7 @@ td.who { display: flex; align-items: center; gap: 8px; }
   .award .awd-av .avatar-svg { width: 24px; height: 24px; }
   .award .awd-txt { display: none; }
   .award .awd-n { display: block; }
-  .award .awd-av.empty { width: 22px; height: 22px; }
+  .award .awd-av.none { width: 22px; height: 22px; }
 }
 
 /* Lesbarkeit: Texte direkt über dem Brett bekommen einen dunklen Grund (helles Meer / helle Felder dahinter) */
@@ -1878,4 +1878,98 @@ td.who { display: flex; align-items: center; gap: 8px; }
 /* Wer lieber wenig Bewegung hat */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+/* ======================================================================
+   Handy (Touch): App-Look – weniger Details, flüssiger
+   Desktop/Web bleibt unverändert (alles hier gilt nur für Touch-Geräte bzw. schmale Hochformat-Bildschirme).
+   ====================================================================== */
+
+/* Bedienung: kein Pull-to-Refresh/Gummiband über dem Spiel, weiches Scrollen in Listen und Fenstern */
+@media (hover: none) and (pointer: coarse) {
+  html, body { overscroll-behavior: none; }
+  .modal, .modal-body, .fpanel, .loglist, .hdr-players, .lobby, .wizard, .title-screen { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
+  /* Flüssigkeit: teure Unschärfe-Effekte und Dauer-Animationen aus */
+  *, *::before, *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  .hl-pulse, .hl-pulse.vp, .hl-pulse.ep { animation: none !important; opacity: .3; }
+  .hl-ring { animation: none !important; }
+  .zoom button:not(#zoomFit) { display: none; }          /* gezoomt wird per Pinch / Doppeltipp */
+  #btnMusic { display: none; }                           /* Musik steht im Menü */
+  #board { cursor: default; }
+}
+
+@media (max-width: 860px) and (orientation: portrait) {
+  /* Obere Leiste: nur Spieler (Bild + Punkte) und das Menü */
+  .hdr { flex-wrap: nowrap; padding: 6px 8px; gap: 8px; align-items: center; background: rgba(9, 19, 31, .94); backdrop-filter: none; }
+  .hdr-players { order: 1; flex: 1 1 0; gap: 6px; }
+  .hdr-btns { order: 2; }
+  .pcard { min-width: 0; flex: 1 1 0; height: 46px; padding: 0 6px 0 4px; column-gap: 5px; }
+  .pc-stats .dev, .pc-stats span:nth-child(2) { display: none; }   /* Entwicklungskarten: per Tipp auf die Karte */
+  .pc-stats { font-size: 11px; opacity: .85; }
+  .pc-vp { font-size: 17px; }
+  .pc-vp .ic { width: 13px; height: 13px; }
+
+  /* Rohstoffe als ruhige Leiste unten über den Aktionen (statt als zweite Zeile oben) */
+  .hdr-left { position: fixed; left: 10px; right: 10px; bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 4; justify-content: center; gap: 6px; overflow: visible; pointer-events: none; }
+  .hdr-left .rchip { pointer-events: auto; flex: 1 1 0; max-width: 62px; height: 40px; justify-content: center; gap: 4px; padding: 0 6px 0 3px; border-radius: 14px; background: rgba(9, 19, 31, .88); border: 1px solid rgba(255, 255, 255, .12); }
+  .hdr-left .rsq { width: 26px; height: 26px; }
+  .hdr-left .rchip b { font-size: 16px; }
+  .hdr-left .rchip.zero { opacity: .45; }
+  .hdr-left .rchip.tok { max-width: 74px; }
+
+  /* Bretthinweise oben links: eine Zeile, Missionen nur als Symbol */
+  .floatcol { top: 6px; left: 6px; flex-direction: row; flex-wrap: wrap; align-items: center; max-width: calc(100vw - 100px); gap: 6px; }
+  .floatcol .ftoggle > span:not(.mini-ico) { display: none; }
+  .floatcol .ftoggle { padding: 5px 9px; }
+  .floatcol .ftoggle .chev { margin-left: 2px; }
+  .floatcol .floatbox > div { position: relative; }
+  .floatcol .fpanel { position: absolute; left: 0; top: calc(100% + 6px); width: min(300px, calc(100vw - 20px)); z-index: 8; }
+  .dicebox { top: 8px; }
+  /* Das Spielbrett bekommt den Platz */
+  .zoom { right: 10px; bottom: calc(138px + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 860px) and (orientation: portrait) {
+  .fab-stack.open { margin-bottom: 52px; }              /* Bau-Menü öffnet über der Rohstoffleiste */
+  .award { min-height: 32px; padding: 3px 5px 3px 4px; gap: 4px; }
+  .award .awd-ico { width: 22px; height: 22px; }
+  .award .awd-ico .ic { width: 13px; height: 13px; }
+  .award .awd-av .avatar-svg { width: 20px !important; height: 20px !important; }
+  .award .awd-av.none { width: 18px; height: 18px; }
+  .award .awd-n { font-size: 12.5px; }
+  .award .awd-pts { font-size: 10.5px; padding: 1px 5px; }
+}
+
+/* Handy hochkant: Spieler als runde Bilder mit Punkte-Marke und Kartenzahl (Details per Tipp) */
+@media (max-width: 860px) and (orientation: portrait) {
+  .hdr { padding: 8px 10px 10px; }
+  .hdr-players { justify-content: space-around; gap: 4px; overflow: visible; margin: 0; padding: 0; }
+  .pcard { display: block; position: relative; flex: 0 0 auto; width: 54px; height: 54px; min-width: 0; padding: 0; border-radius: 50%; background: none; border: 2px solid transparent; transform: none; }
+  .pcard.active { border-color: var(--pc); background: none; box-shadow: 0 0 16px color-mix(in srgb, var(--pc) 70%, transparent); transform: none; }
+  .pc-av { position: absolute; inset: 3px; }
+  .pc-av .avatar-svg { width: 44px !important; height: 44px !important; }
+  .pc-body { display: contents; }
+  .pc-vp { position: absolute; right: -5px; bottom: -4px; margin: 0; padding: 0 6px; min-width: 20px; height: 18px; justify-content: center; border-radius: 99px; background: var(--ivory); color: var(--ivory-ink); font-size: 12px; line-height: 18px; flex-direction: row; gap: 0; z-index: 2; }
+  .pc-vp .ic { display: none; }
+  .pc-stats { position: absolute; left: -4px; top: -4px; display: block; z-index: 2; }
+  .pc-stats span:first-child { display: inline-flex; align-items: center; gap: 0; padding: 0 5px; height: 17px; border-radius: 99px; background: rgba(9, 19, 31, .95); border: 1px solid rgba(255, 255, 255, .22); font-size: 10.5px; font-weight: 700; }
+  .pc-stats .ic { display: none; }
+  .pc-name { position: absolute; left: 0; right: 0; bottom: -13px; font-size: 0; text-align: center; line-height: 1; }
+  .pc-name .badge { display: none; }
+  .pc-think { font-size: 10px; display: inline-flex; gap: 2px; justify-content: center; }
+  .hdr-btns .hbtn { width: 40px; height: 40px; }
+}
+@media (hover: none) and (pointer: coarse) {
+  .award { min-height: 32px; padding: 3px 5px 3px 4px; gap: 4px; }
+  .award .awd-ico { width: 22px; height: 22px; }
+  .award .awd-ico .ic { width: 13px; height: 13px; }
+  .award .awd-av .avatar-svg { width: 20px !important; height: 20px !important; }
+  .award .awd-av.none { width: 18px; height: 18px; }
+  .award .awd-txt { display: none; }
+  .award .awd-n { display: block; font-size: 12.5px; }
+  .award .awd-pts { position: static; transform: none; font-size: 10.5px; padding: 1px 5px; }
+  .floatcol { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px; }
+}
+@media (hover: none) and (pointer: coarse) {
+  .floatcol .ftoggle > span:not(.mini-ico) { display: none; }
+  .floatcol .ftoggle { padding: 5px 9px; }
 }
