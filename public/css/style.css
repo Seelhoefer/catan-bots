@@ -1826,3 +1826,56 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .vp-presets button:hover { color: var(--text); border-color: rgba(233, 185, 73, .7); }
 .vp-presets button.on { background: var(--ivory); color: var(--ivory-ink); border-color: transparent; }
 .vp-hint { margin: 2px 0 0; text-align: center; font-size: 12.5px; color: #e9c46a; }
+
+/* ======================================================================
+   Feinschliff Animationen: gemeinsame Kurven, weichere Dialoge, Hinweise, Bildschirmwechsel, Tasten
+   ====================================================================== */
+:root {
+  --ease-out: cubic-bezier(.16, 1, .3, 1);       /* sanft abbremsend (expo-out) */
+  --ease-spring: cubic-bezier(.34, 1.45, .64, 1); /* leichtes Überschwingen */
+  --ease-io: cubic-bezier(.65, 0, .35, 1);
+}
+
+/* Dialoge: Hintergrund blendet weich ein, Fenster hebt sich mit leichtem Zoom heraus; beim Schließen umgekehrt */
+.overlay { animation: ovIn .38s var(--ease-out); transition: opacity .24s var(--ease-io), backdrop-filter .24s var(--ease-io); }
+.overlay.out { opacity: 0; transition: opacity .24s var(--ease-io); }
+@keyframes ovIn { from { opacity: 0; backdrop-filter: blur(0); } }
+.modal { animation: modalIn2 .46s var(--ease-out); transition: transform .24s var(--ease-io), opacity .24s var(--ease-io); }
+.overlay.out .modal { transform: translateY(10px) scale(.975); opacity: 0; }
+@keyframes modalIn2 { from { transform: translateY(22px) scale(.965); opacity: 0; } }
+.modal.bare { animation: modalIn2 .5s var(--ease-out); }
+@media (max-width: 860px) {
+  .modal, .modal.wide { animation: sheetIn2 .5s var(--ease-out); }
+  .overlay.out .modal { transform: translateY(36px); }
+  @keyframes sheetIn2 { from { transform: translateY(60px); opacity: 0; } }
+}
+
+/* Hinweise: federn herein, gleiten beim Verschwinden nach oben weg */
+.toast { animation: toastIn2 .5s var(--ease-spring); transition: opacity .35s var(--ease-io), transform .35s var(--ease-io), filter .35s var(--ease-io); }
+.toast.out { opacity: 0; transform: translateY(-10px) scale(.96); filter: blur(2px); }
+@keyframes toastIn2 { from { opacity: 0; transform: translateY(-16px) scale(.9); } }
+
+/* Bildschirmwechsel (Menü ⇄ Spiel): sanftes Einblenden mit minimalem Zoom */
+#menu:not(.hidden), #game:not(.hidden) { animation: screenIn .7s var(--ease-out); }
+@keyframes screenIn { from { opacity: 0; transform: scale(1.015); } }
+
+/* Tasten: einheitliches Gefühl – leichtes Eindrücken beim Drücken, weiches Zurückfedern */
+.btn, .ts-btn, .hbtn, .icon-btn, .fab-btn, .seal, .pk-ok, .vp-b, .lb-arrow, .chip, .seg button, .award, .vp-presets button { transition-timing-function: var(--ease-out); }
+.btn:active:not(:disabled), .ts-btn:active, .hbtn:active, .icon-btn:active, .vp-b:active, .lb-arrow:active, .chip:active, .award:active, .vp-presets button:active { transform: scale(.965); transition-duration: .08s; }
+.fab-btn:active:not([data-disabled]) { transform: scale(.94); transition-duration: .08s; }
+.seal:active { transform: scale(.94); transition-duration: .08s; }
+.rcirc:active:not(:disabled), .pk-row .rcirc:active:not(:disabled) { transform: scale(.94); transition-duration: .08s; }
+
+/* Karten- und Spielerleiste: weichere Übergänge */
+.pcard { transition: background .5s var(--ease-out), border-color .4s var(--ease-out), box-shadow .5s var(--ease-out), transform .5s var(--ease-spring); }
+.rcard { transition: transform .3s var(--ease-out), filter .3s var(--ease-out), box-shadow .3s var(--ease-out); }
+.rcard:hover { filter: brightness(1.06) drop-shadow(0 10px 14px rgba(0, 0, 0, .35)); }
+.hl-hex-vis { transition: fill .25s var(--ease-out), stroke .25s var(--ease-out); }
+
+/* Fliegende Karten: weicher Schatten beim Flug */
+.flycard { filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .35)); will-change: transform, opacity; }
+
+/* Wer lieber wenig Bewegung hat */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

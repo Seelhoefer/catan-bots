@@ -18,7 +18,7 @@ import { music } from './ui/music.js';
 import { preloadDice3d } from './ui/dice3d.js';
 import { avatarSVG } from './ui/avatars.js';
 import {
-  floatGain, flyCards, showDiceHero, showCardHero, lastDice, whirlHexes, celebrate, buildFxPiece, buildFxRoad, stealFx, discardFx, produceFx, bumpPlayer,
+  floatGain, flyCards, showDiceHero, showCardHero, lastDice, whirlHexes, celebrate, buildFxPiece, buildFxRoad, stealFx, discardFx, vpPop, turnPulse, produceFx, bumpPlayer,
 } from './ui/fx.js';
 import { preloadArt, ART_STYLES, artStyle, setArtStyle } from './ui/assets.js';
 import {
@@ -134,6 +134,7 @@ class App {
     this.game = game;
     preloadDice3d();
     this.lastVp = undefined;
+    this.prevVps = null;
     this.inflightH = {};
     this.inflightO = {};
     this.landing = {};
@@ -303,7 +304,7 @@ class App {
         break;
       }
       case 'monopoly': sfx.play('monopoly'); break;
-      case 'turn': if (e.pi === HUMAN) sfx.play('turn', { delay: 250 }); break;
+      case 'turn': if (e.pi === HUMAN) sfx.play('turn', { delay: 250 }); setTimeout(() => turnPulse(e.pi), 120); break;
       case 'change': {
         const vp = g.vp(HUMAN);
         if (this.lastVp !== undefined && vp > this.lastVp) { sfx.play('vp', { delay: 200 }); setTimeout(celebrate, 250); }
@@ -792,6 +793,11 @@ class App {
 
     $('#hudHand').innerHTML = renderHand(g, this.inflightH);
     $('#hudOpps').innerHTML = renderPlayers(g, this.busy, this.inflightO);
+    const vps = s.players.map((p) => g.vp(p.id, p.id !== HUMAN));
+    if (this.prevVps && this.prevVps.length === vps.length && s.phase !== 'setup') {
+      vps.forEach((v, i) => { if (v > this.prevVps[i]) vpPop(i, v - this.prevVps[i]); });
+    }
+    this.prevVps = vps;
     const fan = renderHandBar(g, this.inflightH, this.landing, this.tradeSel());
     if (fan !== this.hbHtml) { this.hbHtml = fan; $('#handFan').innerHTML = fan; }
     this.fitHand();

@@ -29,7 +29,7 @@ export function openModal({ title, dismissable = true, wide = false, bare = fals
     if (handle.closed) return;
     handle.closed = true;
     overlay.classList.add('out');
-    setTimeout(() => overlay.remove(), 140);
+    setTimeout(() => overlay.remove(), 240);
     const i = stack.indexOf(handle);
     if (i >= 0) stack.splice(i, 1);
     if (onClose) onClose();

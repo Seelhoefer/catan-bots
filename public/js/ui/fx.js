@@ -513,3 +513,29 @@ export function discardFx({ pid, n, cards = null }) {
   }
   return total;
 }
+
+/** Punktgewinn: Zahl poppt, goldener Ring läuft aus, "+n" schwebt hoch. */
+export function vpPop(pid, delta) {
+  const g = gs();
+  const node = document.querySelector(`.pcard[data-pid="${pid}"] .pc-vp`);
+  if (!g || !node || !shown(node)) return;
+  const r = node.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+  g.fromTo(node, { scale: 1.7 }, { scale: 1, duration: 0.85, ease: 'elastic.out(1, 0.45)', clearProps: 'transform' });
+  const ring = mkEl('bf-ring small', `left:${cx}px;top:${cy}px;border-color:#f1c95a;`);
+  g.fromTo(ring, { xPercent: -50, yPercent: -50, scale: 0.4, opacity: 0.9 }, { scale: 2.6, opacity: 0, duration: 0.8, ease: 'power3.out', onComplete: () => ring.remove() });
+  const tag = mkEl('floater', `left:${cx}px;top:${cy}px;font-size:15px;`, `+${delta}`);
+  g.fromTo(tag, { xPercent: -50, yPercent: -20, y: 0, opacity: 0, scale: 0.7 }, {
+    opacity: 1, scale: 1, y: -26, duration: 0.45, ease: 'back.out(2)',
+    onComplete: () => g.to(tag, { opacity: 0, y: -46, duration: 0.5, ease: 'power2.in', delay: 0.5, onComplete: () => tag.remove() }),
+  });
+}
+
+/** Spielerwechsel: die aktive Karte federt kurz auf, der Glanz läuft einmal durch. */
+export function turnPulse(pid) {
+  const g = gs();
+  const node = document.querySelector(`.pcard[data-pid="${pid}"]`);
+  if (!g || !node || !shown(node)) return;
+  g.fromTo(node, { scale: 1.07, y: -2 }, { scale: 1, y: 0, duration: 0.7, ease: 'elastic.out(1, 0.5)', clearProps: 'transform' });
+}

@@ -33,7 +33,7 @@ Größte Rittermacht, Sieg bei Erreichen der Siegpunktzahl in deinem Zug.
 **Einstellungen vor der Partie**
 - Eine Lobby-Seite „Spiel einrichten“: Insel (Größe, Klassisch/Nebel), Spieler (Bot-Gesicht per Pfeilen, Name, Gegner, Stärke) und Regeln (Siegpunkte mit ±/Eingabe, Regeln als runde Schalter)
 - Spielfeldgröße: Klein (19 Felder, klassisch), Groß (37), Riesig (61)
-- Siegpunkte: 5–20 (Standard 10) – die Anzahl der Spielfiguren wächst automatisch mit
+- Siegpunkte: 5–50 (Standard 10, Schnellwahl 10/15/20/30/50) – Spielfiguren und Siegpunktkarten wachsen automatisch mit. Die Bauplätze sind aber begrenzt: Die Lobby zeigt, bis wie viele Punkte es auf der gewählten Insel realistisch ist (klein ca. 16, riesig mit 4 Spielern ca. 39+). Sind alle Plätze vergeben und ändert sich 30 Runden lang kein Punktestand, endet die Partie als Patt und der Führende gewinnt. Die Anzahl der Spielfiguren wächst automatisch mit
 - Spielvariante: Klassisch oder **Nebel** (wie *Seefahrer*)
 - 1–5 Gegner (4 oder 6 Spieler als Schnellauswahl), Bot-Stärke Leicht / Normal / Schwer
 - Die vier neuen Regeln lassen sich einzeln ausschalten
