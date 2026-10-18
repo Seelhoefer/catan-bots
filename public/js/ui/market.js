@@ -126,16 +126,27 @@ function bankView(app) {
   const m = app.market;
   const ports = RES.map((r) => g.portRatio(HUMAN, r));
   const give = m.bankGive;
-  const get = m.bankGet;
-  const ok = give && get && give !== get;
+  const want = m.bankWant || {};
+  const count = RES.reduce((a, r) => a + (want[r] || 0), 0);
+  const cap = give ? Math.floor(me.hand[give] / g.portRatio(HUMAN, give)) : 0; // so viele Geschäfte passen
+  const ratio = give ? g.portRatio(HUMAN, give) : 0;
+  const ok = !!give && count > 0;
   const pick = (act, sel, r, dis, tag, have) => `<div class="rc-wrap"><button class="rcirc r-${r} ${sel ? 'sel' : ''}" data-act="${act}" data-res="${r}" aria-label="${RES_INFO[r].name}" ${dis ? 'disabled' : ''}>${ic(r)}${tag}</button><small>${have}</small></div>`;
+  const pickGet = (r) => {
+    const n = want[r] || 0;
+    const dis = !give || r === give || g.s.bank[r] < 1 || (count >= cap && !n);
+    return `<div class="rc-wrap"><button class="rcirc r-${r} ${n ? 'sel' : ''}" data-act="bank-get" data-res="${r}" aria-label="${RES_INFO[r].name}" ${dis ? 'disabled' : ''}>${ic(r)}${n ? `<b class="rc-n">${n}</b>` : ''}</button>${n ? `<button class="rc-x" data-act="bank-get-dec" data-res="${r}" aria-label="Eine weniger">${ic('minus')}</button>` : ''}<small>${give && r !== give ? (cap > count ? 'tippen = +1' : '') : ''}</small></div>`;
+  };
+  const label = ok
+    ? `${ratio * count} ${RES_INFO[give].name} → ${RES.filter((r) => want[r]).map((r) => `${want[r]} ${RES_INFO[r].name}`).join(' + ')}`
+    : (give && cap > 1 ? `Bis zu ${cap} Rohstoffe auf einmal` : 'Mit der Bank tauschen');
   return `<div class="tp-body">
     <div class="tp-lbl">Erhalte</div>
-    <div class="rc-row">${RES.map((r) => pick('bank-get', get === r, r, !give || r === give || g.s.bank[r] < 1, '', '')).join('')}</div>
+    <div class="rc-row">${RES.map(pickGet).join('')}</div>
     <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
     <div class="tp-lbl">Gebe</div>
     <div class="rc-row">${RES.map((r, i) => pick('bank-give', give === r, r, me.hand[r] < ports[i], `<b class="rc-n ratio">${ports[i]}:1</b>`, me.hand[r])).join('')}</div>
-    <div class="tp-actions"><button class="btn solid grow" data-act="bank-do" ${ok ? '' : 'disabled'}>${ok ? `${ports[RES.indexOf(give)]} ${RES_INFO[give].name} → 1 ${RES_INFO[get].name}` : 'Mit der Bank tauschen'}</button></div></div>`;
+    <div class="tp-actions"><button class="btn solid grow" data-act="bank-do" ${ok ? '' : 'disabled'}>${label}</button></div></div>`;
 }
 
 // ------------------------------------------------------------------ Eigenes Angebot: Antworten der Gegner

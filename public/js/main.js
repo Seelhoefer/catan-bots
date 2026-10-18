@@ -142,7 +142,7 @@ class App {
   }
 
   freshMarket() {
-    return { open: false, tab: 'players', give: {}, get: {}, bankGive: null, bankGet: null, counterFor: null, counter: { give: {}, get: {} }, sel: null, confirm: null };
+    return { open: false, tab: 'players', give: {}, get: {}, bankGive: null, bankWant: {}, counterFor: null, counter: { give: {}, get: {} }, sel: null, confirm: null };
   }
 
   get sf() { return SPEEDS[this.speed][2]; }
@@ -924,7 +924,7 @@ class App {
     const m = this.market;
     if (side === 'give') return m.give;
     if (side === 'cgive') return m.counter.give;
-    if (side === 'bank') return m.bankGive ? { [m.bankGive]: this.game.portRatio(HUMAN, m.bankGive) } : {};
+    if (side === 'bank') { const k = Math.max(1, Object.values(m.bankWant).reduce((a, n) => a + n, 0)); return m.bankGive ? { [m.bankGive]: this.game.portRatio(HUMAN, m.bankGive) * k } : {}; }
     return null;
   }
 
@@ -944,6 +944,24 @@ class App {
       sfx.play('tick');
     }
     this.queueRender();
+  }
+
+  /** Wie viele Tauschgeschäfte mit der Bank passen gerade (Karten ÷ Verhältnis)? */
+  bankUnits() {
+    const m = this.market;
+    if (!m.bankGive) return 0;
+    return Math.floor(this.game.s.players[HUMAN].hand[m.bankGive] / this.game.portRatio(HUMAN, m.bankGive));
+  }
+
+  /** Gewünschte Karten auf das begrenzen, was die gewählte Gabe hergibt. */
+  clampBankWant() {
+    const m = this.market;
+    let left = this.bankUnits();
+    for (const r of Object.keys(m.bankWant)) {
+      m.bankWant[r] = Math.min(m.bankWant[r], left);
+      left -= m.bankWant[r];
+      if (m.bankWant[r] <= 0) delete m.bankWant[r];
+    }
   }
 
   handleMarket(act, el) {
@@ -1025,11 +1043,23 @@ class App {
         break;
       }
       case 'mk-accept-counter': this.act('acceptCounter', HUMAN, Number(d.id), Number(d.pid)); break;
-      case 'bank-give': m.bankGive = m.bankGive === d.res ? null : d.res; if (m.bankGet === m.bankGive) m.bankGet = null; break;
-      case 'bank-get': m.bankGet = m.bankGet === d.res ? null : d.res; break;
+      case 'bank-give': {
+        m.bankGive = m.bankGive === d.res ? null : d.res;
+        if (m.bankGive) delete m.bankWant[m.bankGive];
+        this.clampBankWant();
+        break;
+      }
+      case 'bank-get': {
+        const cap = this.bankUnits();
+        const have = Object.values(m.bankWant).reduce((a, n) => a + n, 0);
+        if (have < cap && g.s.bank[d.res] > (m.bankWant[d.res] || 0)) m.bankWant[d.res] = (m.bankWant[d.res] || 0) + 1;
+        else sfx.play('error');
+        break;
+      }
+      case 'bank-get-dec': m.bankWant[d.res] = Math.max(0, (m.bankWant[d.res] || 0) - 1); if (!m.bankWant[d.res]) delete m.bankWant[d.res]; break;
       case 'bank-do': {
-        const r = this.act('bankTrade', HUMAN, m.bankGive, m.bankGet);
-        if (r.ok) { m.bankGive = null; m.bankGet = null; }
+        const r = this.act('bankTrade', HUMAN, m.bankGive, { ...m.bankWant });
+        if (r.ok) { m.bankGive = null; m.bankWant = {}; }
         break;
       }
       default: break;
@@ -1273,6 +1303,7 @@ class App {
     this.renderControls();
     $('#heroRoll').innerHTML = spec ? '' : renderHeroRoll(g);
     $('#diceBox').innerHTML = renderDice(g, this.rolling);
+    if (!spec && this.market.bankGive) this.clampBankWant();
     this.renderMarketLayer();
     $('#missionBox').innerHTML = spec ? '' : renderMissionBox(g, this.ui.missionsOpen);
     const decrees = renderDecrees(g);

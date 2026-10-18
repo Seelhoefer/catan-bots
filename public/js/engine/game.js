@@ -818,20 +818,30 @@ export class Game {
   }
 
   // ---------------------------------------------------------------- Handel
-  bankTrade(pi, give, get) {
+  /**
+   * Tausch mit der Bank. `get` = ein Rohstoff (optional `times` Mal) oder eine Karte-Menge { res: n }, so lassen sich mit
+   * genug Karten mehrere Tauschgeschäfte auf einmal abwickeln (z. B. 6 Holz im 3:1-Hafen gegen 1 Erz + 1 Getreide).
+   */
+  bankTrade(pi, give, get, times = 1) {
     const s = this.s;
     if (s.phase !== 'main' || s.turn !== pi || s.sub !== 'actions') return fail('Jetzt nicht möglich.');
-    if (!RES.includes(give) || !RES.includes(get) || give === get) return fail('Ungültiger Tausch.');
+    const want = {};
+    if (typeof get === 'string') want[get] = Math.floor(times) || 1;
+    else if (get && typeof get === 'object') for (const r of RES) if (get[r]) want[r] = Math.floor(get[r]);
+    const kinds = Object.keys(want);
+    const count = kinds.reduce((a, r) => a + want[r], 0);
+    if (!RES.includes(give) || !kinds.length || kinds.some((r) => !RES.includes(r) || r === give || want[r] < 1) || count < 1 || count > 40) return fail('Ungültiger Tausch.');
     const ratio = this.portRatio(pi, give);
+    const cost = ratio * count;
     const p = this.player(pi);
-    if (p.hand[give] < ratio) return fail(`Du brauchst ${ratio}× ${RES_INFO[give].name}.`);
-    if (s.bank[get] < 1) return fail(`Die Bank hat kein ${RES_INFO[get].name} mehr.`);
-    p.hand[give] -= ratio; s.bank[give] += ratio;
-    p.hand[get]++; s.bank[get]--;
-    p.bankTrades++;
-    this.log(`${p.name} tauscht ${ratio}× ${RES_INFO[give].icon} gegen 1× ${RES_INFO[get].icon} (${ratio}:1).`, pi);
+    if (p.hand[give] < cost) return fail(`Du brauchst ${cost}× ${RES_INFO[give].name}.`);
+    for (const r of kinds) if (s.bank[r] < want[r]) return fail(`Die Bank hat nicht genug ${RES_INFO[r].name}.`);
+    p.hand[give] -= cost; s.bank[give] += cost;
+    for (const r of kinds) { p.hand[r] += want[r]; s.bank[r] -= want[r]; }
+    p.bankTrades += count;
+    this.log(`${p.name} tauscht ${cost}× ${RES_INFO[give].icon} gegen ${kinds.map((r) => `${want[r]}× ${RES_INFO[r].icon}`).join(' + ')} (${ratio}:1).`, pi);
     this.afterAction();
-    return ok({ ratio });
+    return ok({ ratio, count });
   }
 
   /** Spielertausch: `pi` (am Zug) gibt `give`, erhält `get` von `other`. */

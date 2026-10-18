@@ -192,3 +192,7 @@ Damit sich Handys verbinden können, muss der Server im WLAN erreichbar sein: `n
 ## 📱 Mobil-Set (Assets v2)
 
 Auf dem Handy gilt standardmäßig der Grafikstil **Mobil-Set** (`public/assets/mobile/`, im Menü unter „Grafik“ wählbar; die Wahl wird getrennt von der am Desktop gemerkt): neue **Feld-Kacheln** mit goldenem Rahmen, **Siedlungen und Städte** in allen sechs Spielerfarben (Rot, Blau, Orange aus dem Paket; Grün, Violett, Pink daraus umgefärbt), der **Räuber**, die **Ereigniskarten** (Schutzbrief, Rückenwind, Marktprivileg, Dieb vertreiben, Geburtstag) und die **Rohstoffkarten**, die als kleine Hand über den Aktionen liegen (fehlende gedimmt, Anzahl in der Marke; Zahlenmarken liegen über den Gebäuden). Wird eine **Mission** erfüllt, erscheint ihre Missionskarte groß (Weltentdecker, Metropole und Goldregen haben eigene Bilder, alle anderen die „Mission“-Karte). Die Bilder wurden aus den Sheets ausgeschnitten und von Rändern bereinigt (Skript-Schritte: Alpha-Schwelle, größte zusammenhängende Fläche, zuschneiden, als WebP mit Transparenz).
+
+## 🏦 Banktausch mit mehreren Geschäften
+
+Im Bank-Reiter wählst du erst, was du **gibst**, und tippst dann beliebig oft auf die Rohstoffe, die du **erhalten** willst (jeder Tipp = +1, das Minus nimmt eins zurück). So viele Geschäfte, wie dein Hafenverhältnis hergibt (z. B. 12 Holz im 4:1 → 3 Rohstoffe), laufen in einem Schritt, auch gemischt (2 Erz + 1 Getreide). Die Engine: `bankTrade(pi, give, get, times)`, `get` darf auch ein Objekt `{ res: n }` sein; jedes Geschäft zählt für die Mission „Handelsmann“.

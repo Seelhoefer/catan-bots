@@ -828,3 +828,37 @@ test('Neue Missionen: Zählung und Zielwerte nach Inselgröße', async () => {
   const tri = g.board.vertices.find((v) => v.hexes.length === 3 && new Set(v.hexes.map((h) => g.board.hexes[h].type)).size === 3 && v.hexes.every((h) => RES.includes(g.board.hexes[h].type)));
   if (tri) { g.s.buildings[tri.id] = { owner: 0, type: 'settlement' }; assert.equal(g.missionProgress(0, 'triple').cur, 3); }
 });
+
+test('Banktausch: mehrere Geschäfte auf einmal (gleicher oder verschiedener Rohstoff)', () => {
+  const g = afterSetup({}, 31);
+  clearBoard(g);
+  g.s.sub = 'actions';
+  g.s.players[0].hand = { wood: 9, brick: 0, sheep: 0, wheat: 0, ore: 0 };
+  const bank0 = { ...g.s.bank };
+  // 8 Holz im 4:1 → 2 Erz
+  let r = g.bankTrade(0, 'wood', 'ore', 2);
+  assert.equal(r.ok, true);
+  assert.equal(r.count, 2);
+  assert.equal(g.s.players[0].hand.wood, 1);
+  assert.equal(g.s.players[0].hand.ore, 2);
+  assert.equal(g.s.bank.wood, bank0.wood + 8);
+  assert.equal(g.s.bank.ore, bank0.ore - 2);
+  assert.equal(g.s.players[0].bankTrades, 2);
+  // zu wenig Karten
+  assert.equal(g.bankTrade(0, 'wood', 'ore', 1).ok, false);
+  // Mischung als Objekt, 3:1-Hafen
+  g.s.players[0].hand = { wood: 6, brick: 0, sheep: 0, wheat: 0, ore: 0 };
+  const port = g.board.vertices.find((v) => v.port === 'any');
+  g.s.buildings[port.id] = { owner: 0, type: 'settlement' };
+  r = g.bankTrade(0, 'wood', { ore: 1, wheat: 1 });
+  assert.equal(r.ok, true);
+  assert.equal(g.s.players[0].hand.wood, 0);
+  assert.equal(g.s.players[0].hand.ore + g.s.players[0].hand.wheat, 2);
+  // ungültig: gleiche Sorte, leere Auswahl, Bank leer
+  g.s.players[0].hand.wood = 9;
+  assert.equal(g.bankTrade(0, 'wood', { wood: 1 }).ok, false);
+  assert.equal(g.bankTrade(0, 'wood', {}).ok, false);
+  g.s.bank.ore = 1;
+  assert.equal(g.bankTrade(0, 'wood', { ore: 2 }).ok, false, 'Bank hat nicht genug');
+  assert.equal(g.bankTrade(0, 'wood', { ore: 1 }).ok, true);
+});
