@@ -92,161 +92,110 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
     onStart({ ...settings });
   };
 
-  // ---------------------------------------------------------------- Startseite
+  // ---------------------------------------------------------------- Startseite (minimal: Logo, ein Knopf)
   const drawHome = () => {
     const last = loadLast();
-    const lastText = last
-      ? `${last.bots + 1} Spieler · ${SIZES[last.size]?.label || 'Klein'} · ${last.variant === 'fog' ? 'Nebel' : 'Klassisch'} · ${last.targetVP} SP`
-      : null;
-    const cast = BOT_ROSTER.map((b, i) => `<div class="ts-char" style="--pc:${PLAYER_COLORS[(i + 1) % 6].hex}" title="${esc(b.tagline)}">${avatarSVG(b.face, PLAYER_COLORS[(i + 1) % 6].hex, 64)}<b>${esc(b.name)}</b><small>${esc(b.tagline)}</small></div>`).join('');
-    const btn = (cls, icon, title, sub, onclick) => el('button', { type: 'button', class: `ts-btn ${cls}`, onclick },
-      el('span', { class: 'ts-ico', html: ic(icon) }), el('span', { class: 'ts-lbl' }, el('b', {}, title), sub ? el('small', {}, sub) : null), el('span', { class: 'ts-go', html: ic('arrow') }));
-    root.replaceChildren(el('div', { class: 'title-screen' },
-      el('div', { class: 'ts-sky' }, el('i', { class: 'ts-cloud c1' }), el('i', { class: 'ts-cloud c2' }), el('i', { class: 'ts-cloud c3' })),
-      el('div', { class: 'ts-top' },
-        el('button', { type: 'button', class: 'hbtn ts-music', id: 'tsMusic', 'aria-label': 'Musik an/aus', title: 'Musik an/aus', html: ic(music.enabled ? 'music' : 'music-off'),
-          onclick: () => { music.setEnabled(!music.enabled); document.getElementById('tsMusic').innerHTML = ic(music.enabled ? 'music' : 'music-off'); } })),
-      el('div', { class: 'ts-island', html: `<div class="ts-glow"></div>${heroArt()}<div class="ts-shadow"></div>` }),
-      el('div', { class: 'ts-main' },
-        el('div', { class: 'ts-brand' },
-          el('div', { class: 'ts-pre' }, el('i'), el('span', {}, 'Die Siedler von'), el('i')),
-          el('h1', { class: 'ts-logo' }, 'CATAN'),
-          el('div', { class: 'ts-ribbon' }, el('span', {}, 'gegen Bots'))),
-        el('nav', { class: 'ts-menu' },
-          btn('primary', 'dice', 'Neues Spiel', 'Insel, Gegner und Regeln wählen', () => { view = 'wizard'; step = 0; draw(); }),
-          hasSave ? btn('', 'compass', 'Fortsetzen', 'Gespeicherte Partie weiterspielen', onResume) : null,
-          lastText ? btn('', 'trophy', 'Schnellstart', lastText, () => { Object.assign(settings, last); startGame(); }) : null,
-          btn('minor', 'flag', 'Regeln & Neuheiten', null, onRules))),
-      el('div', { class: 'ts-cast' }, el('div', { class: 'ts-cast-h' }, el('i'), el('span', {}, 'Deine Gegner'), el('i')), el('div', { class: 'ts-cast-row', html: cast })),
-      el('div', { class: 'ts-foot' }, 'Dein Spielstand wird automatisch im Browser gespeichert.')));
+    const lastText = last ? `${last.bots + 1} Spieler · ${SIZES[last.size]?.label || 'Klein'} · ${last.targetVP} SP` : null;
+    const quick = () => { Object.assign(settings, last); startGame(); };
+    root.replaceChildren(el('div', { class: 'mh' },
+      el('button', { type: 'button', class: 'hbtn mh-music', id: 'tsMusic', 'aria-label': 'Musik an/aus', title: 'Musik an/aus', html: ic(music.enabled ? 'music' : 'music-off'),
+        onclick: () => { music.setEnabled(!music.enabled); document.getElementById('tsMusic').innerHTML = ic(music.enabled ? 'music' : 'music-off'); } }),
+      el('div', { class: 'mh-island', html: heroArt() }),
+      el('div', { class: 'mh-brand' }, el('small', {}, 'Die Siedler von'), el('h1', {}, 'CATAN'), el('span', {}, 'gegen Bots')),
+      el('nav', { class: 'mh-menu' },
+        hasSave ? el('button', { type: 'button', class: 'mh-btn primary', onclick: onResume }, 'Fortsetzen') : null,
+        el('button', { type: 'button', class: `mh-btn ${hasSave ? '' : 'primary'}`, onclick: () => { view = 'wizard'; draw(); } }, 'Neues Spiel'),
+        lastText ? el('button', { type: 'button', class: 'mh-link', onclick: quick }, `Wie zuletzt · ${lastText}`) : null),
+      el('button', { type: 'button', class: 'mh-link small', onclick: onRules }, 'Regeln')));
     const g = window.gsap;
     if (g) {
-      g.from('.ts-logo', { y: -50, opacity: 0, scale: 1.08, duration: 0.9, ease: 'back.out(1.5)' });
-      g.from('.ts-pre, .ts-ribbon', { opacity: 0, y: -10, duration: 0.6, delay: 0.35, stagger: 0.12 });
-      g.from('.ts-btn', { x: -50, opacity: 0, duration: 0.5, delay: 0.45, stagger: 0.09, ease: 'power3.out', clearProps: 'transform,opacity' });
-      g.from('.ts-island', { y: 40, opacity: 0, duration: 1.1, delay: 0.2, ease: 'power3.out' });
-      g.from('.ts-char', { y: 30, opacity: 0, duration: 0.5, delay: 0.8, stagger: 0.07, ease: 'back.out(1.6)', clearProps: 'transform,opacity' });
-      g.to('.ts-island svg', { y: -12, rotation: 1.2, duration: 3.6, yoyo: true, repeat: -1, ease: 'sine.inOut' });
-      g.to('.ts-shadow', { scaleX: 0.92, opacity: 0.5, duration: 3.6, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+      g.from('.mh-brand h1', { y: -26, opacity: 0, duration: 0.8, ease: 'power3.out' });
+      g.from('.mh-brand small, .mh-brand span', { opacity: 0, duration: 0.7, delay: 0.25, stagger: 0.1 });
+      g.from('.mh-btn, .mh-link', { y: 16, opacity: 0, duration: 0.5, delay: 0.35, stagger: 0.07, ease: 'power3.out', clearProps: 'transform,opacity' });
+      g.from('.mh-island', { y: 24, opacity: 0, duration: 1, ease: 'power3.out' });
+      g.to('.mh-island svg', { y: -8, duration: 3.8, yoyo: true, repeat: -1, ease: 'sine.inOut' });
     }
   };
 
   // ---------------------------------------------------------------- Assistent
-  const seg = (opts, value, onPick) => el('div', { class: 'seg' }, opts.map(([val, label]) => el('button', {
-    class: val === value ? 'on' : '', type: 'button', onclick: () => { onPick(val); draw(); },
-  }, label)));
-
-  const toggle = (key, icon, title, desc) => el('label', { class: 'switch' },
+  const sw = (key, title, hint) => el('label', { class: 'mw-sw' },
     el('input', { type: 'checkbox', checked: settings[key] || undefined, onchange: (e) => { settings[key] = e.target.checked; saveSettings(settings); } }),
     el('span', { class: 'knob' }),
-    el('span', { class: 'sw-text' }, el('b', { html: `${ic(icon, 'inline')} ${title}` }), el('small', {}, desc)));
-
-  // ---------------------------------------------------------------- Spiel einrichten (eine Seite, wie eine Spiele-Lobby)
-  const pickFace = (id) => {
-    const before = (settings.botIds || []).length;
-    settings.avatarPortrait = id;
-    const ids = (settings.botIds || []).filter((x) => x !== id);
-    for (const o of BOT_ROSTER) { if (ids.length >= before) break; if (o.id !== id && !ids.includes(o.id)) ids.push(o.id); } // gleiche Spielerzahl behalten
-    settings.botIds = BOT_ROSTER.map((x) => x.id).filter((x) => ids.includes(x));
-    draw();
-  };
-  const cycleFace = (d) => {
-    const i = BOT_ROSTER.findIndex((b) => b.id === settings.avatarPortrait);
-    pickFace(BOT_ROSTER[(i + d + BOT_ROSTER.length) % BOT_ROSTER.length].id);
-  };
-  const setVP = (v) => { settings.targetVP = Math.max(5, Math.min(MAX_TARGET_VP, Math.round(v) || 10)); saveSettings(settings); };
-  const card = (icon, title, ...kids) => el('section', { class: 'lb-card' },
-    el('header', {}, el('span', { class: 'lb-hico', html: ic(icon) }), el('b', {}, title)), ...kids);
-  const rule = (key, icon, title) => el('button', {
-    type: 'button', class: `lb-rule ${settings[key] ? 'on' : ''}`, title, 'aria-pressed': String(!!settings[key]),
-    onclick: () => { settings[key] = !settings[key]; draw(); },
-  }, el('span', { class: 'lr-ico', html: ic(icon) }), el('small', {}, title));
+    el('span', { class: 'mw-sw-t' }, el('b', {}, title), hint ? el('small', {}, hint) : null));
+  let moreOpen = false;
 
   const drawWizard = () => {
     ensureCast();
     const sel = new Set(settings.botIds);
     const max = maxBots();
     const me = BOT_ROSTER.find((b) => b.id === settings.avatarPortrait) || BOT_ROSTER[0];
-    const islands = card('compass', 'Insel',
-      el('div', { class: 'lb-islands' }, Object.values(SIZES).map((sz) => el('button', {
-        type: 'button', class: `isl ${settings.size === sz.id ? 'on' : ''}`, title: `${sz.hexes} Felder`,
+    const sec = (label, ...kids) => el('section', { class: 'mw-sec' }, el('h3', {}, label), ...kids);
+
+    const you = el('div', { class: 'mw-you' },
+      el('button', { type: 'button', class: 'mw-face', 'aria-label': 'Anderes Gesicht wählen', title: 'Tippen für ein anderes Gesicht', onclick: () => cycleFace(1), html: avatarSVG(me.face, PLAYER_COLORS[0].hex, 56) }),
+      el('input', { type: 'text', class: 'mw-name', value: settings.playerName === 'Du' ? '' : settings.playerName, placeholder: 'Dein Name', maxlength: 14, 'aria-label': 'Dein Name', oninput: (e) => { settings.playerName = e.target.value.trim() || 'Du'; saveSettings(settings); } }));
+
+    const island = sec('Insel',
+      el('div', { class: 'mw-islands' }, Object.values(SIZES).map((sz) => el('button', {
+        type: 'button', class: `mw-isl ${settings.size === sz.id ? 'on' : ''}`, title: `${sz.hexes} Felder`, 'aria-pressed': String(settings.size === sz.id),
         onclick: () => { settings.size = sz.id; ensureCast(); draw(); },
         html: `${miniBoard(sz.radius, settings.variant === 'fog')}<b>${sz.label}</b>`,
       }))),
-      el('div', { class: 'lb-chips' }, [['classic', 'dune', 'Klassisch'], ['fog', 'cloud', 'Nebel']].map(([id, icon, name]) => el('button', {
-        type: 'button', class: `chip ${settings.variant === id ? 'on' : ''}`, title: id === 'fog' ? 'Ein Teil der Insel ist verdeckt (Seefahrer)' : 'Alle Felder offen',
-        onclick: () => { settings.variant = id; draw(); }, html: `${ic(icon)}<span>${name}</span>`,
-      }))));
+      el('label', { class: 'mw-sw tight' },
+        el('input', { type: 'checkbox', checked: settings.variant === 'fog' || undefined, onchange: (e) => { settings.variant = e.target.checked ? 'fog' : 'classic'; draw(); } }),
+        el('span', { class: 'knob' }),
+        el('span', { class: 'mw-sw-t' }, el('b', {}, 'Nebel'), el('small', {}, 'Ein Teil der Insel ist verdeckt'))));
 
-    const players = card('user', 'Spieler',
-      el('div', { class: 'lb-you' },
-        el('button', { type: 'button', class: 'lb-arrow', 'aria-label': 'Vorheriges Gesicht', onclick: () => cycleFace(-1), html: ic('chev') }),
-        el('div', { class: 'lb-face', html: avatarSVG(me.face, PLAYER_COLORS[0].hex, 104) }),
-        el('button', { type: 'button', class: 'lb-arrow r', 'aria-label': 'Nächstes Gesicht', onclick: () => cycleFace(1), html: ic('chev') })),
-      el('input', { type: 'text', class: 'lb-name', value: settings.playerName === 'Du' ? '' : settings.playerName, placeholder: 'Dein Name', maxlength: 14, 'aria-label': 'Dein Name', oninput: (e) => { settings.playerName = e.target.value.trim() || 'Du'; saveSettings(settings); } }),
-      el('div', { class: 'lb-sub' }, el('span', {}, 'Gegner'), el('em', {}, `${settings.bots}`)),
-      el('div', { class: 'lb-bots' }, BOT_ROSTER.map((b, i) => {
-        const you = settings.avatarPortrait === b.id;
-        const on = sel.has(b.id) && !you;
+    const bots = sec(`Gegner · ${settings.bots}`,
+      el('div', { class: 'mw-bots' }, BOT_ROSTER.map((b, i) => {
+        const isYou = settings.avatarPortrait === b.id;
+        const on = sel.has(b.id) && !isYou;
         const full = !on && sel.size >= max;
         const lvl = diffOf(b.id);
-        return el('div', { class: 'bot-wrap' },
+        return el('div', { class: `mw-bot ${on ? 'on' : ''} ${isYou ? 'you' : ''}`, style: `--pc:${PLAYER_COLORS[(i + 1) % 6].hex}` },
           el('button', {
-            type: 'button', class: `bot ${on ? 'on' : ''} ${you ? 'you' : ''}`, disabled: full || you || undefined, title: you ? 'Das bist du' : `${b.name} – ${b.tagline}`,
-            style: `--pc:${PLAYER_COLORS[(i + 1) % 6].hex}`,
+            type: 'button', class: 'mw-bot-b', disabled: full || isYou || undefined, 'aria-pressed': String(on), title: isYou ? 'Das bist du' : `${b.name} – ${b.tagline}`,
             onclick: () => { if (on) { if (sel.size > 1) sel.delete(b.id); } else sel.add(b.id); settings.botIds = BOT_ROSTER.map((x) => x.id).filter((id) => sel.has(id)); ensureCast(); draw(); },
-            html: `${avatarSVG(b.face, PLAYER_COLORS[(i + 1) % 6].hex, 58)}<small>${b.name}</small>`,
+            html: `${avatarSVG(b.face, PLAYER_COLORS[(i + 1) % 6].hex, 52)}<small>${b.name}</small>`,
           }),
-          // Schwierigkeit pro Gegner: 1–3 Punkte
-          el('div', { class: `bot-diff ${on ? '' : 'off'}`, role: 'group', 'aria-label': `Schwierigkeit ${b.name}` }, LEVELS.map(([v, l], k) => el('button', {
-            type: 'button', class: `${LEVELS.findIndex(([x]) => x === lvl) >= k ? 'lit' : ''} ${lvl === v ? 'cur' : ''}`, title: `${b.name}: ${l}`, 'aria-label': `${b.name}: ${l}`, tabindex: on ? undefined : -1,
+          el('div', { class: 'mw-dots', role: 'group', 'aria-label': `Stärke ${b.name}`, style: on ? '' : 'visibility:hidden' }, LEVELS.map(([v, l], k) => el('button', {
+            type: 'button', class: LEVELS.findIndex(([x]) => x === lvl) >= k ? 'lit' : '', title: `${b.name}: ${l}`, 'aria-label': `${b.name}: ${l}`, tabindex: on ? undefined : -1,
             onclick: () => { settings.botDifficulty = { ...(settings.botDifficulty || {}), [b.id]: v }; draw(); },
           }))));
       })),
-      el('div', { class: 'lb-diff' }, LEVELS.map(([v, l]) => el('button', {
-        type: 'button', class: `${[...sel].filter((id) => id !== settings.avatarPortrait).every((id) => diffOf(id) === v) ? 'on' : ''}`, title: `Alle Gegner: ${l}`,
-        onclick: () => { settings.difficulty = v; settings.botDifficulty = {}; draw(); },
-      }, l))));
+      el('p', { class: 'mw-note' }, 'Punkte unter dem Gegner = Spielstärke'));
 
-    const rules = card('trophy', 'Regeln',
-      el('div', { class: 'lb-vp' },
-        el('button', { type: 'button', class: 'vp-b', 'aria-label': 'Weniger Siegpunkte', onclick: () => { setVP(settings.targetVP - 1); draw(); }, html: ic('minus') }),
-        el('label', { class: 'vp-c' }, el('span', { class: 'vp-t', html: ic('trophy') }),
-          el('input', {
-            type: 'number', inputmode: 'numeric', min: 5, max: MAX_TARGET_VP, value: settings.targetVP, class: 'vp-input', 'aria-label': 'Siegpunkte',
-            oninput: (e) => { const v = Math.round(Number(e.target.value)); if (v >= 5 && v <= MAX_TARGET_VP) { settings.targetVP = v; saveSettings(settings); } },
-            onblur: (e) => { setVP(Number(e.target.value)); e.target.value = settings.targetVP; },
-          })),
-        el('button', { type: 'button', class: 'vp-b', 'aria-label': 'Mehr Siegpunkte', onclick: () => { setVP(settings.targetVP + 1); draw(); }, html: ic('plus') })),
-      el('div', { class: 'vp-presets' }, [10, 15, 20, 30, 50].map((v) => el('button', {
-        type: 'button', class: settings.targetVP === v ? 'on' : '', 'aria-label': `${v} Siegpunkte`, onclick: () => { setVP(v); draw(); },
-      }, String(v)))),
-      (() => {
-        const cap = realisticVP(settings.size, settings.bots + 1);
-        return settings.targetVP > cap + 2
-          ? el('p', { class: 'vp-hint', title: 'Die Bauplätze sind begrenzt: mit mehr Feldern oder weniger Spielern sind höhere Ziele erreichbar.' }, `Auf dieser Insel realistisch bis ca. ${cap} SP`)
-          : null;
-      })(),
-      el('div', { class: 'lb-rules' },
-        rule('antiBad', 'clover', 'Anti-Pech'),
-        rule('missions', 'flag', 'Missionen'),
-        rule('remapCard', 'globe', 'Weltenwandel'),
-        rule('harvestCard', 'wheat', 'Ernte'),
-        rule('goldField', 'coin', 'Wahlfeld')));
+    const hint = el('p', { class: 'mw-hint' });
+    const num = el('b', { class: 'mw-vp-n' }, String(settings.targetVP));
+    const updateHint = () => {
+      const cap = realisticVP(settings.size, settings.bots + 1);
+      hint.textContent = settings.targetVP > cap + 2 ? `Auf dieser Insel realistisch bis ca. ${cap} SP` : '';
+      hint.style.display = hint.textContent ? '' : 'none';
+    };
+    updateHint();
+    const range = el('input', {
+      type: 'range', class: 'mw-range', min: 5, max: MAX_TARGET_VP, step: 1, value: settings.targetVP, 'aria-label': 'Siegpunkte',
+      oninput: (e) => { settings.targetVP = Number(e.target.value); num.textContent = String(settings.targetVP); range.style.setProperty('--p', `${((settings.targetVP - 5) / (MAX_TARGET_VP - 5)) * 100}%`); updateHint(); },
+      onchange: () => saveSettings(settings),
+    });
+    range.style.setProperty('--p', `${((settings.targetVP - 5) / (MAX_TARGET_VP - 5)) * 100}%`);
+    const points = sec('Siegpunkte', el('div', { class: 'mw-vp' }, el('span', { class: 'mw-vp-ico', html: ic('trophy') }), num), range, hint);
 
-    root.replaceChildren(el('div', { class: 'lobby' },
-      el('div', { class: 'lb-top' },
-        el('button', { type: 'button', class: 'hbtn lb-back', 'aria-label': 'Zurück zum Start', title: 'Zurück', onclick: () => { view = 'home'; draw(); }, html: ic('arrow') }),
-        el('h2', { class: 'lb-title' }, el('i'), el('span', {}, 'Spiel einrichten'), el('i')),
-        el('span', { class: 'lb-spacer' })),
-      el('div', { class: 'lb-grid' }, islands, players, rules),
-      el('div', { class: 'lb-foot' },
-        el('button', { type: 'button', class: 'next-btn lb-start', onclick: startGame }, el('span', { class: 'nb-text' }, 'Spiel starten'), el('span', { class: 'nb-arrow', html: ic('arrow') })))));
+    const more = el('section', { class: 'mw-sec more' },
+      el('button', { type: 'button', class: `mw-more ${moreOpen ? 'open' : ''}`, 'aria-expanded': String(moreOpen), onclick: () => { moreOpen = !moreOpen; draw(); } }, el('span', {}, 'Weitere Regeln'), el('span', { class: 'mw-chev', html: ic('chev') })),
+      moreOpen ? el('div', { class: 'mw-rules' },
+        sw('antiBad', 'Anti-Pech-Marker'), sw('missions', 'Missionen'), sw('remapCard', 'Weltenwandel'), sw('harvestCard', 'Ernte'), sw('goldField', 'Wahlfeld')) : null);
+
+    root.replaceChildren(el('div', { class: 'mw' },
+      el('div', { class: 'mw-top' },
+        el('button', { type: 'button', class: 'hbtn mw-back', 'aria-label': 'Zurück zum Start', title: 'Zurück', onclick: () => { view = 'home'; draw(); }, html: ic('arrow') }),
+        el('h2', {}, 'Spiel einrichten')),
+      you, island, bots, points, more,
+      el('div', { class: 'mw-foot' }, el('button', { type: 'button', class: 'mw-start', onclick: startGame }, 'Spiel starten'))));
     const g = window.gsap;
     if (g && !this_animated) {
       this_animated = true;
-      g.from('.lb-card', { y: 40, opacity: 0, duration: 0.5, stagger: 0.1, ease: 'power3.out', clearProps: 'transform,opacity' });
-      g.from('.lb-foot', { y: 30, opacity: 0, duration: 0.5, delay: 0.3, clearProps: 'transform,opacity' });
+      g.from('.mw-sec, .mw-you', { y: 18, opacity: 0, duration: 0.45, stagger: 0.07, ease: 'power3.out', clearProps: 'transform,opacity' });
     }
   };
 

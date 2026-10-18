@@ -31,7 +31,7 @@ Entwicklungskarten (Ritter, Straßenbau, Erfindung, Monopol, Siegpunkte), Längs
 Größte Rittermacht, Sieg bei Erreichen der Siegpunktzahl in deinem Zug.
 
 **Einstellungen vor der Partie**
-- Eine Lobby-Seite „Spiel einrichten“: Insel (Größe, Klassisch/Nebel), Spieler (Bot-Gesicht per Pfeilen, Name, Gegner, Stärke) und Regeln (Siegpunkte mit ±/Eingabe, Regeln als runde Schalter)
+- Eine minimalistische Startseite (Logo, „Neues Spiel“, „Fortsetzen“, „Wie zuletzt“) und ein Einrichten-Bildschirm in einer Spalte: Name und Gesicht, Insel (Klein/Groß/Riesig, Nebel-Schalter), Gegner (antippen zum Wählen, Punkte = Stärke pro Gegner), Siegpunkte per Schieber (5–50) und – eingeklappt – weitere Regeln. Alles mit dem Daumen bedienbar, „Spiel starten“ bleibt unten sichtbar
 - Spielfeldgröße: Klein (19 Felder, klassisch), Groß (37), Riesig (61)
 - Siegpunkte: 5–50 (Standard 10, Schnellwahl 10/15/20/30/50) – Spielfiguren und Siegpunktkarten wachsen automatisch mit. Die Bauplätze sind aber begrenzt: Die Lobby zeigt, bis wie viele Punkte es auf der gewählten Insel realistisch ist (klein ca. 16, riesig mit 4 Spielern ca. 39+). Sind alle Plätze vergeben und ändert sich 30 Runden lang kein Punktestand, endet die Partie als Patt und der Führende gewinnt. Die Anzahl der Spielfiguren wächst automatisch mit
 - Spielvariante: Klassisch oder **Nebel** (wie *Seefahrer*)
