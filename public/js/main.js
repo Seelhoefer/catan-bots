@@ -185,7 +185,7 @@ class App {
         break;
       case 'dice': {
         this.rolling = true;
-        sfx.play('dice', { vol: 0.8 });
+        sfx.play('dice', { vol: 0.8, sf: this.sf });
         const total = e.dice[0] + e.dice[1];
         const dur = showDiceHero(e.dice, e.pi === HUMAN ? 'Du' : name(e.pi), this.sf);
         this.diceRevealAt = Date.now() + lastDice.settleMs + 150;

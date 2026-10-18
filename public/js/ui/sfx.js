@@ -43,7 +43,17 @@ function ensure() {
   const d = noiseBuf.getChannelData(0);
   for (let i = 0; i < d.length; i += 1) d[i] = Math.random() * 2 - 1;
   loadFiles();
+  loadSamples();
   return ctx;
+}
+
+/** Mitgelieferte Aufnahmen (echte Würfel). Fehlen sie, bleibt der synthetische Klang. */
+const samples = {};
+async function loadSamples() {
+  try {
+    const res = await fetch('assets/sfx/dice-roll.mp3');
+    if (res.ok) samples.dice = await ctx.decodeAudioData(await res.arrayBuffer());
+  } catch { /* kein Sample – synthetischer Klang */ }
 }
 
 async function loadFiles() {
@@ -58,6 +68,56 @@ async function loadFiles() {
       } catch { /* diese Datei fehlt – synthetischer Klang bleibt */ }
     }));
   } catch { /* kein Manifest */ }
+}
+
+
+// Positionen der einzelnen „Klacks“ in dice-roll.mp3 (Sekunden)
+const DICE_CLACKS = [0.062, 0.178, 0.269, 0.332, 0.39, 0.441];
+const rr = (a, b) => a + Math.random() * (b - a);
+let roomBuf = null;
+
+/** Kurzer, dunkler Raumhall (Holztisch im Zimmer): gerauschter Impuls, der schnell abklingt. */
+function roomImpulse() {
+  if (roomBuf && roomBuf.sampleRate === ctx.sampleRate) return roomBuf;
+  const len = Math.floor(ctx.sampleRate * 0.45);
+  roomBuf = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch += 1) {
+    const d = roomBuf.getChannelData(ch);
+    let lp = 0;
+    for (let i = 0; i < len; i += 1) {
+      lp += (Math.random() * 2 - 1 - lp) * 0.3; // Tiefpass: dumpf statt zischend
+      d[i] = lp * (1 - i / len) ** 3.4;
+    }
+  }
+  return roomBuf;
+}
+
+/**
+ * Spielt (einen Ausschnitt der) Würfelaufnahme veredelt ab: Wärme im Bass, leichte Präsenz, sanft abgesenkte Höhen,
+ * Stereoposition und ein Hauch Raumhall. Gibt false zurück, wenn die Aufnahme nicht geladen ist.
+ */
+function diceSample(t, { offset = 0, dur = null, rate = 1, gain = 0.3, pan = 0, wet = 0.18, out = master }) {
+  const buf = samples.dice;
+  if (!buf) return false;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.playbackRate.value = rate;
+  const low = ctx.createBiquadFilter(); low.type = 'lowshelf'; low.frequency.value = 220; low.gain.value = 3.5;
+  const mid = ctx.createBiquadFilter(); mid.type = 'peaking'; mid.frequency.value = 2800; mid.Q.value = 0.8; mid.gain.value = 1.5;
+  const high = ctx.createBiquadFilter(); high.type = 'highshelf'; high.frequency.value = 7500; high.gain.value = -3;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(gain, t);
+  if (dur) { g.gain.setValueAtTime(gain, t + dur * 0.7); g.gain.linearRampToValueAtTime(0.0001, t + dur); }
+  src.connect(low); low.connect(mid); mid.connect(high); high.connect(g);
+  const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+  if (panner) { panner.pan.value = pan; g.connect(panner); panner.connect(out); } else g.connect(out);
+  if (wet > 0) {
+    const send = ctx.createGain(); send.gain.value = wet;
+    const verb = ctx.createConvolver(); verb.buffer = roomImpulse();
+    g.connect(send); send.connect(verb); verb.connect(out);
+  }
+  src.start(t, offset, dur ? dur + 0.03 : undefined);
+  return true;
 }
 
 // ------------------------------------------------------------------ Bausteine
@@ -142,14 +202,14 @@ const SOUNDS = {
     [67, 71, 74].forEach((n, i) => bell(t + 0.28 + i * 0.07, N(n), { gain: 0.09, dur: 0.6 }));
   },
 
-  dice: (t) => { // Würfel im Becher: kurzes trockenes Klackern
-    let at = t;
-    for (let i = 0; i < 11; i += 1) {
-      click(at, { f: 2600 + Math.random() * 2200, gain: 0.2 * (1 - i / 16) });
-      at += 0.028 + i * 0.006 + Math.random() * 0.02;
-    }
+  dice: (t, o) => { // Wurf: leises Luftrauschen beim Werfen + echtes Klackern, das mit dem ersten Aufprall beginnt
+    const lead = 0.45 * (o.sf || 1);
+    noise(t, { dur: 0.32, f: 500, sweep: 1900, q: 0.8, gain: 0.045, attack: 0.14 });
+    const ok = diceSample(t + Math.max(0, lead - DICE_CLACKS[0]), { gain: 0.36, rate: rr(0.97, 1.04), pan: rr(-0.25, 0.25), wet: 0.2 });
+    if (ok) return;
+    let at = t + lead;
+    for (let i = 0; i < 11; i += 1) { click(at, { f: 2600 + Math.random() * 2200, gain: 0.2 * (1 - i / 16) }); at += 0.028 + i * 0.006 + Math.random() * 0.02; }
   },
-  diceLand: (t) => { click(t, { f: 3200, gain: 0.16 }); }, // letztes leises Klicken beim Liegenbleiben
   robberLand: (t) => { tone(t, { f: 130, to: 60, dur: 0.25, gain: 0.5 }); noise(t, { dur: 0.08, f: 500, type: 'lowpass', gain: 0.35 }); },
   deal: (t, o) => { // Karte löst sich vom Feld
     const k = o.pitch || 1;
@@ -162,8 +222,9 @@ const SOUNDS = {
     tone(t, { f: 1260 * k, dur: 0.14, gain: 0.07, type: 'triangle' });
   },
   jackpot: (t) => { [79, 84, 88, 91, 96].forEach((n, i) => bell(t + i * 0.06, N(n), { gain: 0.1, dur: 0.7 })); coin(t + 0.25, 2637, 0.1); },
-  diceLand: (t, o) => { // Würfel bleiben liegen; Ton richtet sich nach der Augensumme
-    knock(t, { pitch: 240, gain: 0.5 });
+  diceLand: (t, o) => { // Würfel bleiben liegen: letztes leises Auskullern der Aufnahme; Ton richtet sich nach der Augensumme
+    if (!diceSample(t, { offset: DICE_CLACKS[5], dur: 0.26, gain: 0.2, rate: rr(0.95, 1), wet: 0.25 })) knock(t, { pitch: 240, gain: 0.5 });
+    else knock(t, { pitch: 240, gain: 0.22 });
     const total = o.total || 7;
     if (total === 7) { tone(t + 0.05, { f: 98, to: 55, dur: 0.6, gain: 0.45 }); tone(t + 0.05, { f: 104, to: 58, dur: 0.6, gain: 0.25, type: 'triangle' }); return; }
     const hot = total === 6 || total === 8;
@@ -173,11 +234,12 @@ const SOUNDS = {
   },
   gather: (t) => { noise(t, { dur: 0.35, f: 600, sweep: 5200, q: 1, gain: 0.25 }); tone(t, { f: 300, to: 900, dur: 0.3, gain: 0.12, type: 'triangle' }); tone(t + 0.28, { f: 1760, dur: 0.25, gain: 0.08 }); },
   whirl: (t) => { noise(t, { dur: 1, f: 300, sweep: 2600, q: 1.4, gain: 0.2, attack: 0.5 }); [72, 76, 79, 84].forEach((n, i) => tone(t + 0.4 + i * 0.07, { f: 440 * 2 ** ((n - 69) / 12), dur: 0.4, gain: 0.06 })); },
-  diceHit: (t, o) => { // Würfel schlägt auf: heller „Klack“ (Hartplastik) + kurzer Tischton
+  diceHit: (t, o) => { // Würfel schlägt auf: echter Klack aus der Aufnahme (je Aufprall ein anderer) + dumpfer Tischton
     const k = o.pitch || 1;
-    click(t, { f: 3300 * k, gain: 0.55 });
-    tone(t, { f: 190 * k, to: 110, dur: 0.07, gain: 0.3 });
-    noise(t, { dur: 0.04, f: 900, type: 'lowpass', gain: 0.18 });
+    const slice = [DICE_CLACKS[1], DICE_CLACKS[2], DICE_CLACKS[4], DICE_CLACKS[3]][(o.slice ?? 0) % 4];
+    const real = diceSample(t, { offset: slice, dur: 0.09, rate: 0.94 + (k - 1) * 0.5 + rr(-0.03, 0.03), gain: 0.65, pan: o.pan || 0, wet: 0.16 });
+    if (!real) { click(t, { f: 3300 * k, gain: 0.55 }); noise(t, { dur: 0.04, f: 900, type: 'lowpass', gain: 0.18 }); }
+    tone(t, { f: 190 * k, to: 110, dur: 0.07, gain: real ? 0.12 : 0.3 });
   },
   gain: (t) => { tone(t, { f: 660, to: 990, dur: 0.09, gain: 0.1, type: 'triangle' }); tone(t + 0.07, { f: 1320, dur: 0.1, gain: 0.06, type: 'triangle' }); },
   token: (t) => { [84, 88, 91, 96].forEach((n, i) => tone(t + i * 0.05, { f: N(n), dur: 0.25, gain: 0.07 })); },
@@ -207,13 +269,13 @@ const SOUNDS = {
 
 // Feinabgleich der Lautstärke je Klang (Messung: Spitzenpegel der synthetisierten Klänge)
 const BOOST = {
-  gather: 1.6, whirl: 1.6, diceHit: 1.2, tick: 1.8, select: 2.2, error: 2.2, gain: 2.4, token: 1.8, card: 3, cardplay: 1.8, harvest: 1.6,
-  steal: 2.4, deal: 2.6, land: 2.2, dice: 2.4, turn: 2.2, remap: 1.6, monopoly: 1.5, vpOther: 2, trade: 1.2, lose: 1.5, offer: 1.4, robber: 0.9,
+  gather: 1.6, whirl: 1.6, tick: 1.8, select: 2.2, error: 2.2, gain: 2.4, token: 1.8, card: 3, cardplay: 1.8, harvest: 1.6,
+  steal: 2.4, deal: 2.6, land: 2.2, turn: 2.2, remap: 1.6, monopoly: 1.5, vpOther: 2, trade: 1.2, lose: 1.5, offer: 1.4, robber: 0.9,
 };
 
 // Dezenter: häufige Klänge sehr leise, Ereignisse mittel, nur Sieg/Höhepunkte etwas präsenter
 const SOFT = {
-  tick: 0.55, select: 0.6, error: 0.6, deal: 0.5, land: 0.5, gain: 0.65, token: 0.7, dice: 0.7, diceHit: 0.55, diceLand: 0.65, whirl: 0.6, gather: 0.6,
+  tick: 0.55, select: 0.6, error: 0.6, deal: 0.5, land: 0.5, gain: 0.65, token: 0.7, dice: 1, diceHit: 1, diceLand: 1, whirl: 0.6, gather: 0.6,
   turn: 0.6, offer: 0.7, trade: 0.7, card: 0.7, cardplay: 0.7, steal: 0.55, robber: 0.7, robberLand: 0.6, harvest: 0.7, remap: 0.75, monopoly: 0.75,
   road: 0.7, settlement: 0.75, city: 0.75, vp: 0.8, vpOther: 0.6, lose: 0.7, win: 0.85, jackpot: 0.75,
 };

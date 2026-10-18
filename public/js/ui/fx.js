@@ -228,7 +228,7 @@ export function showDiceHero(dice, who, speedFactor = 1) {
   const clear = () => { box.className = 'dicehero'; box.innerHTML = ''; g.set(box, { clearProps: 'opacity' }); };
 
   if (dice3dReady()) {
-    const hitSound = (k, i) => sfx.play('diceHit', { pitch: 1 + i * 0.12 + k * 0.1, vol: [1, 0.55, 0.3][k] });
+    const hitSound = (k, i) => sfx.play('diceHit', { pitch: 1 + i * 0.12 + k * 0.1, vol: [1, 0.55, 0.3][k], pan: i === 0 ? -0.35 : 0.35, slice: k + i });
     const r = rollDice3D(box, { dice, sf, onHit: hitSound });
     // Zusammenziehen: kurzer Lichtring, dann Glas ausblenden
     g.delayedCall(r.gatherAtMs / 1000 + (r.gatherMs / 1000) * 0.55, () => {
@@ -254,7 +254,7 @@ export function showDiceHero(dice, who, speedFactor = 1) {
   const lag = 0.09 * sf;
   nodes.forEach((n, i) => {
     throwDie(n, i === 0 ? 1 : -1, T, i * lag);
-    [[0.364, 1], [0.727, 0.55], [0.909, 0.3]].forEach(([f, v], k) => g.delayedCall(T * f + i * lag, () => sfx.play('diceHit', { pitch: 1 + i * 0.12 + k * 0.1, vol: v })));
+    [[0.364, 1], [0.727, 0.55], [0.909, 0.3]].forEach(([f, v], k) => g.delayedCall(T * f + i * lag, () => sfx.play('diceHit', { pitch: 1 + i * 0.12 + k * 0.1, vol: v, pan: i === 0 ? -0.35 : 0.35, slice: k + i })));
   });
   g.to(box.querySelector('.dh-dice'), { scale: 0.2, opacity: 0, duration: 0.4, delay: T + hold, ease: 'power3.in' });
   g.to(box, { opacity: 0, duration: 0.35, delay: T + hold + 0.3, ease: 'power1.in', onComplete: clear });
