@@ -2283,3 +2283,21 @@ table.score th { color: var(--gold); font-weight: 700; font-size: 12px; letter-s
 .mw-foot { z-index: 5; background: none; }
 .mw-foot::before { content: ''; position: absolute; z-index: -1; top: 0; bottom: 0; left: -50vw; right: -50vw; background: linear-gradient(rgba(6, 17, 22, 0), var(--bg-deep) 30px); pointer-events: none; }
 #menu { overflow-x: hidden; }
+
+/* ======================================================================
+   Web-Set (Grafikstil „Illustriert“): Rohstoffkarten im Fächer, Kartenrücken
+   ====================================================================== */
+html[data-art="new"] .rcard,
+html[data-art="new"] .flycard.fc:not(.back) { background: var(--webcard) center / 100% 100% no-repeat; border: 0; border-radius: 0; box-shadow: none; filter: drop-shadow(0 5px 6px rgba(0, 0, 0, .45)); }
+html[data-art="new"] .flycard.fc:not(.back) { filter: drop-shadow(0 0 10px rgba(255, 226, 150, .75)) drop-shadow(0 4px 6px rgba(0, 0, 0, .4)); }
+html[data-art="new"] .rcard::before, html[data-art="new"] .rcard::after { display: none; }
+html[data-art="new"] .rcard:hover { filter: brightness(1.06) drop-shadow(0 8px 8px rgba(0, 0, 0, .4)); }
+html[data-art="new"] .rcard .rc-mark, html[data-art="new"] .rcard .rc-art, html[data-art="new"] .flycard.fc:not(.back) .rc-art, html[data-art="new"] .flycard.fc:not(.back) .rc-mark { display: none; }
+html[data-art="new"] .rcard .rc-name { bottom: 17%; font-family: var(--font-display); font-size: 9.5px; letter-spacing: .06em; color: #3a2c18; text-shadow: 0 1px 0 rgba(255, 244, 216, .9); }
+html[data-art="new"] .r-wood { --webcard: url('../assets/web/cards/res-wood.webp'); }
+html[data-art="new"] .r-brick { --webcard: url('../assets/web/cards/res-brick.webp'); }
+html[data-art="new"] .r-sheep { --webcard: url('../assets/web/cards/res-sheep.webp'); }
+html[data-art="new"] .r-wheat { --webcard: url('../assets/web/cards/res-wheat.webp'); }
+html[data-art="new"] .r-ore { --webcard: url('../assets/web/cards/res-ore.webp'); }
+html[data-art="new"] .cardback { background: url('../assets/web/cards/back.webp') center / 100% 100% no-repeat; border: 0; box-shadow: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .5)); width: 26px; height: 34px; }
+html[data-art="new"] .cardback::after, html[data-art="new"] .cardback::before { display: none; }

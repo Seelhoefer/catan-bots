@@ -205,3 +205,10 @@ Wird die letzte Entwicklungs-/Ereigniskarte gekauft, mischt das Spiel sofort ein
 
 ## ⚙️ Spiel einrichten (aktualisiert)
 Voreinstellungen oben („Klassisch“, „Entdecker“, „Alles an“) setzen alle Regeln mit einem Tipp, danach bleibt alles frei änderbar. „Du“ hat eine eigene Karte, am Desktop liegen die Einstellungen in zwei Spalten, unten zeigt eine Zeile die Zusammenfassung (Spieler · Insel · Siegpunkte · aktive Regeln) direkt über „Spiel starten“.
+
+## 🖼️ Web-Assets (Grafikstil „Illustriert“, Desktop)
+Neue Felder, Häfen, Siedlungen/Städte, Rohstoffkarten und die fünf Entwicklungskarten liegen unter `public/assets/web/` und gelten für den Stil „Illustriert“ (Desktop-Standard; Handy-Mobil-Set, „Vektor“ und „Klassisch“ bleiben unverändert).
+- **Felder:** Namensschilder entfernt, der vom Schild verdeckte untere Rand ist aus dem Bild ergänzt (weich gespiegelt, Rahmen nachgezeichnet).
+- **Häfen:** Szene ohne Namenstafel, auf dem Brett größer gezeichnet.
+- **Siedlungen/Städte:** Rot, Blau, Grün aus dem Paket; Orange, Violett und Pink sind aus Gelb, Blau und Rot umgefärbt (das Paket hat nur 5 Farben, zwei davon – Gelb, Weiß – gibt es im Spiel nicht).
+- **Noch alt:** Räuber (im Paket ist der Kopf abgeschnitten), Ereigniskarten (Bildtexte passen nicht zu den Regeln), Erlass, Weltenwandel, Ernte, Straßen, Missionskarten, Meer-Hintergrund.

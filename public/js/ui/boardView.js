@@ -1,7 +1,7 @@
 // SVG-Darstellung des Spielfelds inkl. Zoom/Pan und anklickbarer Positionen.
 import { RES_INFO } from '../engine/constants.js';
 import {
-  art, COLOR_ID, piece, resImg, harborImg, fogImg, tileImg, IMG, pieceBox, artStyle, compactView, classicResImg,
+  art, COLOR_ID, piece, resImg, harborImg, worldHarborImg, fogImg, tileImg, IMG, pieceBox, artStyle, compactView, classicResImg,
 } from './assets.js';
 import { roadDefs, roadOnEdge } from './road.js';
 
@@ -463,12 +463,13 @@ export class BoardView {
     for (const p of board.ports) {
       if (p.type === 'all') { // Welthafen: goldene Marke, alle Rohstoffe 2:1
         out.push(`<g transform="translate(${p.x},${p.y})" class="port world"><circle r="0.45" cy="0.05" class="port-shadow"/>`
-          + '<image href="assets/art-v2/harbors/world-harbor.webp" x="-0.5" y="-0.5" width="1" height="1" class="port-img"/></g>'); // gleicher Aufbau wie die anderen Hafenkarten, nur etwas größer
+          + `<image href="${worldHarborImg()}" x="${artStyle() === 'new' ? -0.68 : -0.5}" y="${artStyle() === 'new' ? -0.68 : -0.5}" width="${artStyle() === 'new' ? 1.36 : 1}" height="${artStyle() === 'new' ? 1.36 : 1}" class="port-img"/></g>`); // gleicher Aufbau wie die anderen Hafenkarten, nur etwas größer
         continue;
       }
       const hb = art.ok ? harborImg(p.type) : null;
       if (hb) {
-        out.push(`<g transform="translate(${p.x},${p.y})" class="port${p.type === 'any' ? ' any' : ''}"><circle r="0.45" cy="0.05" class="port-shadow"/><image href="${hb}" x="-0.47" y="-0.47" width="0.94" height="0.94" class="port-img"/></g>`);
+        const hs = artStyle() === 'new' ? 1.3 : 0.94; // die Hafenszenen des Web-Sets brauchen mehr Platz, damit das Segel lesbar bleibt
+        out.push(`<g transform="translate(${p.x},${p.y})" class="port${p.type === 'any' ? ' any' : ''}"><circle r="${(hs * 0.48).toFixed(3)}" cy="0.05" class="port-shadow"/><image href="${hb}" x="${(-hs / 2).toFixed(3)}" y="${(-hs / 2).toFixed(3)}" width="${hs}" height="${hs}" class="port-img"/></g>`);
         continue;
       }
       out.push(`<g transform="translate(${p.x},${p.y})" class="port"><circle r="0.45" class="port-bg"/><circle r="0.385" class="port-inner"/>`);

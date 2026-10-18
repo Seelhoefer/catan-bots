@@ -36,7 +36,7 @@ const TERRAIN_FILL = { wood: '#2f7d55', brick: '#c4673f', sheep: '#93c27f', whea
 /** Dekoratives Titelbild: eine echte Karte mit einigen Siedlungen und Straßen. */
 function heroArt() {
   const board = generateBoard('small', 'classic', makeRng(11));
-  const tile = (t) => `assets/hexbg/${t === 'desert' ? 'desert' : t}.webp`;
+  const tile = (t) => `assets/web/tiles/${t}.webp`;
   const hexes = board.hexes.map((h) => {
     const red = h.num === 6 || h.num === 8;
     const num = h.num ? `<g transform="translate(${h.x},${h.y})"><circle r=".37" cy=".04" fill="rgba(0,0,0,.28)"/><circle r=".36" fill="#f6efdc" stroke="#b69a58" stroke-width=".035"/><text y=".13" text-anchor="middle" font-size=".4" font-weight="800" font-family="Georgia,serif" fill="${red ? '#c62828' : '#3a2f1c'}">${h.num}</text></g>` : '';
