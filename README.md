@@ -172,3 +172,13 @@ Der Pausen-Knopf im Kopf (oder Taste **P**, auch bei geöffnetem Dialog; Esc/P/L
 - **Kopfzeile hochkant:** Einstellungen und darunter Pause sind so groß wie die Spielerkarten (54 px); bei 5–6 Spielern schrumpfen die Spielerbilder, damit nichts unter die Knöpfe läuft.
 - **Zwei-Finger-Zoom:** Pinch zoomt um die Fingermitte und schiebt mit; gerechnet wird gegen den Start der Geste (keine Drift), je Bild eine Aktualisierung. An den Zoomgrenzen gibt das Brett gedämpft nach und federt beim Loslassen zurück; bleibt ein Finger liegen, schiebt er ohne Sprung weiter. Seiten-Zoom des Browsers ist abgeschaltet (`user-scalable=no`), damit die Geste nur das Brett betrifft.
 - **Handkarten hochkant:** Die Rohstoffleiste zeigt immer alle fünf Rohstoffe (fehlende gedimmt) als gleich breite, mittig angeordnete Gruppe über den Aktionen – auch zu Beginn, wenn noch keine Karte da ist.
+
+## 👥 Mit Freunden spielen
+
+Im Einrichten-Assistenten unter **Mit Freunden** wählst du, wie viele Menschen mitspielen:
+
+- **Am selben Gerät (Hot-Seat):** Mehrere Spieler wechseln sich am gleichen Bildschirm ab. Wer etwas entscheiden muss (Zug, Abwerfen, Rohstoffwahl, Antwort auf ein Handelsangebot), bekommt eine **Übergabe-Seite** („Gerät weitergeben an …“) – erst nach „Los“ erscheinen dessen Handkarten. Solange nur Bots am Zug sind, werden die Karten verdeckt. Bot-Angebote beantwortet, wer gerade am Bildschirm sitzt.
+- **Am Handy:** Der Gastgeber (Browser mit dem Server) legt einen Raum an und zeigt **Code und Adresse** (`http://<Rechner-IP>:3000/?join=ABCD`). Mitspieler öffnen den Link am Handy, geben ihren Namen ein und sehen ihre **eigenen Handkarten** – sie können dort auch selbst würfeln, bauen, handeln und Karten ausspielen. Fremde Handkarten, Entwicklungskarten und der Kartenstapel verlassen den Gastgeber nie (der Server schickt jedem nur seinen eigenen Zustand, siehe `public/js/engine/redact.js`); die Gegner sehen nur die Anzahl. Trennt sich ein Handy, kommt es mit demselben Link auf denselben Platz zurück; das Spiel wartet solange.
+- **Dieses Gerät zeigt nur das Brett:** Der PC dient als gemeinsame Spielfläche ohne Handkarten, alle (auch du) spielen am Handy.
+
+Damit sich Handys verbinden können, muss der Server im WLAN erreichbar sein: `npm run start:lan` (der Warteraum weist darauf hin). Pause gibt es nur ohne Mitspieler am Handy. Technik: `relay.js` reicht Nachrichten per Server-Sent Events weiter (keine Abhängigkeiten), das Spiel selbst läuft im Browser des Gastgebers, Handys schicken nur erlaubte Aktionen für ihren eigenen Platz.

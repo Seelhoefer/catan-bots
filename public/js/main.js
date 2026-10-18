@@ -23,12 +23,20 @@ import {
 import { preloadArt, ART_STYLES, artStyle, setArtStyle } from './ui/assets.js';
 import {
   devModal, tokensModal, discardModal, goldModal, stealModal, logModal,
-  rulesModal, gameOverModal, closeTopModal, closeAllModals, confirmDialog, hasModal, playDevCard,
+  rulesModal, gameOverModal, inviteModal, closeTopModal, closeAllModals, confirmDialog, hasModal, playDevCard,
 } from './ui/modals.js';
+import { HUMAN, setViewer } from './ui/viewer.js';
+import { redactFor } from './engine/redact.js';
+import {
+  createRoom, serverInfo, roomExists, HostLink, ClientLink, clientId,
+} from './net.js';
+import { renderHostLobby, renderJoin, joinUrl } from './ui/lobby.js';
 
 const SAVE_KEY = 'catan-save-v1';
+/** Aktionen, die Mitspieler am Handy beim Gastgeber auslösen dürfen. */
+const REMOTE_METHODS = new Set(['acceptCounter', 'acceptResponse', 'bankTrade', 'build', 'buyDevCard', 'chooseGold', 'createOffer', 'discard', 'endTurn', 'exchangeTokens',
+  'moveRobber', 'placeInitialRoad', 'placeInitialSettlement', 'playDev', 'respondOffer', 'rollDice', 'skipRoadBuilding', 'steal', 'withdrawOffer']);
 const SPEED_KEY = 'catan-speed';
-const HUMAN = 0;
 // [Name, Pause zwischen Bot-Aktionen (ms), Animationsfaktor, Wartezeit auf deine Antwort (ms)]
 const SPEEDS = { slow: ['Langsam', 2100, 1.35, 25000], normal: ['Normal', 1300, 1, 18000], fast: ['Schnell', 420, 0.5, 9000] };
 /** Warten, das bei Pause stillsteht: die Pausenzeit zählt nicht mit (Bots, Angebote, Wartezeiten). */
@@ -51,6 +59,10 @@ class App {
     installIcons();
     preloadArt().then((ok) => { if (ok) this.queueRender(); });
     this.game = null;
+    this.role = 'solo'; // solo | host (Gastgeber mit Mitspielern am Handy) | client (Mitspieler am Handy)
+    this.seats = []; // je Spieler: 'local' (an diesem Gerät) | 'remote' (am Handy) | 'bot'
+    this.mySeat = 0; // Client: eigener Platz
+    this.cover = null; // Hot-Seat: Platz, an den das Gerät gerade übergeben werden soll
     this.mode = null; // 'road' | 'settlement' | 'city' | 'harvest'
     this.pending = null; // vorgemerkter Platz (Touch)
     this.pumping = false;
@@ -87,6 +99,8 @@ class App {
     $('#zoomFit').innerHTML = ic('target');
     this.bindUI();
     this.showMenu();
+    const code = new URLSearchParams(location.search).get('join');
+    if (code) this.showJoin({ code: code.toUpperCase().slice(0, 4) }); // Einladungslink vom Gastgeber
   }
 
   /** Musik-Schalter im Kopf: Symbol und Zustand. */
@@ -102,6 +116,7 @@ class App {
   setPaused(on, leaving = false) {
     on = !!on;
     if (on === gamePaused) return;
+    if (on && this.role !== 'solo') return;
     if (on && (!this.game || this.game.s.phase === 'over' || $('#game').classList.contains('hidden'))) return;
     gamePaused = on;
     const ov = $('#pauseOv');
@@ -138,6 +153,7 @@ class App {
   showMenu() {
     closeAllModals();
     this.closePopover();
+    this.leaveRoom();
     $('#game').classList.add('hidden');
     $('#menu').classList.remove('hidden');
     renderMenu($('#menu'), {
@@ -145,12 +161,28 @@ class App {
       onStart: (settings) => this.start(settings),
       onResume: () => this.resume(),
       onRules: () => rulesModal(),
+      onJoin: () => this.showJoin({}),
     });
   }
 
   start(settings) {
     rememberLast({ ...settings, seed: undefined });
-    this.attach(Game.create(settings));
+    const tv = !!settings.tvMode; // Brett-Modus: der PC zeigt nur das Brett, alle spielen am Handy
+    const pc = tv ? 0 : Math.max(0, Math.min(3, settings.friendsPc || 0));
+    const local = tv ? 0 : 1 + pc;
+    const phones = Math.max(0, Math.min(5, settings.friendsPhone || 0)) + (tv ? 1 : 0);
+    const humans = local + phones;
+    const names = [];
+    names[0] = settings.playerName && settings.playerName !== 'Du' ? settings.playerName : '';
+    for (let i = 1; i < local; i++) names[i] = ((settings.friendNames || [])[i - 1] || '').trim();
+    const seats = [];
+    for (let i = 0; i < humans; i++) seats.push(i < local ? 'local' : 'remote');
+    const game = Game.create({
+      ...settings, humans: Math.max(1, humans), humanNames: names, playerName: tv ? 'Spieler 1' : settings.playerName,
+    });
+    for (let i = seats.length; i < game.s.players.length; i++) seats.push('bot');
+    if (seats.includes('remote')) { this.openLobby(game, seats); return; }
+    this.attach(game, { seats });
   }
 
   resume() {
@@ -169,10 +201,18 @@ class App {
     }
   }
 
-  attach(game) {
+  attach(game, opts = {}) {
     closeAllModals();
     this.closePopover();
     this.game = game;
+    this.role = opts.role || 'solo';
+    this.seats = opts.seats || game.s.players.map((p) => (p.isBot ? 'bot' : 'local'));
+    this.mySeat = opts.mySeat ?? 0;
+    this.cover = null;
+    this.spectator = false;
+    $('#handover').classList.add('hidden');
+    $('#btnPause').classList.toggle('hidden', this.role !== 'solo'); // Pause nur ohne Mitspieler am Handy
+    setViewer(this.role === 'client' ? this.mySeat : this.localSeats()[0] ?? -1);
     preloadDice3d();
     this.lastVp = undefined;
     this.prevVps = null;
@@ -196,12 +236,12 @@ class App {
     this.market = this.freshMarket();
     this.ui = { missionsOpen: false, logOpen: false, turnKey: null };
     this.view.fitKey = null;
-    game.on((e) => this.onEvent(e));
+    game.on((e) => { this.onEvent(e); this.relay(e); });
     $('#menu').classList.add('hidden');
     $('#game').classList.remove('hidden');
     this.render();
     this.view.fit(game.s.board);
-    this.pump();
+    if (this.role !== 'client') this.pump();
   }
 
   flash(ids, ms = 2400) {
@@ -352,7 +392,7 @@ class App {
       case 'monopoly': sfx.play('monopoly'); break;
       case 'turn': if (e.pi === HUMAN) sfx.play('turn', { delay: 250 }); setTimeout(() => turnPulse(e.pi), 120); break;
       case 'change': {
-        const vp = g.vp(HUMAN);
+        const vp = HUMAN < 0 ? 0 : g.vp(HUMAN);
         if (this.lastVp !== undefined && vp > this.lastVp) { sfx.play('vp', { delay: 200 }); setTimeout(celebrate, 250); }
         this.lastVp = vp;
         this.queueRender();
@@ -408,9 +448,324 @@ class App {
     }, dur + 1500);
   }
 
+  /** Hinweis an einen bestimmten Spieler: am eigenen Gerät als Meldung, am Handy über den Gastgeber. */
+  notify(pi, msg, kind = 'info') {
+    if (this.seats[pi] === 'remote') this.sendTo(pi, { t: 'toast', msg, kind });
+    else if (pi === HUMAN) this.toast(msg, kind);
+  }
+
+  sendTo() { /* siehe Netzwerk-Abschnitt */ }
+
+  // ------------------------------------------------------------- Spiel mit Freunden: Gastgeber
+  /** Raum anlegen und im Warteraum auf die Mitspieler am Handy warten. */
+  async openLobby(game, seats) {
+    let room;
+    try { room = await createRoom(); } catch {
+      this.toast('Der Raum konnte nicht angelegt werden – läuft der Server (npm start)?', 'warn');
+      this.showMenu();
+      return;
+    }
+    this.leaveRoom();
+    this.lobbyInfo = await serverInfo();
+    this.lobby = { game, seats, code: room.code, key: room.key, info: this.lobbyInfo };
+    this.clients = new Map();
+    this.evBuf = [];
+    this.link = new HostLink(room.code, room.key, (m) => this.onClientMsg(m));
+    $('#game').classList.add('hidden');
+    $('#menu').classList.remove('hidden');
+    this.drawLobby();
+  }
+
+  drawLobby() {
+    const L = this.lobby;
+    if (!L) return;
+    const seats = L.seats.map((kind, i) => {
+      const p = L.game.s.players[i];
+      const c = [...this.clients.values()].find((x) => x.seat === i);
+      return { kind, name: p.name, face: p.face, color: p.color, taken: !!c, online: !!c?.online };
+    });
+    renderHostLobby($('#menu'), { code: L.code, info: L.info, seats, onStart: () => this.startHosted(), onCancel: () => this.showMenu() });
+  }
+
+  startHosted() {
+    const L = this.lobby;
+    if (!L) return;
+    this.lobby = null;
+    this.attach(L.game, { seats: L.seats, role: 'host' });
+    this.pushAll();
+  }
+
+  /** Raum schließen bzw. verlassen (Gastgeber und Mitspieler). */
+  leaveRoom() {
+    if (this.link) { try { this.link.close(); } catch { /* egal */ } }
+    this.link = null;
+    this.lobby = null;
+    this.clients = new Map();
+    this.clientReady = false;
+    clearTimeout(this.pushTimer);
+    this.pushTimer = null;
+  }
+
+  onClientMsg({ from, msg }) {
+    if (!from || !msg) return;
+    const c = this.clients.get(from);
+    if (msg.t === 'online') { if (c) { c.online = true; c.lastSig = null; this.afterClientChange(c, true); } return; }
+    if (msg.t === 'offline') { if (c) { c.online = false; this.afterClientChange(c, false); } return; }
+    if (msg.t === 'hello') { this.onHello(from, msg); return; }
+    if (msg.t === 'cmd') this.onCmd(from, msg);
+  }
+
+  afterClientChange(c, online) {
+    const g = this.lobby?.game || this.game;
+    const name = g?.s.players[c.seat]?.name;
+    if (this.lobby) this.drawLobby();
+    else if (name) {
+      this.toast(online ? `${name} ist wieder verbunden.` : `${name} hat die Verbindung verloren – das Spiel wartet.`, online ? 'info' : 'warn');
+      if (online) this.pushAll();
+    }
+  }
+
+  onHello(cid, msg) {
+    const g = this.lobby?.game || this.game;
+    const seats = this.lobby?.seats || this.seats;
+    if (!g || !this.link) return;
+    let c = this.clients.get(cid);
+    if (!c) {
+      const taken = new Set([...this.clients.values()].map((x) => x.seat));
+      const free = seats.findIndex((k, i) => k === 'remote' && !taken.has(i));
+      if (free < 0) { this.link.reply(cid, { t: 'full' }); return; }
+      c = { seat: free, online: true, seq: 0, lastSig: null };
+      this.clients.set(cid, c);
+      const name = String(msg.name || '').trim().slice(0, 14);
+      if (this.lobby && name) g.s.players[free].name = name;
+    }
+    c.online = true;
+    c.lastSig = null;
+    this.link.reply(cid, { t: 'seat', seat: c.seat, name: g.s.players[c.seat].name });
+    if (this.lobby) this.drawLobby();
+    else this.pushAll();
+  }
+
+  /** Aktion eines Mitspielers am Handy: nur erlaubte Methoden, nur für den eigenen Platz. */
+  onCmd(cid, { method, args }) {
+    const c = this.clients.get(cid);
+    const g = this.game;
+    if (!c || !g || this.lobby) return;
+    if (!REMOTE_METHODS.has(method) || !Array.isArray(args) || args[0] !== c.seat) { this.link.reply(cid, { t: 'error', msg: 'Diese Aktion ist nicht erlaubt.' }); return; }
+    let r;
+    try { r = g[method](...args); } catch { r = { ok: false, error: 'Die Aktion konnte nicht ausgeführt werden.' }; }
+    if (!r.ok) { this.link.reply(cid, { t: 'error', msg: r.error }); this.pushAll(); return; }
+    if (method === 'createOffer') this.runHumanOffer(r.offer.id);
+    this.pump();
+    this.queueRender();
+  }
+
+  sendTo(pi, msg) {
+    for (const [cid, c] of this.clients) if (c.seat === pi && c.online) this.link?.reply(cid, msg);
+  }
+
+  /** Ereignis der Engine für die Handys vormerken. */
+  relay(e) {
+    if (this.role !== 'host') return;
+    this.evBuf.push(e);
+    this.schedulePush();
+  }
+
+  schedulePush() {
+    if (this.role !== 'host' || this.pushTimer) return;
+    this.pushTimer = setTimeout(() => { this.pushTimer = null; this.pushAll(); }, 30);
+  }
+
+  /** Neuen Stand an alle verbundenen Handys: jeder bekommt nur seine eigenen Karten zu sehen. */
+  pushAll() {
+    const g = this.game;
+    if (!g || !this.link || this.role !== 'host') return;
+    const events = this.evBuf;
+    this.evBuf = [];
+    const ui = {
+      waitingOffer: this.waitingOffer, waitElapsed: Date.now() - this.waitStart, offerWaitMs: this.offerWaitMs, busy: [...this.busy],
+    };
+    for (const [cid, c] of this.clients) {
+      if (!c.online) continue;
+      const state = redactFor(g.s, c.seat);
+      const evs = events.map((e) => (e.type === 'devbuy' && e.pi !== c.seat ? { ...e, card: 'hidden' } : e));
+      const sig = JSON.stringify([state, ui.waitingOffer, ui.busy]);
+      if (sig === c.lastSig && !evs.length) continue;
+      c.lastSig = sig;
+      c.seq += 1;
+      this.link.reply(cid, { t: 'state', seq: c.seq, seat: c.seat, state, events: evs, ui });
+    }
+  }
+
+  // ------------------------------------------------------------- Spiel mit Freunden: Mitspieler am Handy
+  showJoin(opts = {}) {
+    closeAllModals();
+    $('#game').classList.add('hidden');
+    $('#menu').classList.remove('hidden');
+    let saved = '';
+    try { saved = localStorage.getItem('catan-join-name') || ''; } catch { /* egal */ }
+    renderJoin($('#menu'), {
+      code: opts.code || '', name: opts.name ?? saved, status: opts.status, error: opts.error, seat: opts.seat || null,
+      onJoin: (v) => this.join(v), onBack: () => { this.showMenu(); history.replaceState(null, '', location.pathname); },
+    });
+  }
+
+  async join({ code, name }) {
+    if (!/^[A-Z]{4}$/.test(code)) { this.showJoin({ code, name, error: 'Bitte den 4-stelligen Code eingeben.' }); return; }
+    if (!(await roomExists(code))) { this.showJoin({ code, name, error: 'Diesen Raum gibt es nicht (mehr). Code prüfen.' }); return; }
+    try { localStorage.setItem('catan-join-name', name); } catch { /* egal */ }
+    this.leaveRoom();
+    this.joinInfo = { code, name };
+    this.link = new ClientLink(code, clientId(), (m) => this.onHostMsg(m));
+    this.showJoin({ code, name, status: 'Verbinde …' });
+  }
+
+  onHostMsg(m) {
+    switch (m.t) {
+      case 'connected': this.link.send({ t: 'hello', name: this.joinInfo?.name || '' }); break;
+      case 'seat':
+        this.mySeat = m.seat;
+        if (!this.clientReady) this.showJoin({ code: this.joinInfo?.code, seat: { name: m.name } });
+        break;
+      case 'full': this.showJoin({ code: this.joinInfo?.code, name: this.joinInfo?.name, error: 'Alle Plätze in diesem Raum sind schon belegt.' }); this.leaveRoom(); break;
+      case 'state': this.onState(m); break;
+      case 'toast': this.toast(m.msg, m.kind || 'info'); break;
+      case 'host': if (this.clientReady) this.toast(m.online ? 'Der Gastgeber ist wieder da.' : 'Der Gastgeber ist nicht verbunden – das Spiel wartet.', m.online ? 'info' : 'warn'); break;
+      case 'error': this.toast(m.msg || 'Das geht gerade nicht.', 'warn'); sfx.play('error'); break;
+      case 'closed': this.toast('Der Gastgeber hat das Spiel beendet.', 'info'); this.showMenu(); break;
+      default: break;
+    }
+  }
+
+  /** Neuer Stand vom Gastgeber: übernehmen, dann die Ereignisse abspielen (Würfel, Karten, Töne …). */
+  onState(m) {
+    if (!this.clientReady) {
+      this.clientReady = true;
+      const g = Game.fromJSON(m.state);
+      this.attach(g, { role: 'client', mySeat: m.seat, seats: g.s.players.map(() => 'remote') });
+    } else this.game.s = m.state;
+    this.keepAwake();
+    const ui = m.ui || {};
+    this.waitingOffer = ui.waitingOffer ?? null;
+    this.waitStart = Date.now() - (ui.waitElapsed || 0);
+    this.offerWaitMs = ui.offerWaitMs || this.offerWaitMs;
+    this.busy = new Set(ui.busy || []);
+    for (const e of m.events || []) this.onEvent(e);
+    this.queueRender();
+  }
+
+  /** Handy: Bildschirm anlassen, solange man seine Karten braucht. */
+  async keepAwake() {
+    try {
+      if (!navigator.wakeLock || this.wake || document.hidden) return;
+      this.wake = await navigator.wakeLock.request('screen');
+      this.wake.addEventListener('release', () => { this.wake = null; });
+    } catch { /* nicht unterstützt oder abgelehnt */ }
+  }
+
+  sendCmd(method, args) {
+    this.link?.send({ t: 'cmd', method, args });
+  }
+
+  // ------------------------------------------------------------- Mehrere Menschen: Plätze, Sicht, Gerät weitergeben
+  /** Plätze, die an diesem Gerät gespielt werden. */
+  localSeats() {
+    return this.seats.map((k, i) => (k === 'local' ? i : -1)).filter((i) => i >= 0);
+  }
+
+  /** Zwei oder mehr Menschen teilen sich dieses Gerät. */
+  get hotSeat() { return this.role !== 'client' && this.localSeats().length > 1; }
+
+  /**
+   * Wer sitzt gerade am Bildschirm? Allein oder am Handy ist das immer derselbe Platz. Teilen sich mehrere Menschen das Gerät,
+   * wird zu dem Spieler gewechselt, der etwas entscheiden muss – vorher verdeckt eine Übergabe-Seite die Handkarten.
+   */
+  syncViewer() {
+    const g = this.game;
+    if (!g) return;
+    if (this.role === 'client') { if (HUMAN !== this.mySeat) setViewer(this.mySeat); return; }
+    const loc = this.localSeats();
+    if (!loc.length) { if (HUMAN !== -1) setViewer(-1); return; }
+    if (loc.length === 1) { if (HUMAN !== loc[0]) setViewer(loc[0]); return; }
+    if (g.s.phase === 'over') return;
+    const actors = this.deciders().filter((pi) => loc.includes(pi));
+    const want = actors.length ? actors[0] : (loc.includes(HUMAN) ? HUMAN : loc[0]);
+    if (want !== HUMAN) {
+      if (this.cover !== want) this.showHandover(want);
+      return;
+    }
+    if (this.cover !== null) { this.cover = null; $('#handover').classList.add('hidden'); $('#game').classList.remove('covered'); }
+  }
+
+  /** Spieler, von denen die Partie gerade eine Entscheidung erwartet (Zug, Abwerfen, Auswahl, Antwort auf ein Angebot). */
+  deciders() {
+    const g = this.game;
+    const out = []; // zuerst, wer auf ein Angebot eines Mitspielers antworten soll – der Anbieter wartet ja darauf
+    for (const o of g.s.offers) {
+      if (g.s.players[o.from].isBot) continue;
+      for (const p of g.s.players) if (!p.isBot && p.id !== o.from && !o.responses[p.id] && !out.includes(p.id)) out.push(p.id);
+    }
+    for (const pi of g.pendingActors()) if (!g.s.players[pi].isBot && !out.includes(pi)) out.push(pi);
+    return out;
+  }
+
+  showHandover(pi) {
+    const g = this.game;
+    const p = g.s.players[pi];
+    this.cover = pi;
+    const n = p.name;
+    const why = g.s.phase === 'setup' ? `Gründung: ${n} setzt eine Siedlung und eine Straße.`
+      : g.s.sub === 'discard' && g.s.discard[pi] !== undefined ? `${n} muss Karten abwerfen.`
+        : g.s.sub === 'gold' && g.s.gold[pi] ? `${n} darf Rohstoffe frei wählen.`
+          : g.s.turn === pi ? `${n} ist am Zug.` : `${n} soll auf ein Handelsangebot antworten.`;
+    $('#hoAv').innerHTML = avatarSVG(p.face, p.color, 96);
+    $('#hoName').textContent = p.name;
+    $('#hoName').style.color = p.color;
+    $('#hoNote').textContent = `${why} Gib das Gerät weiter und tippe erst dann auf „Los“, damit niemand fremde Karten sieht.`;
+    $('#hoGo').textContent = 'Los';
+    $('#handover').classList.remove('hidden');
+    $('#game').classList.add('covered');
+    sfx.play('turn');
+    $('#hoGo').focus({ preventScroll: true });
+  }
+
+  confirmHandover() {
+    const pi = this.cover;
+    if (pi === null || pi === undefined) return;
+    this.cover = null;
+    $('#handover').classList.add('hidden');
+    $('#game').classList.remove('covered');
+    this.resetViewerUi();
+    setViewer(pi);
+    this.queueRender();
+  }
+
+  /** Alles, was zur Sicht eines einzelnen Spielers gehört, beim Wechsel zurücksetzen. */
+  resetViewerUi() {
+    closeAllModals();
+    this.mode = null;
+    this.pending = null;
+    this.market = this.freshMarket();
+    this.ui.fabOpen = false;
+    this.auto = {};
+    this.hbHtml = null;
+    this.fabHtml = null;
+    this.nextHtml = null;
+    this.inflightH = {};
+    this.landing = {};
+    this.lastVp = undefined;
+    this.prevVps = null;
+  }
+
   // ------------------------------------------------------------- Aktionen des Menschen
   act(method, ...args) {
     const g = this.game;
+    if (HUMAN < 0) return { ok: false, error: 'Du schaust nur zu.' };
+    if (this.role === 'client') { // am Handy: der Gastgeber führt die Aktion aus und schickt den neuen Stand
+      this.sendCmd(method, args);
+      this.queueRender();
+      return { ok: true, remote: true };
+    }
     const r = g[method](...args);
     if (!r.ok) { this.toast(r.error, 'warn'); sfx.play('error'); } else this.pump();
     this.queueRender();
@@ -611,7 +966,7 @@ class App {
       }
       case 'mk-send': {
         const r = this.act('createOffer', HUMAN, m.give, m.get, { deferred: true });
-        if (r.ok) { m.sel = null; m.confirm = null; this.runHumanOffer(r.offer.id); }
+        if (r.ok) { m.sel = null; m.confirm = null; if (!r.remote) this.runHumanOffer(r.offer.id); }
         break;
       }
       case 'mk-withdraw': this.act('withdrawOffer', HUMAN, Number(d.id)); break;
@@ -675,6 +1030,7 @@ class App {
    */
   async runHumanOffer(id) {
     const g = this.game;
+    const offerer = g.offerById(id)?.from;
     const bots = g.s.players.filter((p) => p.isBot);
     this.queueRender();
     const pace = { trader: 0.8, gambler: 0.9, expander: 1, builder: 1.05, knight: 1.1, strategist: 1.35 };
@@ -685,7 +1041,7 @@ class App {
       this.busy.delete(bot.id);
       if (this.game !== g) return;
       const cur = g.offerById(id);
-      if (!cur || g.s.turn !== HUMAN || cur.responses[bot.id]) { this.queueRender(); return; }
+      if (!cur || g.s.turn !== offerer || cur.responses[bot.id]) { this.queueRender(); return; }
       const ans = botRespondOffer(g, bot.id, cur);
       if (ans.type === 'accept') { g.respondOffer(bot.id, id, 'accept', null, ans.reason); sfx.play('gain', { vol: 0.8 }); }
       else if (ans.type === 'counter') { g.respondOffer(bot.id, id, 'counter', { give: ans.give, get: ans.get }, ans.reason); sfx.play('select'); }
@@ -752,18 +1108,22 @@ class App {
       this.queueRender();
     }));
 
-    // Der Mensch bekommt das Angebot sofort und kann mit entscheiden
-    if (g.handCount(HUMAN) > 0) {
+    // Menschen bekommen das Angebot sofort und können mit entscheiden: Mitspieler am Handy und wer gerade am Bildschirm sitzt
+    const asked = g.s.players.filter((p) => !p.isBot && p.id !== pi && g.handCount(p.id) > 0
+      && (this.seats[p.id] === 'remote' || (this.seats[p.id] === 'local' && (this.localSeats().length === 1 || p.id === HUMAN))));
+    if (asked.length) {
       this.waitingOffer = id;
       sfx.play('offer');
       this.waitStart = Date.now();
       this.offerWaitMs = SPEEDS[this.speed][3];
       this.queueRender();
-      while (this.game === g && g.offerById(id) && !g.offerById(id).responses[HUMAN] && Date.now() - this.waitStart < this.offerWaitMs) await sleep(150);
+      const open = () => g.offerById(id);
+      while (this.game === g && open() && !asked.every((h) => open().responses[h.id]) && Date.now() - this.waitStart < this.offerWaitMs) await sleep(150);
       this.waitingOffer = null;
       if (this.game !== g) return;
-      const mine = g.offerById(id)?.responses[HUMAN];
-      if (mine?.type === 'accept' && g.acceptResponse(pi, id, HUMAN).ok) { this.queueRender(); return; }
+      const cur = open();
+      const yes = cur && asked.find((h) => cur.responses[h.id]?.type === 'accept');
+      if (yes && g.acceptResponse(pi, id, yes.id).ok) { this.queueRender(); return; }
     }
     await botsDone;
     if (this.game !== g) return;
@@ -772,12 +1132,12 @@ class App {
     const accepter = order.find((b) => live.responses[b]?.type === 'accept');
     if (accepter !== undefined && g.acceptResponse(pi, id, accepter).ok) { this.queueRender(); return; }
     // Gegenvorschläge (Mensch zuerst), der Anbieter nimmt den ersten, der ihm passt
-    const counters = [HUMAN, ...order].filter((b) => live.responses[b]?.type === 'counter');
+    const counters = [...asked.map((h) => h.id), ...order].filter((b) => live.responses[b]?.type === 'counter');
     for (const b of counters) {
       await sleep(500);
       if (this.game !== g) return;
       if (botJudgeCounter(g, pi, live.responses[b], b) && g.acceptResponse(pi, id, b).ok) { this.queueRender(); return; }
-      if (b === HUMAN) this.toast(`${g.s.players[pi].name} lehnt deinen Gegenvorschlag ab.`, 'info');
+      if (!g.s.players[b].isBot) this.notify(b, `${g.s.players[pi].name} lehnt deinen Gegenvorschlag ab.`, 'info');
     }
     if (g.offerById(id)) g.withdrawOffer(pi, id);
     this.queueRender();
@@ -826,6 +1186,7 @@ class App {
 
   // ------------------------------------------------------------- Rendering
   queueRender() {
+    if (this.role === 'host') this.schedulePush();
     if (this.renderQueued) return;
     this.renderQueued = true;
     requestAnimationFrame(() => { this.renderQueued = false; this.render(); });
@@ -834,7 +1195,8 @@ class App {
   highlights() {
     const g = this.game;
     const s = g.s;
-    const ui = { fresh: this.fresh, hitHexes: this.hit, ghost: { color: s.players[HUMAN].color, kind: 'settlement' } };
+    const ui = { fresh: this.fresh, hitHexes: this.hit, ghost: { color: s.players[Math.max(0, HUMAN)].color, kind: 'settlement' } };
+    if (HUMAN < 0) return ui; // Zuschauer: nichts zum Anklicken
     if (s.phase === 'setup' && s.turn === HUMAN) {
       if (s.sub === 'settlement') ui.vertices = new Set(g.legalSettlementSpots(HUMAN));
       else {
@@ -862,13 +1224,17 @@ class App {
   render() {
     const g = this.game;
     if (!g) return;
+    this.syncViewer();
     const s = g.s;
+    const spec = HUMAN < 0; // nur zuschauen: das Brett ohne Handkarten (alle spielen am Handy)
     const modeOk = s.phase === 'main' && s.turn === HUMAN && (s.sub === 'actions' || (this.mode === 'harvest' && s.sub === 'roll'));
     if (this.mode && !modeOk) this.mode = null;
 
     const root = $('#game');
     root.dataset.phase = s.phase;
     root.dataset.mine = s.turn === HUMAN ? '1' : '0';
+    root.classList.toggle('spectator', spec);
+    root.classList.toggle('hide-hand', this.hotSeat && !this.deciders().includes(HUMAN)); // Hot-Seat: Karten des Letzten verdecken, solange andere dran sind
 
     if (s.phase === 'main' && s.turn === HUMAN && s.sub === 'robber') {
       if (!this.robberHinted) {
@@ -880,36 +1246,36 @@ class App {
     if (s.phase !== 'setup') this.view.setFlags(g, this.awardShown);
     this.fresh = { pieces: new Set(), hexes: new Set(), remap: false };
 
-    $('#hudHand').innerHTML = renderHand(g, this.inflightH);
+    $('#hudHand').innerHTML = spec ? '' : renderHand(g, this.inflightH);
     $('#hudOpps').innerHTML = renderPlayers(g, this.busy, this.inflightO, this.awardShown);
     const vps = s.players.map((p) => displayVp(g, p.id, this.awardShown, p.id !== HUMAN));
     if (this.prevVps && this.prevVps.length === vps.length && s.phase !== 'setup') {
       vps.forEach((v, i) => { if (v > this.prevVps[i]) vpPop(i, v - this.prevVps[i]); });
     }
     this.prevVps = vps;
-    const fan = renderHandBar(g, this.inflightH, this.landing, this.tradeSel());
+    const fan = spec ? '' : renderHandBar(g, this.inflightH, this.landing, this.tradeSel());
     if (fan !== this.hbHtml) { this.hbHtml = fan; $('#handFan').innerHTML = fan; }
     this.fitHand();
     this.renderControls();
-    $('#heroRoll').innerHTML = renderHeroRoll(g);
+    $('#heroRoll').innerHTML = spec ? '' : renderHeroRoll(g);
     $('#diceBox').innerHTML = renderDice(g, this.rolling);
     this.renderMarketLayer();
-    $('#missionBox').innerHTML = renderMissionBox(g, this.ui.missionsOpen);
+    $('#missionBox').innerHTML = spec ? '' : renderMissionBox(g, this.ui.missionsOpen);
     const decrees = renderDecrees(g);
     if (decrees !== this.decreeHtml) { this.decreeHtml = decrees; $('#decreeBox').innerHTML = decrees; }
 
-    if (s.phase === 'main' && s.sub === 'discard' && s.discard[HUMAN] !== undefined) {
+    if (!spec && s.phase === 'main' && s.sub === 'discard' && s.discard[HUMAN] !== undefined) {
       const rest = this.rollPauseUntil + 300 - Date.now();
       if (rest > 0) { clearTimeout(this.discTimer); this.discTimer = setTimeout(() => this.queueRender(), rest + 30); }
       else this.ensure('discard', () => discardModal(this, s.discard[HUMAN]));
     }
-    if (s.phase === 'main' && s.sub === 'gold' && s.gold[HUMAN]) {
+    if (!spec && s.phase === 'main' && s.sub === 'gold' && s.gold[HUMAN]) {
       // erst auswählen lassen, nachdem Würfel, Wirbel und Kartenflug zu sehen waren
       const rest = this.rollPauseUntil + 350 - Date.now();
       if (rest > 0) { clearTimeout(this.goldTimer); this.goldTimer = setTimeout(() => this.queueRender(), rest + 30); }
       else this.ensure('gold', () => goldModal(this, s.gold[HUMAN]));
     }
-    if (s.phase === 'main' && s.sub === 'steal' && s.turn === HUMAN) this.ensure('steal', () => stealModal(this, g.stealTargets(s.robber)));
+    if (!spec && s.phase === 'main' && s.sub === 'steal' && s.turn === HUMAN) this.ensure('steal', () => stealModal(this, g.stealTargets(s.robber)));
 
     if (this.modal && !this.modal.closed && this.modal.refresh) this.modal.refresh();
     this.measure();
@@ -939,8 +1305,8 @@ class App {
   renderControls() {
     const g = this.game;
     const open = !!this.ui.fabOpen;
-    const fab = renderFab(g, this.mode, open);
-    const next = renderNext(g);
+    const fab = HUMAN < 0 ? '' : renderFab(g, this.mode, open);
+    const next = HUMAN < 0 ? '' : renderNext(g);
     const key = `${fab}|${open}`;
     if (key !== this.fabHtml) {
       const wasOpen = this.fabWasOpen;
@@ -976,7 +1342,7 @@ class App {
 
   renderMarketLayer() {
     const host = $('#market');
-    const { html, key, dim, closeOnBack } = renderMarket(this);
+    const { html, key, dim, closeOnBack } = HUMAN < 0 ? { html: '', key: '', dim: false } : renderMarket(this);
     host.classList.toggle('dim', !!dim);
     $('#game').classList.toggle('trading', !!dim);
     if (closeOnBack) host.dataset.act = 'mk-close'; else delete host.dataset.act;
@@ -1007,6 +1373,7 @@ class App {
 
   save() {
     clearTimeout(this.saveTimer);
+    if (this.role === 'client') return;
     this.saveTimer = setTimeout(() => {
       try {
         if (!this.game) return;
@@ -1019,7 +1386,7 @@ class App {
   showGameOver() {
     if (!this.game || this.game.s.phase !== 'over') return;
     gameOverModal(this, {
-      onNew: () => this.start({ ...this.game.s.settings, seed: undefined }),
+      onNew: () => (this.role === 'client' ? this.showMenu() : this.start({ ...this.game.s.settings, seed: undefined })),
       onMenu: () => this.showMenu(),
     });
   }
@@ -1047,7 +1414,8 @@ class App {
     const pop = $('#menuPop');
     if (!pop.classList.contains('hidden')) { this.closePopover(); return; }
     pop.innerHTML = `
-      <button role="menuitem" data-pop="speed">Bot-Tempo <b>${SPEEDS[this.speed][0]}</b></button>
+      ${this.role === 'client' ? '' : `<button role="menuitem" data-pop="speed">Bot-Tempo <b>${SPEEDS[this.speed][0]}</b></button>`}
+      ${this.role === 'host' ? '<button role="menuitem" data-pop="invite">Mitspieler-Code</button>' : ''}
       <button role="menuitem" data-pop="art">Grafik <b class="art">${ART_STYLES[artStyle()].label}</b></button>
       <button role="menuitem" data-pop="sound">Sound <b class="snd">${sfx.enabled ? 'An' : 'Aus'}</b></button>
       <button role="menuitem" data-pop="music">Musik <b class="mus">${music.enabled ? 'An' : 'Aus'}</b></button>
@@ -1089,8 +1457,11 @@ class App {
     this.closePopover();
     if (what === 'log') logModal(this);
     else if (what === 'rules') rulesModal();
+    else if (what === 'invite') inviteModal(this.link ? { code: this.link.code, url: joinUrl(this.link.code, this.lobbyInfo), seats: this.seats, game: this.game, clients: this.clients } : null);
     else if (what === 'menu') {
-      const yes = await confirmDialog('Zum Hauptmenü?', 'Dein Spiel wird automatisch gespeichert und kann später fortgesetzt werden.', 'Zum Menü');
+      const yes = this.role === 'client'
+        ? await confirmDialog('Spiel verlassen?', 'Dein Platz bleibt reserviert: Mit demselben Link kommst du zurück.', 'Verlassen')
+        : await confirmDialog('Zum Hauptmenü?', this.role === 'host' ? 'Das Spiel wird beendet, die Mitspieler am Handy werden getrennt. Du kannst es später als Spiel an diesem Gerät fortsetzen.' : 'Dein Spiel wird automatisch gespeichert und kann später fortgesetzt werden.', 'Zum Menü');
       if (yes) { clearTimeout(this.saveTimer); this.saveNow(); setTimeout(() => this.showMenu(), 300); }
     }
   }
@@ -1124,6 +1495,7 @@ class App {
       const pop = e.target.closest('[data-pop]');
       if (pop) { this.onPopover(pop.dataset.pop); return; }
       if (e.target.closest('#btnMenu')) { this.togglePopover(); return; }
+      if (e.target.closest('#hoGo')) { this.confirmHandover(); return; }
       if (e.target.closest('#btnPause')) { this.setPaused(true); return; }
       if (e.target.closest('#pauseGo')) { this.setPaused(false); return; }
       if (e.target.closest('#pauseMenu')) { clearTimeout(this.saveTimer); this.saveNow(); this.setPaused(false, true); this.game = null; this.showMenu(); return; }

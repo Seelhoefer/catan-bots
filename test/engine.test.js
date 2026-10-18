@@ -5,6 +5,7 @@ import { generateBoard, hexNeighbors } from '../public/js/engine/board.js';
 import { botAct, botRespondOffer } from '../public/js/engine/bot.js';
 import { makeRng } from '../public/js/engine/rng.js';
 import { RES, COSTS } from '../public/js/engine/constants.js';
+import { redactFor } from '../public/js/engine/redact.js';
 
 function newGame(settings = {}, seed = 5) {
   return Game.create({ bots: 3, ...settings, seed }, makeRng(seed));
@@ -673,4 +674,38 @@ test('Erlass-Karte: gilt nur für den gewählten Rohstoff und endet, wenn der Au
 test('Erlass-Karte ist nur mit der Einstellung im Stapel', () => {
   assert.equal(newGame({ decreeCard: false }).s.devDeck.some((t) => t === 'decree'), false);
   assert.equal(newGame({ decreeCard: true }).s.devDeck.some((t) => t === 'decree'), true);
+});
+
+// ---------------------------------------------------------------- Mehrere Menschen
+test('Mehrere Menschen: Plätze 0..n-1 sind Menschen, danach Bots', () => {
+  const g = newGame({ humans: 3, bots: 1, humanNames: ['', 'Anna', 'Ben'], playerName: 'Chris' });
+  assert.deepEqual(g.s.players.map((p) => p.isBot), [false, false, false, true]);
+  assert.deepEqual(g.s.players.map((p) => p.name).slice(0, 3), ['Chris', 'Anna', 'Ben']);
+  assert.equal(new Set(g.s.players.map((p) => p.color)).size, 4);
+  assert.deepEqual(g.pendingActors().every((pi) => pi < 4), true);
+  const two = newGame({ humans: 2, bots: 0 });
+  assert.equal(two.s.players.length, 2);
+  const solo = newGame({ bots: 0 });
+  assert.equal(solo.s.players.length, 2, 'allein mindestens ein Bot');
+  const capped = newGame({ humans: 5, bots: 5, size: 'small' });
+  assert.equal(capped.s.players.length, 4, 'höchstens so viele Spieler wie die Karte erlaubt');
+});
+
+test('Zustand für einen Platz: fremde Karten und Stapel geheim, eigene sichtbar, nach Spielende alles offen', () => {
+  const g = afterSetup({ humans: 2, bots: 1 }, 4);
+  g.s.players[0].hand = { wood: 2, brick: 1, sheep: 0, wheat: 0, ore: 0 };
+  g.s.players[1].hand = { wood: 0, brick: 0, sheep: 3, wheat: 1, ore: 0 };
+  g.s.players[1].dev = [{ type: 'knight', turn: 1 }, { type: 'victory', turn: 2 }];
+  const v = redactFor(g.s, 0);
+  assert.deepEqual(v.players[0].hand, g.s.players[0].hand);
+  assert.equal(RES.reduce((a, r) => a + v.players[1].hand[r], 0), 4, 'Zahl der Karten bleibt');
+  assert.equal(v.players[1].hand.sheep, 0, 'Zusammensetzung geheim');
+  assert.deepEqual(v.players[1].dev.map((c) => c.type), ['hidden', 'hidden']);
+  assert.equal(v.devDeck.length, g.s.devDeck.length);
+  assert.ok(v.devDeck.every((c) => c === 'hidden'));
+  assert.equal(g.s.players[1].hand.sheep, 3, 'Original unverändert');
+  const spec = redactFor(g.s, -1);
+  assert.equal(RES.reduce((a, r) => a + spec.players[0].hand[r], 0), 3);
+  g.s.phase = 'over';
+  assert.equal(redactFor(g.s, 0).players[1].hand.sheep, 3);
 });

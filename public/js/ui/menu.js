@@ -67,25 +67,37 @@ function miniBoard(radius, fog) {
 }
 
 
-export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
+export function renderMenu(root, {
+  hasSave, onStart, onResume, onRules, onJoin,
+}) {
   const settings = loadSettings();
   let view = 'home'; // home | wizard
   let step = 0;
 
-  const maxBots = () => SIZES[settings.size].maxPlayers - 1;
+  const friends = () => (settings.tvMode ? 0 : Math.max(0, settings.friendsPc || 0)) + Math.max(0, settings.friendsPhone || 0) + (settings.tvMode ? 1 : 0); // weitere Menschen neben dir (im Brett-Modus: du am Handy)
+  const maxBots = () => SIZES[settings.size].maxPlayers - 1 - friends() + (settings.tvMode ? 1 : 0);
+  const minBots = () => (friends() + (settings.tvMode ? 0 : 0) > 0 ? 0 : 1);
   const LEVELS = [['easy', 'Leicht'], ['normal', 'Normal'], ['hard', 'Schwer']];
   const diffOf = (id) => (settings.botDifficulty && settings.botDifficulty[id]) || settings.difficulty;
   const ensureCast = () => {
     if (!BOT_ROSTER.some((b) => b.id === settings.avatarPortrait)) settings.avatarPortrait = BOT_ROSTER[BOT_ROSTER.length - 1].id; // dein Gesicht: immer eines der Portraits
     const others = BOT_ROSTER.filter((b) => b.id !== settings.avatarPortrait); // das eigene Gesicht spielt nicht als Gegner mit
-    const want = Math.min((settings.botIds && settings.botIds.length) || settings.bots || 3, maxBots());
+    const want = Math.max(minBots(), Math.min(settings.botIds ? settings.botIds.length : (settings.bots ?? 3), maxBots()));
     const ids = (settings.botIds || []).filter((id) => others.some((b) => b.id === id));
     for (const o of others) { if (ids.length >= want) break; if (!ids.includes(o.id)) ids.push(o.id); }
     settings.botIds = BOT_ROSTER.map((b) => b.id).filter((id) => ids.includes(id)).slice(0, maxBots());
     settings.bots = settings.botIds.length;
   };
+  const clampFriends = () => {
+    const room = SIZES[settings.size].maxPlayers - 1; // Plätze neben dir
+    settings.friendsPc = Math.max(0, Math.min(3, settings.friendsPc || 0));
+    settings.friendsPhone = Math.max(0, Math.min(5, settings.friendsPhone || 0));
+    while (settings.friendsPc + settings.friendsPhone > room) { if (settings.friendsPhone > 0) settings.friendsPhone -= 1; else settings.friendsPc -= 1; }
+    if (settings.friendsPhone === 0) settings.tvMode = false;
+  };
 
   const startGame = () => {
+    clampFriends();
     ensureCast();
     saveSettings(settings);
     rememberLast(settings);
@@ -106,7 +118,9 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
         hasSave ? el('button', { type: 'button', class: 'mh-btn primary', onclick: onResume }, 'Fortsetzen') : null,
         el('button', { type: 'button', class: `mh-btn ${hasSave ? '' : 'primary'}`, onclick: () => { view = 'wizard'; draw(); } }, 'Neues Spiel'),
         lastText ? el('button', { type: 'button', class: 'mh-link', onclick: quick }, `Wie zuletzt · ${lastText}`) : null),
-      el('button', { type: 'button', class: 'mh-link small', onclick: onRules }, 'Regeln')));
+      el('div', { class: 'mh-sub' },
+        el('button', { type: 'button', class: 'mh-link small', onclick: onJoin }, 'Mit Code beitreten'),
+        el('button', { type: 'button', class: 'mh-link small', onclick: onRules }, 'Regeln'))));
     const g = window.gsap;
     if (g) {
       g.from('.mh-brand h1', { y: -26, opacity: 0, duration: 0.8, ease: 'power3.out' });
@@ -146,6 +160,29 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
         el('span', { class: 'knob' }),
         el('span', { class: 'mw-sw-t' }, el('b', {}, 'Nebel'), el('small', {}, 'Ein Teil der Insel ist verdeckt'))));
 
+    clampFriends();
+    const room = SIZES[settings.size].maxPlayers - 1;
+    const step = (label, hint, key, max) => el('div', { class: 'mw-step' },
+      el('span', { class: 'mw-step-t' }, el('b', {}, label), el('small', {}, hint)),
+      el('div', { class: 'mw-stepper', role: 'group', 'aria-label': label },
+        el('button', { type: 'button', 'aria-label': 'Weniger', disabled: !settings[key] || undefined, onclick: () => { settings[key] = Math.max(0, (settings[key] || 0) - 1); ensureCast(); draw(); }, html: ic('minus') }),
+        el('b', {}, String(settings[key] || 0)),
+        el('button', { type: 'button', 'aria-label': 'Mehr', disabled: (settings[key] || 0) >= max || settings.friendsPc + settings.friendsPhone >= room || undefined, onclick: () => { settings[key] = (settings[key] || 0) + 1; clampFriends(); ensureCast(); draw(); }, html: ic('plus') })));
+    const names = settings.friendsPc > 0 && !settings.tvMode
+      ? el('div', { class: 'mw-fnames' }, Array.from({ length: settings.friendsPc }, (_, i) => el('input', {
+        type: 'text', class: 'mw-name', maxlength: 14, placeholder: `Name Spieler ${i + 2}`, value: (settings.friendNames || [])[i] || '', 'aria-label': `Name Spieler ${i + 2}`,
+        oninput: (e) => { const arr = [...(settings.friendNames || [])]; arr[i] = e.target.value; settings.friendNames = arr; saveSettings(settings); },
+      })))
+      : null;
+    const mates = sec('Mit Freunden',
+      step('Am selben Gerät', 'abwechselnd, Karten werden verdeckt', 'friendsPc', 3),
+      names,
+      step('Am Handy', 'Handkarten und Aktionen am eigenen Gerät', 'friendsPhone', 5),
+      settings.friendsPhone > 0 ? el('label', { class: 'mw-sw tight' },
+        el('input', { type: 'checkbox', checked: settings.tvMode || undefined, onchange: (e) => { settings.tvMode = e.target.checked; clampFriends(); ensureCast(); draw(); } }),
+        el('span', { class: 'knob' }),
+        el('span', { class: 'mw-sw-t' }, el('b', {}, 'Dieses Gerät zeigt nur das Brett'), el('small', {}, 'Auch du spielst am Handy'))) : null);
+
     const bots = sec(`Gegner · ${settings.bots}`,
       el('div', { class: 'mw-bots' }, BOT_ROSTER.map((b, i) => {
         const isYou = settings.avatarPortrait === b.id;
@@ -168,7 +205,7 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
     const hint = el('p', { class: 'mw-hint' });
     const num = el('b', { class: 'mw-vp-n' }, String(settings.targetVP));
     const updateHint = () => {
-      const cap = realisticVP(settings.size, settings.bots + 1);
+      const cap = realisticVP(settings.size, settings.bots + 1 + friends());
       hint.textContent = settings.targetVP > cap + 2 ? `Auf dieser Insel realistisch bis ca. ${cap} SP` : '';
       hint.style.display = hint.textContent ? '' : 'none';
     };
@@ -194,7 +231,7 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
       el('div', { class: 'mw-top' },
         el('button', { type: 'button', class: 'hbtn mw-back', 'aria-label': 'Zurück zum Start', title: 'Zurück', onclick: () => { view = 'home'; draw(); }, html: ic('arrow') }),
         el('h2', {}, 'Spiel einrichten')),
-      you, island, bots, points, ext, more,
+      you, island, mates, bots, points, ext, more,
       el('div', { class: 'mw-foot' }, el('button', { type: 'button', class: 'mw-start', onclick: startGame }, 'Spiel starten'))));
     const g = window.gsap;
     if (g && !this_animated) {

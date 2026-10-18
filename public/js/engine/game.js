@@ -24,28 +24,30 @@ export class Game {
     const settings = { ...DEFAULT_SETTINGS, ...userSettings };
     const size = SIZES[settings.size];
     const r = rng || makeRng(settings.seed);
-    settings.bots = Math.max(1, Math.min(settings.bots, size.maxPlayers - 1));
+    settings.humans = Math.max(1, Math.min(Math.floor(settings.humans) || 1, size.maxPlayers));
+    settings.bots = Math.max(settings.humans >= 2 ? 0 : 1, Math.min(settings.bots, size.maxPlayers - settings.humans));
     settings.targetVP = Math.max(4, Math.min(50, settings.targetVP));
 
     const board = generateBoard(settings.size, settings.variant, r, { gold: settings.goldField, worldHarbor: settings.worldHarbor });
     const extra = size.sizeBonus + Math.ceil(Math.max(0, settings.targetVP - 10) / 2);
     const pieces = { road: 15 + extra * 3, settlement: 5 + extra, city: 4 + extra };
 
-    const n = settings.bots + 1;
+    const H = settings.humans;
+    const n = settings.bots + H;
     const roster = [];
     const mine = BOT_ROSTER.find((x) => x.id === settings.avatarPortrait) || null; // gewähltes Bot-Gesicht des Menschen
     for (const id of settings.botIds || []) { const b = BOT_ROSTER.find((x) => x.id === id); if (b && b !== mine && !roster.includes(b)) roster.push(b); }
     for (const b of BOT_ROSTER) { if (roster.length >= settings.bots) break; if (b !== mine && !roster.includes(b)) roster.push(b); }
     const players = [];
     for (let i = 0; i < n; i++) {
-      const bot = i === 0 ? null : roster[i - 1];
+      const bot = i < H ? null : roster[i - H];
       players.push({
         id: i,
-        name: i === 0 ? (settings.playerName || 'Du') : bot.name,
+        name: i === 0 ? ((settings.playerName && !(H > 1 && settings.playerName === 'Du')) ? settings.playerName : (H > 1 ? 'Spieler 1' : 'Du')) : bot ? bot.name : ((settings.humanNames || [])[i] || `Spieler ${i + 1}`),
         trait: bot ? bot.trait : null,
         tagline: bot ? bot.tagline : '',
-        face: bot ? bot.face : (mine ? mine.face : HUMAN_FACES[(settings.avatar || 0) % HUMAN_FACES.length]),
-        isBot: i !== 0,
+        face: bot ? bot.face : (i === 0 && mine ? mine.face : HUMAN_FACES[((settings.avatar || 0) + i * 3) % HUMAN_FACES.length]),
+        isBot: i >= H,
         difficulty: bot ? ((settings.botDifficulty || {})[bot.id] || settings.difficulty) : null,
         color: PLAYER_COLORS[i].hex,
         hand: emptyHand(),

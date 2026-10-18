@@ -3,7 +3,7 @@ import { RES, RES_INFO, COSTS } from '../engine/constants.js';
 import { esc, ic } from './dom.js';
 import { avatarSVG } from './avatars.js';
 
-const HUMAN = 0;
+import { HUMAN } from './viewer.js';
 const sum = (o) => RES.reduce((a, r) => a + (o[r] || 0), 0);
 
 /** Sinnvolle Vorbelegung: das Fehlende für die nächste Investition gegen einen Überschuss. */
@@ -59,7 +59,8 @@ const who = (p, text) => `<div class="tp-who" style="--pc:${p.color}">${avatarSV
 /** Das Angebot, über das der Mensch gerade entscheiden soll (oder auf dessen Antwort er wartet). */
 function incomingOffer(app) {
   const s = app.game.s;
-  return s.offers.find((o) => o.from !== HUMAN && ((app.waitingOffer === o.id && !o.responses[HUMAN]) || o.responses[HUMAN]?.type === 'counter')) || null;
+  if (HUMAN < 0 || s.players[HUMAN].isBot) return null;
+  return s.offers.find((o) => o.from !== HUMAN && ((app.waitingOffer === o.id && !o.responses[HUMAN]) || (!s.players[o.from].isBot && !o.responses[HUMAN]) || o.responses[HUMAN]?.type === 'counter')) || null; // Angebote von Mitspielern gehen an alle Menschen
 }
 
 function incomingView(app, offer) {

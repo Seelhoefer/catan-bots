@@ -11,7 +11,7 @@ import { cardHTML } from './cards.js';
 import { IMG, art } from './assets.js';
 
 const root = () => document.getElementById('modalRoot');
-const HUMAN = 0;
+import { HUMAN } from './viewer.js';
 const stack = [];
 
 export function openModal({ title, dismissable = true, wide = false, bare = false, onClose } = {}) {
@@ -382,5 +382,23 @@ export function gameOverModal(app, { onNew, onMenu }) {
     gs.from(q('.vc-table thead th, .vc-table tbody tr'), { y: 14, opacity: 0, duration: 0.4, stagger: 0.07, delay: 0.7, ease: 'power2.out' });
     gs.from(q('.vc-actions .btn'), { y: 10, opacity: 0, duration: 0.4, stagger: 0.08, delay: 1.2 });
   }
+  return m;
+}
+
+/** Raumcode und Adresse für Mitspieler am Handy (auch während des Spiels abrufbar). */
+export function inviteModal(info) {
+  const m = openModal({ title: 'Mitspieler am Handy' });
+  if (!info) { m.body.append(el('p', { class: 'hint-text' }, 'Es ist kein Raum offen.')); return m; }
+  const taken = [...info.clients.values()];
+  m.body.append(
+    el('div', { class: 'lb-code' }, el('small', {}, 'Raumcode'), el('b', { class: 'lb-big' }, info.code)),
+    el('p', { class: 'hint-text' }, 'Am Handy diese Adresse öffnen (selbes WLAN):'),
+    el('div', { class: 'lb-url' }, el('code', {}, info.url)),
+    el('ul', { class: 'lb-seats' }, info.seats.map((k, i) => (k !== 'remote' ? null : (() => {
+      const p = info.game.s.players[i];
+      const c = taken.find((x) => x.seat === i);
+      return el('li', { class: `lb-seat ${c?.online ? 'ok' : 'wait'}`, style: `--pc:${p.color}` }, el('span', { class: 'lb-av', html: avatarSVG(p.face, p.color, 36) }),
+        el('span', { class: 'lb-name' }, el('b', {}, p.name), el('small', {}, c ? (c.online ? 'verbunden' : 'Verbindung weg') : 'frei')));
+    })()))));
   return m;
 }

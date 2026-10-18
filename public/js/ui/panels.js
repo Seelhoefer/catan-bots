@@ -9,7 +9,7 @@ import { avatarSVG } from './avatars.js';
 import { art, piece, COLOR_ID, IMG } from './assets.js';
 import { roadIconSVG } from './road.js';
 
-const HUMAN = 0;
+import { HUMAN } from './viewer.js';
 export const coarse = () => typeof matchMedia === 'function' && matchMedia('(hover: none) and (pointer: coarse)').matches;
 
 // ------------------------------------------------------------------ Kopfzeile: links (meine Hand)
