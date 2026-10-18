@@ -165,3 +165,9 @@ Der Pausen-Knopf im Kopf (oder Taste **P**, auch bei geöffnetem Dialog; Esc/P/L
 
 - **Welthafen:** Auf dem Brett gibt es genau einen goldenen Hafen („2:1 ALLE“), an dem sich jeder Rohstoff 2:1 tauschen lässt. Er ersetzt einen der normalen 3:1-Häfen (`worldHarbor` in den Einstellungen; Bots bewerten ihn beim Siedeln und beim Hafenplan höher als gewöhnliche Häfen).
 - **Erlass-Karte:** Neue Entwicklungskarte (`decreeCard`, 2× pro Kartengröße im Stapel). Beim Ausspielen wählst du **Zoll** (Gegner, die den Rohstoff erwürfeln, zahlen dir 1 Karte davon) oder **Strafe** (sie erhalten 1 Karte weniger, die Karte bleibt in der Bank) und einen Rohstoff. Der Erlass gilt für alle Würfe der anderen, bis du wieder am Zug bist; ein Spieler hat höchstens einen aktiven Erlass. Aktive Erlasse stehen als Hinweis oben links auf dem Brett. Bots spielen die Karte, wenn der Ertrag der Gegner auf einem Rohstoff hoch ist.
+
+## 📱 Handy: Vektor-Grafik, Pause-Knopf, Pinch-Zoom
+
+- **Vektor-Grafik auf dem Handy:** Das Rohstoff-Symbol steht über der Zahl, beides mittig im Feld; die Häfen zeigen die normalen illustrierten Hafenkarten (am Desktop bleiben die Vektor-Medaillons und die Anordnung nebeneinander).
+- **Kopfzeile hochkant:** Einstellungen und darunter Pause sind so groß wie die Spielerkarten (54 px); bei 5–6 Spielern schrumpfen die Spielerbilder, damit nichts unter die Knöpfe läuft.
+- **Zwei-Finger-Zoom:** Pinch zoomt um die Fingermitte und schiebt mit; gerechnet wird gegen den Start der Geste (keine Drift), je Bild eine Aktualisierung. An den Zoomgrenzen gibt das Brett gedämpft nach und federt beim Loslassen zurück; bleibt ein Finger liegen, schiebt er ohne Sprung weiter. Seiten-Zoom des Browsers ist abgeschaltet (`user-scalable=no`), damit die Geste nur das Brett betrifft.

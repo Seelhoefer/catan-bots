@@ -1706,10 +1706,10 @@ td.who { display: flex; align-items: center; gap: 8px; }
 @media (max-width: 860px) and (orientation: portrait) {
   .hdr { padding: 8px 10px 10px; }
   .hdr-players { justify-content: space-around; gap: 4px; overflow: visible; margin: 0; padding: 0; }
-  .pcard { display: block; position: relative; flex: 0 0 auto; width: 54px; height: 54px; min-width: 0; padding: 0; border-radius: 50%; background: none; border: 2px solid transparent; transform: none; }
+  .pcard { display: block; position: relative; flex: 1 1 0; width: auto; max-width: 54px; aspect-ratio: 1 / 1; height: auto; min-width: 0; padding: 0; border-radius: 50%; background: none; border: 2px solid transparent; transform: none; }
   .pcard.active { border-color: var(--pc); background: none; box-shadow: 0 0 16px color-mix(in srgb, var(--pc) 70%, transparent); transform: none; }
   .pc-av { position: absolute; inset: 3px; }
-  .pc-av .avatar-svg { width: 44px !important; height: 44px !important; }
+  .pc-av .avatar-svg { width: 100% !important; height: 100% !important; }
   .pc-body { display: contents; }
   .pc-vp { position: absolute; right: -5px; bottom: -4px; margin: 0; padding: 0 6px; min-width: 20px; height: 18px; justify-content: center; border-radius: 99px; background: var(--ivory); color: var(--ivory-ink); font-size: 12px; line-height: 18px; flex-direction: row; gap: 0; z-index: 2; }
   .pc-vp .ic { display: none; }
@@ -1719,7 +1719,13 @@ td.who { display: flex; align-items: center; gap: 8px; }
   .pc-name { position: absolute; left: 0; right: 0; bottom: -13px; font-size: 0; text-align: center; line-height: 1; }
   .pc-name .badge { display: none; }
   .pc-think { font-size: 10px; display: inline-flex; gap: 2px; justify-content: center; }
-  .hdr-btns .hbtn { width: 40px; height: 40px; }
+  /* Einstellungen und Pause: übereinander, so groß wie die Spielerkarten */
+  .hdr-btns { flex-direction: column; gap: 6px; align-items: stretch; }
+  .hdr-btns .menu-wrap-btn { order: 1; }
+  .hdr-btns #btnPause { order: 2; }
+  .hdr-btns .hbtn { width: 54px; height: 54px; border-radius: 16px; }
+  .hdr-btns .hbtn .ic { width: 24px; height: 24px; }
+  .hdr .popover { top: 60px; }
 }
 @media (hover: none) and (pointer: coarse) {
   .floatcol { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px; }

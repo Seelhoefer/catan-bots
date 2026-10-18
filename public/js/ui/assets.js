@@ -25,6 +25,8 @@ export const IMG = {
 // ------------------------------------------------------------------ Grafikstile
 // new = illustrierte Motive (SVG-Paket, als WebP extrahiert), vector = reine Pfad-SVGs, classic = erster Illustrations-Satz.
 const harborName = (t) => (t === 'any' ? 'harbor-3to1' : `${t}-2to1`);
+/** Handy-Ansicht (Touch oder schmaler Bildschirm). */
+export const compactView = () => { try { return window.matchMedia('(hover: none) and (pointer: coarse), (max-width: 860px)').matches; } catch { return false; } };
 export const ART_STYLES = {
   new: {
     label: 'Illustriert',
@@ -36,7 +38,8 @@ export const ART_STYLES = {
   vector: {
     label: 'Vektor',
     res: (r) => `assets/vector-svg/resources/${r}.svg`,
-    harbor: (t) => `assets/vector-svg/harbors/${harborName(t)}.svg`,
+    // Auf dem Handy bleiben die Häfen die normalen illustrierten Hafenkarten; am Desktop die Vektor-Medaillons
+    harbor: (t) => (compactView() ? `assets/art-v2/harbors/${harborName(t)}.webp` : `assets/vector-svg/harbors/${harborName(t)}.svg`),
     fog: 'assets/vector-svg/fog/fog-hex.svg',
     tile: null,
   },
@@ -75,6 +78,7 @@ const styleList = (id) => {
   return [
     ...['wood', 'brick', 'sheep', 'wheat', 'ore'].map(st.res),
     ...['any', 'wood', 'brick', 'sheep', 'wheat', 'ore'].map(st.harbor).filter(Boolean),
+    ...(id === 'vector' ? ['any', 'wood', 'brick', 'sheep', 'wheat', 'ore'].map((t) => `assets/art-v2/harbors/${harborName(t)}.webp`) : []),
     ...(st.fog ? [st.fog] : []),
     ...(st.tile ? ['wood', 'brick', 'sheep', 'wheat', 'ore', 'desert', 'gold'].map(st.tile) : []),
   ];

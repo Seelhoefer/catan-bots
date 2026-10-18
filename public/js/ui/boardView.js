@@ -1,7 +1,7 @@
 // SVG-Darstellung des Spielfelds inkl. Zoom/Pan und anklickbarer Positionen.
 import { RES_INFO } from '../engine/constants.js';
 import {
-  art, COLOR_ID, piece, resImg, harborImg, fogImg, tileImg, IMG, PIECE_BOX,
+  art, COLOR_ID, piece, resImg, harborImg, fogImg, tileImg, IMG, PIECE_BOX, artStyle, compactView,
 } from './assets.js';
 import { roadDefs, roadOnEdge } from './road.js';
 
@@ -122,7 +122,7 @@ export class BoardView {
     svg.addEventListener('pointercancel', end);
 
     svg.addEventListener('click', (e) => {
-      if (this.moved) return;
+      if (this.moved || this.gestureTouch) return;
       const t = e.target.closest('[data-v],[data-e],[data-h]');
       if (!t) {
         // Doppeltipp auf freie Fläche: näher heranzoomen bzw. wieder alles zeigen
@@ -143,34 +143,67 @@ export class BoardView {
       else if (t.dataset.h !== undefined) this.onPick('hex', Number(t.dataset.h));
     });
 
-    // Pinch-Zoom für Touch (zoomt um die Mitte der Finger und verschiebt mit ihr)
+    // Pinch-Zoom für Touch: Der Punkt unter der Fingermitte bleibt unter der Fingermitte (zoomt und verschiebt mit),
+    // gerechnet immer gegen den Start der Geste (kein Aufsummieren von Rundungsfehlern), je Bild genau eine Aktualisierung.
+    // Über die Zoomgrenzen hinaus gibt das Brett gedämpft nach und federt beim Loslassen weich zurück.
     const pts = new Map();
-    let pinch = null;
-    let mid = null;
-    svg.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') pts.set(e.pointerId, e); });
+    let g0 = null;
+    const spread = () => { const [a, b] = [...pts.values()]; return { d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1, x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 }; };
+    const damp = (w, lo, hi) => (w < lo ? lo * (w / lo) ** 0.45 : w > hi ? hi * (w / hi) ** 0.45 : w);
+    svg.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'touch') return;
+      pts.set(e.pointerId, e);
+      if (pts.size === 2) {
+        this.stopZoom();
+        this.pinching = true;
+        this.gestureTouch = true; // der Rest der Geste löst keinen Tipp aufs Brett aus
+        this.drag = null;
+        this.moved = true;
+        svg.classList.remove('panning');
+        g0 = { ...spread(), vb: this.getVB() };
+      }
+    });
     svg.addEventListener('pointermove', (e) => {
       if (e.pointerType !== 'touch' || !pts.has(e.pointerId)) return;
       pts.set(e.pointerId, e);
-      if (pts.size === 2) {
-        const [a, b] = [...pts.values()];
-        const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-        const m = { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
-        this.pinching = true;
-        this.stopInertia();
-        if (pinch) {
-          this.zoomAt(m.x, m.y, pinch / d, false);
-          if (mid) this.panByPx(m.x - mid.x, m.y - mid.y);
-        }
-        pinch = d; mid = m;
-        this.moved = true;
-      }
+      if (pts.size !== 2 || !g0) return;
+      const cur = spread();
+      const rect = svg.getBoundingClientRect();
+      const vb0 = g0.vb;
+      const lo = this.minW || 4;
+      const hi = this.maxW || 80;
+      const w = damp(vb0.w * (g0.d / cur.d), lo, hi);
+      const f = w / vb0.w;
+      const k0 = Math.max(vb0.w / rect.width, vb0.h / rect.height);
+      const offX = (rect.width - vb0.w / k0) / 2;
+      const offY = (rect.height - vb0.h / k0) / 2;
+      const px = vb0.x + (g0.x - rect.left - offX) * k0; // Brettpunkt unter der Fingermitte beim Start
+      const py = vb0.y + (g0.y - rect.top - offY) * k0;
+      const k1 = k0 * f;
+      this.queueVB(this.clampVB({ x: px - (cur.x - rect.left - offX) * k1, y: py - (cur.y - rect.top - offY) * k1, w, h: vb0.h * f }));
     });
     const up = (e) => {
+      if (!pts.has(e.pointerId)) return;
       pts.delete(e.pointerId);
-      if (pts.size < 2) { pinch = null; mid = null; setTimeout(() => { this.pinching = false; }, 120); }
+      if (pts.size === 0 && this.gestureTouch) setTimeout(() => { this.gestureTouch = false; }, 80);
+      if (pts.size < 2 && g0) {
+        g0 = null;
+        if (this._rafVB) { cancelAnimationFrame(this._rafVB); this._rafVB = 0; if (this._pendVB) this.setVB(this._pendVB); this._pendVB = null; }
+        // über die Grenze gezoomt → weich zurückfedern
+        const vb = this.getVB();
+        const lo = this.minW || 4;
+        const hi = this.maxW || 80;
+        if (vb.w < lo - 0.01 || vb.w > hi + 0.01) this.zoomAt(window.innerWidth / 2, window.innerHeight / 2, Math.min(hi, Math.max(lo, vb.w)) / vb.w);
+        // ein Finger bleibt liegen: er schiebt weiter, ohne dass das Brett springt
+        const rest = [...pts.values()][0];
+        if (rest) { this.drag = { x: rest.clientX, y: rest.clientY, vb: this.getVB(), id: rest.pointerId, type: 'touch' }; this.samples = [{ t: performance.now(), x: rest.clientX, y: rest.clientY }]; this.moved = true; }
+        setTimeout(() => { this.pinching = false; }, 120);
+      }
     };
     svg.addEventListener('pointerup', up);
     svg.addEventListener('pointercancel', up);
+    // iOS: Browser-eigenes Seiten-Zoomen per Geste unterdrücken
+    for (const t of ['gesturestart', 'gesturechange', 'gestureend']) svg.addEventListener(t, (e) => e.preventDefault());
   }
 
   /** Änderungen der Sicht bündeln: höchstens eine Aktualisierung pro Bild (weicheres Wischen auf dem Handy). */
@@ -349,6 +382,8 @@ export class BoardView {
 
     // Felder
     out.push('<g class="hexes">');
+    // Vektor-Grafik auf dem Handy: Rohstoffsymbol über der Zahl, beides mittig im Feld
+    const stacked = art.ok && artStyle() === 'vector' && compactView();
     for (const h of board.hexes) {
             const fresh = ui.fresh?.hexes?.has(h.id) ? ' flip' : '';
       const remap = ui.fresh?.remap ? ' remap' : '';
@@ -389,21 +424,22 @@ export class BoardView {
           // Bild in der breiten Mitte der Kachel, Chip leicht überlappend darunter
           if (art.ok && h.type === 'gold') {
             // Wahlfeld: alle fünf Rohstoffe im Kreis = „such dir einen aus“
-            const cx = h.x - 0.4;
-            const cy = h.y - 0.1;
+            const cx = stacked ? h.x : h.x - 0.4;
+            const cy = stacked ? h.y - 0.5 : h.y - 0.1;
             const five = ['wood', 'brick', 'sheep', 'wheat', 'ore'].map((r, i) => {
               const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
               // doppelt so groß zeichnen und halbieren: sehr kleine SVG-Bilder werden von manchen Browsern sonst nicht gerendert
               return `<image href="${resImg(r)}" x="-0.34" y="-0.34" width="0.68" height="0.68" transform="translate(${(cx + Math.cos(a) * 0.27).toFixed(3)} ${(cy + Math.sin(a) * 0.27).toFixed(3)}) scale(.5)"/>`;
             }).join('');
-            out.push(`<g class="hex-art gold-emblem${blocked ? ' dim' : ''}"><circle cx="${cx}" cy="${cy}" r="0.5" class="gold-ring"/>${five}<text x="${cx}" y="${(h.y + 0.62).toFixed(3)}" class="gold-label">WAHL</text></g>`);
+            out.push(`<g class="hex-art gold-emblem${blocked ? ' dim' : ''}"><circle cx="${cx}" cy="${cy}" r="0.5" class="gold-ring"/>${five}${stacked ? '' : `<text x="${cx}" y="${(h.y + 0.62).toFixed(3)}" class="gold-label">WAHL</text>`}</g>`);
           } else if (art.ok) {
-            out.push(`<image href="${resImg(h.type)}" x="${(h.x - 0.63).toFixed(3)}" y="${(h.y - 0.33).toFixed(3)}" width="0.62" height="0.62" class="hex-art${blocked ? ' dim' : ''}"/>`);
+            if (stacked) out.push(`<image href="${resImg(h.type)}" x="${(h.x - 0.27).toFixed(3)}" y="${(h.y - 0.8).toFixed(3)}" width="0.54" height="0.54" class="hex-art${blocked ? ' dim' : ''}"/>`);
+            else out.push(`<image href="${resImg(h.type)}" x="${(h.x - 0.63).toFixed(3)}" y="${(h.y - 0.33).toFixed(3)}" width="0.62" height="0.62" class="hex-art${blocked ? ' dim' : ''}"/>`);
           }
           else out.push(`<use href="#i-${h.type === 'gold' ? 'coin' : h.type}" x="${h.x - 0.6}" y="${h.y - 0.3}" width="0.56" height="0.56" class="hex-ico"/>`);
           const red = h.num === 6 || h.num === 8;
           const two = h.num >= 10;
-          out.push(`<g transform="translate(${h.x + 0.33},${h.y + 0.02})" class="token${blocked ? ' dim' : ''}"><circle r="0.36" cy="0.035" class="token-shadow"/><circle r="0.36" fill="url(#tokenGrad)" stroke="#b69a58" stroke-width="0.035"/><circle r="0.3" fill="none" stroke="rgba(120,90,40,.35)" stroke-width="0.016"/>`);
+          out.push(`<g transform="${stacked ? `translate(${h.x},${h.y + 0.02}) scale(.82)` : `translate(${h.x + 0.33},${h.y + 0.02})`}" class="token${blocked ? ' dim' : ''}"><circle r="0.36" cy="0.035" class="token-shadow"/><circle r="0.36" fill="url(#tokenGrad)" stroke="#b69a58" stroke-width="0.035"/><circle r="0.3" fill="none" stroke="rgba(120,90,40,.35)" stroke-width="0.016"/>`);
           out.push(`<text y="0.012" class="num${red ? ' red' : ''}${two ? ' two' : ''}">${h.num}</text></g>`);
         }
 
