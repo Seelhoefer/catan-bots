@@ -42,7 +42,7 @@ export const ART_STYLES = {
     harbor: (t) => `assets/art-v2/harbors/${harborName(t)}.webp`,
     fog: 'assets/art-v2/fog/fog-hex.webp',
     tile: (t) => `${MOBILE}tiles/${t}.webp`, // neue Feld-Kacheln mit Rahmen; die Zahl liegt mittig darauf
-    pieces: { settlement: { w: 256, h: 256, l: 22, r: 234, b: 252, target: 0.95 }, city: { w: 256, h: 256, l: 27, r: 229, b: 252, target: 1.08 } },
+    pieces: { settlement: { w: 256, h: 256, l: 22, r: 234, b: 252, target: 0.78 }, city: { w: 256, h: 256, l: 27, r: 229, b: 252, target: 0.92 } },
   },
   new: {
     label: 'Illustriert',
