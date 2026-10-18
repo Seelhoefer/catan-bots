@@ -8,7 +8,9 @@ import {
   esc, rich, ic, resSq, costHTML, dieHTML,
 } from './dom.js';
 import { avatarSVG } from './avatars.js';
-import { art, piece, COLOR_ID, IMG } from './assets.js';
+import {
+  art, piece, COLOR_ID, IMG, artStyle, resCardImg,
+} from './assets.js';
 import { roadIconSVG } from './road.js';
 
 import { HUMAN } from './viewer.js';
@@ -18,8 +20,10 @@ export const coarse = () => typeof matchMedia === 'function' && matchMedia('(hov
 export function renderHand(g, inflight = {}) {
   const s = g.s;
   const p = s.players[HUMAN];
+  const cardStyle = art.ok && artStyle() === 'mobile'; // Mobil-Set: echte Rohstoffkarten statt Chips
   const chips = RES.map((r) => {
     const n = Math.max(0, p.hand[r] - (inflight[r] || 0)); // Karten im Anflug zählen erst bei der Ankunft
+    if (cardStyle) return `<div class="mcard r-${r} ${n ? '' : 'zero'}" data-res="${r}" title="${RES_INFO[r].name}: ${n}"><img src="${resCardImg(r)}" alt="${RES_INFO[r].name}" draggable="false">${n ? `<b class="mc-n">${n}</b>` : ''}</div>`;
     return `<div class="rchip ${n ? '' : 'zero'}" data-res="${r}" title="${RES_INFO[r].name}: ${n}">${resSq(r)}${n ? `<b>${n}</b>` : ''}</div>`;
   }).join('');
   let tokens = '';

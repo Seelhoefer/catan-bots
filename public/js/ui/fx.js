@@ -322,13 +322,13 @@ export function whirlHexes(hexes, sf = 1) {
 }
 
 /** Karte groß einblenden (gekauft oder ausgespielt). Gibt die Dauer in ms zurück. */
-export function showCardHero(type, caption, ms = 2300) {
+export function showCardHero(type, caption, ms = 2300, imgSrc = null) {
   const old = document.getElementById('cardHero');
   if (old) old.remove();
   const box = document.createElement('div');
   box.id = 'cardHero';
   box.className = 'cardhero';
-  box.innerHTML = `<div class="ch-card">${cardHTML(type)}</div><div class="ch-cap">${caption}</div>`;
+  box.innerHTML = `<div class="ch-card">${imgSrc ? `<img class="devcard" src="${imgSrc}" alt="" draggable="false">` : cardHTML(type)}</div><div class="ch-cap">${caption}</div>`;
   document.body.append(box);
   const g = gs();
   if (!g) {

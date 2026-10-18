@@ -20,7 +20,9 @@ import { avatarSVG } from './ui/avatars.js';
 import {
   floatGain, flyCards, showDiceHero, showCardHero, lastDice, whirlHexes, celebrate, buildFxPiece, buildFxRoad, stealFx, discardFx, vpPop, vpLose, turnPulse, awardCeremony, produceFx, bumpPlayer,
 } from './ui/fx.js';
-import { preloadArt, ART_STYLES, artStyle, setArtStyle } from './ui/assets.js';
+import {
+  preloadArt, ART_STYLES, artStyle, setArtStyle, styleIds, missionCardImg,
+} from './ui/assets.js';
 import {
   devModal, tokensModal, discardModal, goldModal, stealModal, logModal,
   rulesModal, gameOverModal, inviteModal, closeTopModal, closeAllModals, confirmDialog, hasModal, playDevCard,
@@ -300,7 +302,10 @@ class App {
         break;
       case 'mission':
         if (e.pi !== HUMAN) sfx.play('vpOther');
-        this.toastHTML(`${ic(missionById(e.id).icon, 'inline')} ${esc(name(e.pi))} erfüllt „${missionById(e.id).name}“ (+1 Siegpunkt)`, 'big');
+        if (artStyle() === 'mobile') { // Mobil-Set: die Missionskarte erscheint groß
+          const ms = showCardHero(null, `${avatarSVG(g.s.players[e.pi].face, g.s.players[e.pi].color, 34)} <span>${e.pi === HUMAN ? 'Du erfüllst' : `${esc(name(e.pi))} erfüllt`} <b>${missionById(e.id).name}</b> · +1 Siegpunkt</span>`, 2800 * Math.max(0.6, this.sf), missionCardImg(e.id));
+          this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + ms - 300);
+        } else this.toastHTML(`${ic(missionById(e.id).icon, 'inline')} ${esc(name(e.pi))} erfüllt „${missionById(e.id).name}“ (+1 Siegpunkt)`, 'big');
         break;
       case 'devbuy':
         sfx.play('card', { vol: e.pi === HUMAN ? 1 : 0.5 });
@@ -1242,6 +1247,7 @@ class App {
     root.dataset.phase = s.phase;
     root.dataset.mine = s.turn === HUMAN ? '1' : '0';
     root.classList.toggle('spectator', spec);
+    root.classList.toggle('mcards', artStyle() === 'mobile'); // Mobil-Set: Rohstoffkarten in der Hand
     root.classList.toggle('hide-hand', this.hotSeat && !this.deciders().includes(HUMAN)); // Hot-Seat: Karten des Letzten verdecken, solange andere dran sind
 
     if (s.phase === 'main' && s.turn === HUMAN && s.sub === 'robber') {
@@ -1442,7 +1448,7 @@ class App {
       return;
     }
     if (what === 'art') {
-      const ids = Object.keys(ART_STYLES);
+      const ids = styleIds();
       const next = ids[(ids.indexOf(artStyle()) + 1) % ids.length];
       if (await setArtStyle(next)) {
         $('#menuPop .art').textContent = ART_STYLES[artStyle()].label;

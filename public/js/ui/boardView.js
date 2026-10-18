@@ -1,7 +1,7 @@
 // SVG-Darstellung des Spielfelds inkl. Zoom/Pan und anklickbarer Positionen.
 import { RES_INFO } from '../engine/constants.js';
 import {
-  art, COLOR_ID, piece, resImg, harborImg, fogImg, tileImg, IMG, PIECE_BOX, artStyle, compactView, classicResImg,
+  art, COLOR_ID, piece, resImg, harborImg, fogImg, tileImg, IMG, pieceBox, artStyle, compactView, classicResImg,
 } from './assets.js';
 import { roadDefs, roadOnEdge } from './road.js';
 
@@ -25,7 +25,7 @@ const CITY = 'M-0.3,0.2 L-0.3,-0.06 L-0.1,-0.06 L-0.1,-0.26 L0.05,-0.4 L0.2,-0.2
 
 /** Illustrierte Siedlung/Stadt: Boden des sichtbaren Inhalts sitzt knapp unter der Ecke. */
 function pieceImage(kind, hex, vx, vy, extra = '') {
-  const b = PIECE_BOX[kind];
+  const b = pieceBox(kind);
   const w = (b.w * b.target) / (b.r - b.l);
   const h = (b.h * b.target) / (b.r - b.l);
   const x = vx - ((b.l + b.r) / 2 / b.w) * w;
@@ -338,7 +338,7 @@ export class BoardView {
     const pad = narrow ? 1.1 : 1.5;
     const top = 1.3;
     const footer = window.matchMedia('(min-width: 861px) and (min-height: 521px)').matches;
-    const bottom = footer ? 4.4 : narrow ? 2.6 : 2.2;
+    const bottom = footer ? 4.4 : narrow ? (artStyle() === 'mobile' ? 4.4 : 2.6) : 2.2; // am Handy mit Rohstoffkarten mehr Platz unten
     const w = b.maxX - b.minX + pad * 2;
     const h = b.maxY - b.minY + top + bottom;
     this.minW = w * 0.1;

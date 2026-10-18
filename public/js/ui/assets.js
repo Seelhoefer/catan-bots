@@ -7,11 +7,19 @@ export const art = { ok: false };
 const BASE = 'assets/illustrated/';
 export const COLOR_ID = Object.fromEntries(PLAYER_COLORS.map((c) => [c.hex, c.id]));
 
-export const piece = (colorId, kind) => `${BASE}pieces/${colorId}-${kind}.webp`;
-export const cardImgSrc = (type) => `assets/cards/${type}.webp`;
+const MOBILE = 'assets/mobile/';
+/** Neue Ereigniskarten im Mobil-Set (die anderen Karten bleiben wie sie sind). */
+const MOBILE_CARDS = new Set(['shield', 'blessing', 'fair', 'exile', 'birthday']);
+
+export const piece = (colorId, kind) => (styleId === 'mobile' ? `${MOBILE}pieces/${colorId}-${kind}.webp` : `${BASE}pieces/${colorId}-${kind}.webp`);
+export const cardImgSrc = (type) => (styleId === 'mobile' && MOBILE_CARDS.has(type) ? `${MOBILE}cards/${type}.webp` : `assets/cards/${type}.webp`);
+/** Rohstoffkarte (Mobil-Set) für die Hand am Handy. */
+export const resCardImg = (res) => `${MOBILE}cards/res-${res}.webp`;
+/** Missionskarte (Mobil-Set); Missionen ohne eigenes Bild bekommen die allgemeine „Mission“-Karte. */
+export const missionCardImg = (id) => `${MOBILE}missions/${{ explorer: 'weltentdecker', citybuilder: 'metropole', haul: 'goldregen' }[id] || 'mission'}.webp`;
 export const IMG = {
   oceanMinimal: `${BASE}ocean-minimal.webp`,
-  thief: `${BASE}thief.webp`,
+  get thief() { return styleId === 'mobile' ? `${MOBILE}robber/robber.webp` : `${BASE}thief.webp`; },
   trophy: `${BASE}trophy.webp`,
   harbor: `${BASE}special/harbor-3to1.webp`,
   desert: `${BASE}desert.webp`,
@@ -28,6 +36,14 @@ const harborName = (t) => (t === 'any' ? 'harbor-3to1' : `${t}-2to1`);
 /** Handy-Ansicht (Touch oder schmaler Bildschirm). */
 export const compactView = () => { try { return window.matchMedia('(hover: none) and (pointer: coarse), (max-width: 860px)').matches; } catch { return false; } };
 export const ART_STYLES = {
+  mobile: {
+    label: 'Mobil-Set',
+    res: (r) => `assets/art-v2/resources/${r}.webp`,
+    harbor: (t) => `assets/art-v2/harbors/${harborName(t)}.webp`,
+    fog: 'assets/art-v2/fog/fog-hex.webp',
+    tile: (t) => `${MOBILE}tiles/${t}.webp`, // neue Feld-Kacheln mit Rahmen; die Zahl liegt mittig darauf
+    pieces: { settlement: { w: 256, h: 256, l: 22, r: 234, b: 252, target: 0.95 }, city: { w: 256, h: 256, l: 27, r: 229, b: 252, target: 1.08 } },
+  },
   new: {
     label: 'Illustriert',
     res: (r) => `assets/art-v2/resources/${r}.webp`,
@@ -51,11 +67,15 @@ export const ART_STYLES = {
     tile: null,
   },
 };
-const STYLE_KEY = 'catan-art';
-let styleId = 'new';
-try { const saved = localStorage.getItem(STYLE_KEY); if (ART_STYLES[saved]) styleId = saved; } catch { /* egal */ }
+// Am Handy gilt standardmäßig das Mobil-Set; die Wahl wird getrennt von der am Desktop gemerkt.
+const compactNow = compactView();
+const STYLE_KEY = compactNow ? 'catan-art-m' : 'catan-art';
+let styleId = compactNow ? 'mobile' : 'new';
+try { const saved = localStorage.getItem(STYLE_KEY); if (ART_STYLES[saved] && (compactNow || saved !== 'mobile')) styleId = saved; } catch { /* egal */ }
 
 export const artStyle = () => styleId;
+/** Grafikstile, die in dieser Ansicht wählbar sind (das Mobil-Set nur am Handy). */
+export const styleIds = () => Object.keys(ART_STYLES).filter((id) => compactNow || id !== 'mobile');
 export const resImg = (r) => ART_STYLES[styleId].res(r);
 /** Die ersten illustrierten Rohstoffbilder (Handy-Vektoransicht: groß über den Zahlen). */
 export const classicResImg = (r) => `${BASE}resources/${r}.webp`;
@@ -64,6 +84,8 @@ export const harborImg = (type) => ART_STYLES[styleId].harbor(type);
 /** Nebelkachel als Bild über dem Sechseck (null = Platzhalter-Symbol). */
 export const fogImg = () => ART_STYLES[styleId].fog;
 /** Komplettes Feld-Hintergrundbild (null = Farbverlauf + Rohstoff-Icon). */
+/** Maße der Siedlung/Stadt im aktuellen Stil (sichtbarer Inhalt im Bild, in Bildpixeln). */
+export const pieceBox = (kind) => ART_STYLES[styleId].pieces?.[kind] || PIECE_BOX[kind];
 export const tileImg = (type) => (ART_STYLES[styleId].tile ? ART_STYLES[styleId].tile(type) : null);
 
 /** Bilder, die an Stelle flacher Sprite-Icons verwendet werden, sobald `art.ok` gilt. */
@@ -84,6 +106,8 @@ const styleList = (id) => {
     ...(id === 'vector' ? ['any', 'wood', 'brick', 'sheep', 'wheat', 'ore'].map((t) => `assets/art-v2/harbors/${harborName(t)}.webp`) : []),
     ...(st.fog ? [st.fog] : []),
     ...(st.tile ? ['wood', 'brick', 'sheep', 'wheat', 'ore', 'desert', 'gold'].map(st.tile) : []),
+    ...(id === 'mobile' ? [`${MOBILE}robber/robber.webp`, ...PLAYER_COLORS.flatMap((c) => ['settlement', 'city'].map((k) => `${MOBILE}pieces/${c.id}-${k}.webp`)),
+      ...['wood', 'brick', 'sheep', 'wheat', 'ore'].map(resCardImg), ...[...MOBILE_CARDS].map((t) => `${MOBILE}cards/${t}.webp`)] : []),
   ];
 };
 

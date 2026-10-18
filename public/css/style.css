@@ -2024,3 +2024,27 @@ body.paused .pause-ov, body.paused .pause-ov * { animation-play-state: running !
 .mw-info.on, .mw-info:hover { color: var(--gold); }
 .mw-explain { grid-column: 1 / -1; margin: 2px 0 8px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); font-size: 13px; line-height: 1.5; color: #c9d4e3; }
 .mw-explain[hidden] { display: none; }
+
+
+/* ======================================================================
+   Mobil-Set: Rohstoffkarten (statt Chips) als Hand am Handy
+   ====================================================================== */
+.hdr-left .mcard { position: relative; flex: none; width: 36px; pointer-events: auto; }
+.mcard img { display: block; width: 100%; height: auto; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .5)); transition: transform .2s var(--ease-spring, ease-out), opacity .2s, filter .2s; }
+.mcard.zero img { opacity: .34; filter: grayscale(.5) brightness(.8); }
+.mc-n { position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); min-width: 22px; box-sizing: border-box; padding: 5px 6px; border-radius: 99px; background: #f4efe3; color: #2a2418; border: 1.5px solid #d8b45a;
+  font-size: 13px; font-weight: 800; line-height: 1; text-align: center; box-shadow: 0 2px 6px rgba(0, 0, 0, .45); }
+@media (min-width: 861px) and (min-height: 521px) { .hdr-left .mcard { display: none; } }
+@media (max-height: 520px) and (orientation: landscape) { .hdr-left .mcard { width: 28px; } .mc-n { min-width: 18px; padding: 3px 4px; font-size: 11px; bottom: -5px; } }
+@media (max-width: 860px) and (orientation: portrait) {
+  .hdr-left:has(.mcard) { bottom: calc(92px + env(safe-area-inset-bottom)); gap: 7px; align-items: flex-end; padding-bottom: 8px; }
+  .hdr-left .mcard { flex: 0 1 58px; width: auto; min-width: 0; max-width: 58px; }
+  .hdr-left .mcard:not(.zero) img { transform: translateY(-3px); }
+  .hdr-left:has(.mcard) .rchip.tok { align-self: center; height: 44px; }
+  #game.mcards .zoom { bottom: calc(190px + env(safe-area-inset-bottom)); }
+  #game.mcards .fab-stack.open { margin-bottom: 96px; }
+}
+@supports (text-box: trim-both cap alphabetic) {
+  @media (hover: none) and (pointer: coarse), (max-width: 860px) { .mc-n { text-box: trim-both cap alphabetic; padding: 6.5px 6px; } }
+}
+.ch-cap { max-width: min(92vw, 520px); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 10px; text-align: center; line-height: 1.35; }
