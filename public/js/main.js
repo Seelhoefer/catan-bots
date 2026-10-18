@@ -333,18 +333,17 @@ class App {
       }
       case 'harvest': this.flash([e.hex], 2400); sfx.play('harvest'); break;
       case 'steal': {
-        // nach dem Sprung des Räubers fliegt die Karte vom Opfer zum Dieb; beim Dieb zählt sie erst bei der Ankunft
+        // nach dem Sprung des Räubers fliegt die Karte vom Opfer zum Dieb; bei Gegnern zählt sie erst bei der Ankunft, deine Hand zeigt sie sofort
         const wait = Math.max(0, this.view.robberEnd - Date.now(), (this.robberMoveAt || 0) + 2300 - Date.now()) + 120;
         const known = e.from === HUMAN || e.to === HUMAN;
         const mine = e.to === HUMAN;
-        if (mine) this.inflightH[e.res] = (this.inflightH[e.res] || 0) + 1;
-        else this.inflightO[e.to] = (this.inflightO[e.to] || 0) + 1;
+        // Gestohlene Karte sofort in deiner Hand zeigen: sie ist schon bezahlbar/baubar, der Flug ist nur noch Effekt
+        if (!mine) this.inflightO[e.to] = (this.inflightO[e.to] || 0) + 1;
         let released = false;
         const release = () => {
           if (released) return;
           released = true;
-          if (mine) this.inflightH[e.res] = Math.max(0, (this.inflightH[e.res] || 0) - 1);
-          else this.inflightO[e.to] = Math.max(0, (this.inflightO[e.to] || 0) - 1);
+          if (!mine) this.inflightO[e.to] = Math.max(0, (this.inflightO[e.to] || 0) - 1);
           this.queueRender();
         };
         setTimeout(() => {
