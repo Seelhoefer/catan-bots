@@ -167,6 +167,21 @@ export function renderMenu(root, {
   };
   let moreOpen = false;
 
+  // Voreinstellungen: ein Tipp statt acht Schalter (Hick'sches Gesetz); die Auswahl bleibt danach frei änderbar
+  const OFF = { variant: 'classic', missions: false, remapCard: false, harvestCard: false, goldField: false, eventCards: false, worldHarbor: false, decreeCard: false, antiBad: false };
+  const PRESETS = [
+    { id: 'classic', label: 'Klassisch', sub: 'Die reinen Regeln', set: { ...OFF } },
+    { id: 'explorer', label: 'Entdecker', sub: 'Nebel, Missionen, Wahlfeld', set: { ...OFF, variant: 'fog', missions: true, goldField: true, remapCard: true, harvestCard: true, antiBad: true } },
+    { id: 'all', label: 'Alles an', sub: 'Alle Erweiterungen', set: { variant: 'classic', missions: true, remapCard: true, harvestCard: true, goldField: true, eventCards: true, worldHarbor: true, decreeCard: true, antiBad: true } },
+  ];
+  const presetOn = (pr) => Object.entries(pr.set).every(([k, v]) => settings[k] === v);
+  const EXT_LABELS = [['variant', 'Nebel', (v) => v === 'fog'], ['worldHarbor', 'Welthafen'], ['decreeCard', 'Erlass'], ['eventCards', 'Ereigniskarten'], ['missions', 'Missionen'], ['antiBad', 'Anti-Pech'], ['remapCard', 'Weltenwandel'], ['harvestCard', 'Ernte'], ['goldField', 'Wahlfeld']];
+  const summaryText = () => {
+    const n = settings.bots + 1 + friends();
+    const on = EXT_LABELS.filter(([k, , f]) => (f ? f(settings[k]) : settings[k])).length;
+    return `${n} Spieler · ${SIZES[settings.size].label} · ${settings.targetVP} SP · ${on} Regeln aktiv`;
+  };
+
   const drawWizard = () => {
     ensureCast();
     const sel = new Set(settings.botIds);
@@ -174,9 +189,9 @@ export function renderMenu(root, {
     const me = BOT_ROSTER.find((b) => b.id === settings.avatarPortrait) || BOT_ROSTER[0];
     const sec = (label, ...kids) => el('section', { class: 'mw-sec' }, el('h3', {}, label), ...kids);
 
-    const you = el('div', { class: 'mw-you' },
+    const you = el('section', { class: 'mw-sec mw-you-sec' }, el('h3', {}, 'Du'), el('div', { class: 'mw-you' },
       el('button', { type: 'button', class: 'mw-face', 'aria-label': 'Anderes Gesicht wählen', title: 'Tippen für ein anderes Gesicht', onclick: () => cycleFace(1), html: avatarSVG(me.face, PLAYER_COLORS[0].hex, 56) }),
-      el('input', { type: 'text', class: 'mw-name', value: settings.playerName === 'Du' ? '' : settings.playerName, placeholder: 'Dein Name', maxlength: 14, 'aria-label': 'Dein Name', oninput: (e) => { settings.playerName = e.target.value.trim() || 'Du'; saveSettings(settings); } }));
+      el('input', { type: 'text', class: 'mw-name', value: settings.playerName === 'Du' ? '' : settings.playerName, placeholder: 'Dein Name', maxlength: 14, 'aria-label': 'Dein Name', oninput: (e) => { settings.playerName = e.target.value.trim() || 'Du'; saveSettings(settings); } })));
 
     const island = sec('Insel',
       el('div', { class: 'mw-islands' }, Object.values(SIZES).map((sz) => el('button', {
@@ -264,12 +279,22 @@ export function renderMenu(root, {
         sw('antiBad', 'Anti-Pech-Marker', 'Pech wird ausgeglichen', RULE_INFO.antiBad), sw('remapCard', 'Weltenwandel', 'Karte: alle Felder neu mischen', RULE_INFO.remapCard),
         sw('harvestCard', 'Ernte', 'Karte: sofortiger Ertrag eines Feldes', RULE_INFO.harvestCard), sw('goldField', 'Wahlfeld', 'Feld mit freier Rohstoffwahl', RULE_INFO.goldField)) : null);
 
+    const presets = el('div', { class: 'mw-presets', role: 'group', 'aria-label': 'Voreinstellung' }, PRESETS.map((pr) => el('button', {
+      type: 'button', class: `mw-preset ${presetOn(pr) ? 'on' : ''}`, 'aria-pressed': String(presetOn(pr)),
+      onclick: () => { Object.assign(settings, pr.set); draw(); },
+    }, el('b', {}, pr.label), el('small', {}, pr.sub))));
+
     root.replaceChildren(el('div', { class: 'mw' },
       el('div', { class: 'mw-top' },
         el('button', { type: 'button', class: 'hbtn mw-back', 'aria-label': 'Zurück zum Start', title: 'Zurück', onclick: () => { view = 'home'; draw(); }, html: ic('arrow') }),
         el('h2', {}, 'Spiel einrichten')),
-      you, island, mates, bots, points, ext, more,
-      el('div', { class: 'mw-foot' }, el('button', { type: 'button', class: 'mw-start', onclick: startGame }, 'Spiel starten'))));
+      presets,
+      el('div', { class: 'mw-cols' },
+        el('div', { class: 'mw-col' }, you, island, mates, bots),
+        el('div', { class: 'mw-col' }, points, ext, more)),
+      el('div', { class: 'mw-foot' },
+        el('p', { class: 'mw-summary', 'aria-live': 'polite' }, summaryText()),
+        el('button', { type: 'button', class: 'mw-start', onclick: startGame }, 'Spiel starten'))));
     const g = window.gsap;
     if (g && !this_animated) {
       this_animated = true;

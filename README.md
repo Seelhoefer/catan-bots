@@ -202,3 +202,6 @@ Neue Oberfläche (alles außer den Spielgrafiken): Palette aus Hafen-Blaugrün, 
 
 ## 🔄 Kartenstapel wird nie leer
 Wird die letzte Entwicklungs-/Ereigniskarte gekauft, mischt das Spiel sofort einen neuen Stapel (gleiche Zusammensetzung wie am Anfang: Ritter, Siegpunkte, Straßenbau, Erfindung, Monopol und alle gewählten Erweiterungskarten). So gibt es immer wieder Karten zu kaufen.
+
+## ⚙️ Spiel einrichten (aktualisiert)
+Voreinstellungen oben („Klassisch“, „Entdecker“, „Alles an“) setzen alle Regeln mit einem Tipp, danach bleibt alles frei änderbar. „Du“ hat eine eigene Karte, am Desktop liegen die Einstellungen in zwei Spalten, unten zeigt eine Zeile die Zusammenfassung (Spieler · Insel · Siegpunkte · aktive Regeln) direkt über „Spiel starten“.
