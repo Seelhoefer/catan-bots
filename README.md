@@ -157,7 +157,7 @@ Wechselt die **Längste Handelsstraße** oder die **Größte Rittermacht** den B
 
 ## ⏸️ Pause
 
-Der Pausen-Knopf im Kopf (oder Taste **P**; Esc/P/Leertaste setzt fort) hält das Spiel wirklich an: Bots und Handelsangebote warten (die Pausenzeit zählt nicht mit), Animationen, Würfel, Ton und Musik stehen still, das Brett ist gesperrt. „Zum Hauptmenü“ speichert den Stand. Wechselt man den Tab oder die App, pausiert das Spiel automatisch.
+Der Pausen-Knopf im Kopf (oder Taste **P**, auch bei geöffnetem Dialog; Esc/P/Leertaste setzt fort) hält das Spiel wirklich an: Bots und Handelsangebote warten (die Pausenzeit zählt nicht mit), Animationen, Würfel, Ton und Musik stehen still, das Brett ist gesperrt. „Zum Hauptmenü“ speichert den Stand. Wechselt man den Tab oder die App, pausiert das Spiel automatisch.
 
 
 

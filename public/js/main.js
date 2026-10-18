@@ -1158,11 +1158,13 @@ class App {
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.game && !$('#game').classList.contains('hidden')) this.setPaused(true); });
     document.addEventListener('keydown', (e) => {
       if (e.target.matches('input, textarea')) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const isP = e.code === 'KeyP' || e.key === 'p' || e.key === 'P';
       if (gamePaused) {
-        if (e.key === 'Escape' || e.key === 'p' || e.key === 'P' || e.key === ' ') { e.preventDefault(); this.setPaused(false); }
+        if (e.key === 'Escape' || isP || e.key === ' ') { e.preventDefault(); this.setPaused(false); }
         return;
       }
-      if ((e.key === 'p' || e.key === 'P') && this.game && !hasModal() && !$('#game').classList.contains('hidden')) { this.setPaused(true); return; }
+      if (isP && !e.repeat && this.game && !$('#game').classList.contains('hidden')) { this.setPaused(true); return; } // auch bei offenem Dialog
       if (e.key === 'Escape') {
         if (!$('#menuPop').classList.contains('hidden')) this.closePopover();
         else if (this.ui.fabOpen) { this.ui.fabOpen = false; this.queueRender(); } else if (this.pending) { this.pending = null; this.queueRender(); } else if (!closeTopModal()) {
