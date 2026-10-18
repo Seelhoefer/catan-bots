@@ -586,7 +586,7 @@ export function awardCeremony({ html, kind, toPid = null, fromPid = null, onLeav
     tl.call(() => sfx.play('award'), null, 0.25);
     tl.to(card, { y: -8, duration: 0.95, yoyo: true, repeat: 1, ease: 'sine.inOut' }, '>');
     tl.call(() => onLeave?.());
-    const target = () => (toPid !== null && toPid !== undefined ? pcard(toPid) : center(document.querySelector(`.acard.${kind}`))) || { x: cx, y: 40 };
+    const target = () => (toPid !== null && toPid !== undefined ? pcard(toPid) : null) || { x: cx, y: 40 };
     tl.to(card, { x: () => target().x - cx, y: () => target().y - cy, scale: 0.14, duration: 0.85, ease: 'power3.inOut', invalidateOnRefresh: true });
     tl.to(dim, { opacity: 0, duration: 0.5, ease: 'power1.in' }, '<0.15');
     tl.to(card, { opacity: 0, duration: 0.18 }, '>-0.2');

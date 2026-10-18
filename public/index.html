@@ -23,6 +23,7 @@
       <div class="hdr-left" id="hudHand"></div>
       <div class="hdr-players" id="hudOpps"></div>
       <div class="hdr-btns">
+        <button id="btnPause" class="hbtn" aria-label="Pause" title="Pause (P)"></button>
         <button id="btnMusic" class="hbtn" aria-label="Musik an/aus" title="Musik an/aus"></button>
         <div class="menu-wrap-btn">
           <button id="btnMenu" class="hbtn" aria-label="Einstellungen" title="Einstellungen" aria-haspopup="true"></button>
@@ -35,7 +36,6 @@
       <svg id="board" viewBox="-10 -10 20 20" preserveAspectRatio="xMidYMid meet"></svg>
 
       <div class="floatcol">
-        <div id="awardBox" class="awards"></div>
         <div id="missionBox" class="floatbox"></div>
       </div>
       <div id="diceBox" class="dicebox"></div>
@@ -54,6 +54,16 @@
         <button id="zoomFit" aria-label="Zentrieren" title="Zentrieren"></button>
       </div>
     </main>
+  </div>
+
+  <div id="pauseOv" class="pause-ov hidden" role="dialog" aria-modal="true" aria-label="Pause">
+    <div class="pause-card">
+      <div class="pause-ico" id="pauseIco"></div>
+      <h2>Pause</h2>
+      <p>Das Spiel ist angehalten – Bots, Timer und Animationen stehen still.</p>
+      <button id="pauseGo" class="btn solid xl pause-go" type="button"></button>
+      <button id="pauseMenu" class="btn quiet pause-home" type="button">Zum Hauptmenü</button>
+    </div>
   </div>
 
   <div id="modalRoot"></div>

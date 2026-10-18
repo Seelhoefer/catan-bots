@@ -82,19 +82,21 @@ export function renderPlayers(g, busy = new Set(), inflight = {}, shown = null) 
     const active = s.phase !== 'over' && s.turn === p.id;
     const mine = p.id === HUMAN;
     const cards = Math.max(0, g.handCount(p.id) - (mine ? 0 : (inflight[p.id] || 0)));
-    const badges = (s.longestRoad.holder === p.id ? `<span class="badge" title="Längste Handelsstraße">${ic('road')}</span>` : '')
-      + (s.largestArmy.holder === p.id ? `<span class="badge" title="Größte Rittermacht">${ic('sword')}</span>` : '');
+    const held = (kind) => (shown ? shown[kind] : (kind === 'road' ? s.longestRoad.holder : s.largestArmy.holder)) === p.id;
+    const medal = (kind, title) => `<span class="aw-med ${kind}" data-act="award-info" data-kind="${kind}" title="${title}: +2 Siegpunkte" role="img" aria-label="${title}, +2 Siegpunkte">${EMBLEM[kind]}</span>`;
+    const badges = (held('road') ? medal('road', 'Längste Handelsstraße') : '') + (held('army') ? medal('army', 'Größte Rittermacht') : '');
     const think = busy.has(p.id) ? '<span class="pc-think" title="überlegt …"><i></i><i></i><i></i></span>' : '';
     return `
       <div class="pcard ${active ? 'active' : ''} ${mine ? 'mine' : ''}" data-pid="${p.id}" style="--pc:${p.color}" title="${esc(p.name)}${p.tagline ? ` – ${esc(p.tagline)}` : ''}${p.strategy && STRATEGY_LABEL[p.strategy.id] ? ` · Plan: ${STRATEGY_LABEL[p.strategy.id]}` : ''}${active ? ' (am Zug)' : ''}">
         <span class="pc-av">${avatarSVG(p.face, p.color, 48)}</span>
         <div class="pc-body">
-          <div class="pc-name">${esc(p.name)}${badges}${think}</div>
+          <div class="pc-name">${esc(p.name)}${think}</div>
           <div class="pc-stats">
             <span title="Rohstoffkarten auf der Hand">${ic('cards', 'inline')}${cards}</span>
             <span title="Entwicklungskarten auf der Hand">${ic('card', 'inline')}${p.dev.length}</span>
           </div>
         </div>
+        ${badges ? `<div class="pc-medals">${badges}</div>` : ''}
         <div class="pc-vp" title="${mine ? 'Deine Siegpunkte' : 'Öffentliche Siegpunkte'} (Ziel: ${s.settings.targetVP})">${ic('trophy', 'inline')}<b>${displayVp(g, p.id, shown, !mine)}</b></div>
       </div>`;
   }).join('');
@@ -210,43 +212,9 @@ export function renderHeroRoll(g) {
 // ------------------------------------------------------------------ Missionen (einklappbar)
 /** Wappen der Auszeichnungen (einfarbig, Farbe über currentColor). */
 export const EMBLEM = {
-  road: `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 43C13 31 35 32 29 21S21 11 35 5" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/><path d="M9 43C13 31 35 32 29 21S21 11 35 5" fill="none" stroke="#0b1626" stroke-opacity=".75" stroke-width="1.7" stroke-dasharray="3.4 4.2" stroke-linecap="round"/></svg>`,
-  army: `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 3 41 9.5v14.2C41 34.5 33.8 41.6 24 45.5 14.200 41.600 7 34.500 7 23.700V9.500Z" fill="currentColor" fill-opacity=".22" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M16 14.500 32 33M32 14.500 16 33" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><path d="M12.500 30.500l6.500-3.200M35.500 30.500 29 27.300M18.200 17.800l-3.600-3.400M29.800 17.800l3.600-3.400" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>`,
+  road: `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M3 40h42" stroke="currentColor" stroke-opacity=".5" stroke-width="2" stroke-linecap="round"/><path d="M19.500 8h9L41 42H7z" fill="currentColor"/><path d="M21.600 10.500h4.800L36 40H12z" fill="#14233a"/><path d="M24 14v4.500M24 22v6M24 32.500v7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M8 17l5-4.500 5 4.500v6H8z" fill="currentColor" transform="translate(-2 2) scale(.9)"/><path d="M36 14.500l4.200-3.600 4.200 3.600V20H36z" fill="currentColor" fill-opacity=".8" transform="translate(-1 2) scale(.9)"/></svg>`,
+  army: `<svg viewBox="0 0 48 48" aria-hidden="true"><g stroke="currentColor" stroke-linecap="round" fill="none"><path d="M6 5l36 36M42 5 6 41" stroke-width="3.4"/><path d="M6.500 31.500l10 10M41.500 31.500l-10 10" stroke-width="3.6"/></g><path d="M24 8 38 12.500v12.500c0 8.500-6 14-14 18-8-4-14-9.500-14-18V12.500z" fill="currentColor" stroke="#14233a" stroke-width="2.4" stroke-linejoin="round"/><path d="M16 22l8 5.500 8-5.500M16 29l8 5.500 8-5.500" fill="none" stroke="#14233a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
 };
-
-/** Auszeichnungen (je +2 Siegpunkte) als Karten: Wappen, Halter mit Portrait, Fortschritt – immer sichtbar. */
-export function renderAwards(g, shown = null) {
-  const s = g.s;
-  if (s.phase === 'setup') return '';
-  const lens = s.roadLengths || s.players.map(() => 0);
-  const mk = (cls, title, need, unit, holder, best, mineVal, hint) => {
-    const p = holder !== null && holder !== undefined ? s.players[holder] : null;
-    const mine = holder === HUMAN;
-    const pct = Math.min(100, Math.round((best.val / need) * 100));
-    const lead = best.val > 0 ? `${esc(s.players[best.pi].name)} ${best.val}` : 'noch niemand';
-    const tip = `${title}: +2 Siegpunkte. ${hint} Dein Stand: ${mineVal}.${p ? ` Aktuell: ${p.name} (${best.val}).` : ' Noch niemand hat sie.'}`;
-    const who = p
-      ? `<span class="ac-av">${avatarSVG(p.face, p.color, 22)}</span><b>${mine ? 'Du' : esc(p.name)}</b>`
-      : '<span class="ac-av none"></span><b class="dim">noch frei</b>';
-    const prog = p ? `${best.val} ${unit}` : `${best.val}/${need} ${unit}`;
-    return `<button type="button" class="acard ${cls} ${p ? 'held' : 'free'} ${mine ? 'mine' : ''}" data-act="award-info" data-kind="${cls}" title="${esc(tip)}" aria-label="${esc(tip)}">
-      <span class="ac-emb">${EMBLEM[cls]}</span>
-      <span class="ac-main">
-        <small class="ac-title">${title}</small>
-        <span class="ac-who">${who}</span>
-        <span class="ac-prog" title="${lead}"><i style="width:${p ? 100 : pct}%"></i><em>${prog}</em></span>
-      </span>
-      <span class="ac-n">${p ? best.val : `${best.val}/${need}`}</span>
-      <span class="ac-pts">+2</span></button>`;
-  };
-  const roadBest = lens.reduce((b, v, i) => (v > b.val ? { pi: i, val: v } : b), { pi: 0, val: 0 });
-  const roadH = shown ? shown.road : s.longestRoad.holder;
-  const armyH = shown ? shown.army : s.largestArmy.holder;
-  const road = mk('road', 'Längste Handelsstraße', 5, 'Straßen', roadH, roadH !== null ? { pi: roadH, val: lens[roadH] || s.longestRoad.len } : roadBest, lens[HUMAN] || 0, 'Ab 5 zusammenhängenden Straßen – du brauchst mehr als der Halter.');
-  const armyBest = s.players.reduce((b, p) => (p.playedKnights > b.val ? { pi: p.id, val: p.playedKnights } : b), { pi: 0, val: 0 });
-  const army = mk('army', 'Größte Rittermacht', 3, 'Ritter', armyH, armyH !== null ? { pi: armyH, val: s.players[armyH].playedKnights } : armyBest, s.players[HUMAN].playedKnights, 'Ab 3 ausgespielten Rittern – du brauchst mehr als der Halter.');
-  return road + army;
-}
 
 /** Große Auszeichnungs-Karte für die Zeremonie (Wappen, Titel, Halter, +2). `holder` = Spieler-Objekt oder null (frei). */
 export function awardHeroHTML(kind, holder, { prev = null, value = 0 } = {}) {

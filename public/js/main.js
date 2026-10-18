@@ -10,7 +10,7 @@ import {
 import { installIcons } from './ui/icons.js';
 import { renderMenu, rememberLast } from './ui/menu.js';
 import {
-  renderHand, renderHandBar, renderPlayers, renderFab, renderNext, renderDice, renderMissionBox, renderAwards, displayVp, awardHeroHTML, renderHeroRoll,
+  renderHand, renderHandBar, renderPlayers, renderFab, renderNext, renderDice, renderMissionBox, displayVp, awardHeroHTML, renderHeroRoll,
 } from './ui/panels.js';
 import { renderMarket, suggestTrade } from './ui/market.js';
 import { sfx } from './ui/sfx.js';
@@ -31,7 +31,19 @@ const SPEED_KEY = 'catan-speed';
 const HUMAN = 0;
 // [Name, Pause zwischen Bot-Aktionen (ms), Animationsfaktor, Wartezeit auf deine Antwort (ms)]
 const SPEEDS = { slow: ['Langsam', 2100, 1.35, 25000], normal: ['Normal', 1300, 1, 18000], fast: ['Schnell', 420, 0.5, 9000] };
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** Warten, das bei Pause stillsteht: die Pausenzeit zählt nicht mit (Bots, Angebote, Wartezeiten). */
+let gamePaused = false;
+const sleep = (ms) => new Promise((resolve) => {
+  let left = ms;
+  let last = performance.now();
+  const tick = () => {
+    const now = performance.now();
+    if (!gamePaused) left -= now - last;
+    last = now;
+    if (left <= 0) resolve(); else setTimeout(tick, gamePaused ? 120 : Math.min(left, 250));
+  };
+  setTimeout(tick, Math.min(ms, 250));
+});
 const sum = (o) => RES.reduce((a, r) => a + (o[r] || 0), 0);
 
 class App {
@@ -67,6 +79,9 @@ class App {
     this.view.onRobberLand = (x, y) => { const pt = this.view.screenPoint(x, y); buildFxPiece('settlement', pt, '#2b303a', this.view.pxPerUnit()); sfx.play('robberLand'); };
     $('#btnMenu').innerHTML = ic('gear');
     this.syncMusicBtn();
+    $('#btnPause').innerHTML = ic('pause');
+    $('#pauseGo').innerHTML = `${ic('play')}Weiter`;
+    $('#pauseIco').innerHTML = ic('pause');
     $('#zoomIn').innerHTML = ic('plus');
     $('#zoomOut').innerHTML = ic('minus');
     $('#zoomFit').innerHTML = ic('target');
@@ -81,6 +96,32 @@ class App {
     b.innerHTML = ic(music.enabled ? 'music' : 'music-off');
     b.setAttribute('aria-pressed', String(music.enabled));
     b.classList.toggle('off', !music.enabled);
+  }
+
+  /** Spiel anhalten oder fortsetzen: Bots, Wartezeiten, Animationen, Ton und Eingaben stehen still. */
+  setPaused(on, leaving = false) {
+    on = !!on;
+    if (on === gamePaused) return;
+    if (on && (!this.game || this.game.s.phase === 'over' || $('#game').classList.contains('hidden'))) return;
+    gamePaused = on;
+    const ov = $('#pauseOv');
+    ov.classList.toggle('hidden', !on);
+    document.body.classList.toggle('paused', on);
+    $('#btnPause').setAttribute('aria-pressed', String(on));
+    if (window.gsap) { if (on) window.gsap.globalTimeline.pause(); else window.gsap.globalTimeline.resume(); }
+    sfx.setPaused(on);
+    music.setPaused(on);
+    if (on) {
+      this.pausedAt = Date.now();
+      this.closePopover();
+      $('#pauseGo').focus({ preventScroll: true });
+    } else {
+      // alles, was an der Uhr hängt, um die Pausenzeit nach hinten schieben
+      const dt = Date.now() - (this.pausedAt || Date.now());
+      for (const k of ['rollPauseUntil', 'heroEnd', 'diceRevealAt', 'waitStart', 'robberMoveAt']) if (this[k]) this[k] += dt;
+      if (this.view.robberEnd) this.view.robberEnd += dt;
+      if (!leaving) { this.queueRender(); this.pump(); }
+    }
   }
 
   freshMarket() {
@@ -756,10 +797,6 @@ class App {
             if (holder) sfx.play(e.holder === HUMAN ? 'vp' : 'vpOther', { delay: 120 });
             if (e.holder === HUMAN) setTimeout(celebrate, 200);
             if (!holder) this.toast(`${e.kind === 'road' ? 'Die Längste Handelsstraße' : 'Die Größte Rittermacht'} ist wieder frei.`, 'info');
-            setTimeout(() => {
-              const card = document.querySelector(`.acard.${e.kind}`);
-              if (card && window.gsap) window.gsap.fromTo(card, { scale: 1.2 }, { scale: 1, duration: 0.9, ease: 'elastic.out(1, 0.4)', clearProps: 'transform' });
-            }, 60);
           },
         });
       } finally {
@@ -842,8 +879,6 @@ class App {
     $('#heroRoll').innerHTML = renderHeroRoll(g);
     $('#diceBox').innerHTML = renderDice(g, this.rolling);
     this.renderMarketLayer();
-    const awards = renderAwards(g, this.awardShown);
-    if (awards !== this.awardHtml) { this.awardHtml = awards; $('#awardBox').innerHTML = awards; }
     $('#missionBox').innerHTML = renderMissionBox(g, this.ui.missionsOpen);
 
     if (s.phase === 'main' && s.sub === 'discard' && s.discard[HUMAN] !== undefined) {
@@ -1058,7 +1093,7 @@ class App {
     document.addEventListener('click', (e) => {
       if (this.ui.fabOpen && !e.target.closest('#fab')) { this.ui.fabOpen = false; this.queueRender(); }
       const pcard = e.target.closest('.pcard[data-pid]');
-      if (pcard && this.game && window.matchMedia('(max-width: 860px)').matches) {
+      if (pcard && !e.target.closest('.aw-med') && this.game && window.matchMedia('(max-width: 860px)').matches) {
         const g = this.game; const p = g.s.players[Number(pcard.dataset.pid)];
         if (p && p.id !== HUMAN) {
           const plan = p.strategy && STRATEGY_LABEL[p.strategy.id] ? ` · Plan: ${STRATEGY_LABEL[p.strategy.id]}` : '';
@@ -1072,6 +1107,9 @@ class App {
       const pop = e.target.closest('[data-pop]');
       if (pop) { this.onPopover(pop.dataset.pop); return; }
       if (e.target.closest('#btnMenu')) { this.togglePopover(); return; }
+      if (e.target.closest('#btnPause')) { this.setPaused(true); return; }
+      if (e.target.closest('#pauseGo')) { this.setPaused(false); return; }
+      if (e.target.closest('#pauseMenu')) { clearTimeout(this.saveTimer); this.saveNow(); this.setPaused(false, true); this.game = null; this.showMenu(); return; }
       if (e.target.closest('#btnMusic')) { music.setEnabled(!music.enabled); this.syncMusicBtn(); return; }
       if (!e.target.closest('#menuPop')) this.closePopover();
       let b = e.target.closest('[data-act]');
@@ -1100,8 +1138,14 @@ class App {
         this.fitHand();
       }, 200);
     });
+    document.addEventListener('visibilitychange', () => { if (document.hidden && this.game && !$('#game').classList.contains('hidden')) this.setPaused(true); });
     document.addEventListener('keydown', (e) => {
       if (e.target.matches('input, textarea')) return;
+      if (gamePaused) {
+        if (e.key === 'Escape' || e.key === 'p' || e.key === 'P' || e.key === ' ') { e.preventDefault(); this.setPaused(false); }
+        return;
+      }
+      if ((e.key === 'p' || e.key === 'P') && this.game && !hasModal() && !$('#game').classList.contains('hidden')) { this.setPaused(true); return; }
       if (e.key === 'Escape') {
         if (!$('#menuPop').classList.contains('hidden')) this.closePopover();
         else if (this.ui.fabOpen) { this.ui.fabOpen = false; this.queueRender(); } else if (this.pending) { this.pending = null; this.queueRender(); } else if (!closeTopModal()) {

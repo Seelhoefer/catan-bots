@@ -10,6 +10,7 @@ let noiseBuf = null;
 const files = {}; // name -> AudioBuffer (optionale Aufnahmen)
 const last = {};
 let enabled = true;
+let paused = false;
 let volume = 0.7;
 const MASTER_SOFT = 0.62; // Gesamtpegel: dezenter als früher
 try {
@@ -299,7 +300,7 @@ const SOFT = {
 export const sfx = {
   /** `opts.delay` in ms, `opts.vol` 0–1 (relative Lautstärke). */
   play(name, opts = {}) {
-    if (!enabled) return;
+    if (!enabled || paused) return;
     const c = ensure();
     if (!c || !SOUNDS[name]) return;
     const now = performance.now();
@@ -331,7 +332,14 @@ export const sfx = {
   /** Muss in einer Nutzergeste aufgerufen werden (Browser-Autoplay-Regeln). */
   unlock() {
     const c = ensure();
-    if (c && c.state === 'suspended') c.resume();
+    if (c && c.state === 'suspended' && !paused) c.resume();
+  },
+
+  /** Pause: der gemeinsame AudioContext (Effekte und Musik) wird angehalten und danach fortgesetzt. */
+  setPaused(on) {
+    paused = !!on;
+    if (!ctx) return;
+    if (paused) ctx.suspend(); else ctx.resume();
   },
 
   /** Gemeinsamer AudioContext (auch für die Musik). */

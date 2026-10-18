@@ -463,6 +463,12 @@ export const music = {
     }
   },
 
+  /** Pause des Spiels: eine eingebundene Musikdatei anhalten (der generative Teil hängt am AudioContext). */
+  setPaused(on) {
+    if (!audioEl || !running) return;
+    if (on) audioEl.pause(); else audioEl.play().catch(() => {});
+  },
+
   setEnabled(on) {
     enabled = !!on;
     persist();

@@ -148,10 +148,14 @@ Die Tests spielen komplette Partien (alle Feldgrößen, mit/ohne Nebel) nur mit 
 ## 📱 Handy-Bedienung
 
 - **Brett:** Mit einem Finger wischen (gleitet nach, wie bei Karten-Apps), mit zwei Fingern zoomen und gleichzeitig verschieben, Doppeltipp auf freie Fläche zoomt hinein und wieder heraus. Das Brett lässt sich nicht aus dem Bild schieben.
-- **Layout hochkant:** Oben nur die Spieler als runde Bilder (Punkte-Marke, Kartenzahl; ein Tipp zeigt Details und Plan), unten die Rohstoffleiste und darunter Bauen, Handeln, Entwicklungskarten und der große Weiter-Knopf. Auszeichnungen und Missionen sind kompakte Symbole oben links, die Einstellungen (inkl. Musik) liegen hinter dem Zahnrad.
+- **Layout hochkant:** Oben nur die Spieler als runde Bilder (Punkte-Marke, Kartenzahl; ein Tipp zeigt Details und Plan), unten die Rohstoffleiste und darunter Bauen, Handeln, Entwicklungskarten und der große Weiter-Knopf. Missionen sind ein kompaktes Symbol oben links, die Einstellungen (inkl. Musik) liegen hinter dem Zahnrad. Zahlen in den Marken (Punkte, Kartenzahl, Rohstoffe) sind schriftunabhängig mittig (CSS `text-box`).
 - **Flüssig:** Auf Touch-Geräten sind Unschärfe-Effekte und Dauer-Animationen aus; Listen und Fenster scrollen weich ohne Gummiband. Der Desktop sieht weiter aus wie bisher.
 
 ## 🏅 Auszeichnungen
 
-Wechselt die **Längste Handelsstraße** oder die **Größte Rittermacht** den Besitzer, dunkelt der Bildschirm ab, die Karte erscheint groß in der Mitte (mit Fanfare) und wandert zur Spielerkarte oben – dort zählen die +2 Siegpunkte erst bei der Ankunft. Nimmt jemand die Auszeichnung ab, wächst die Karte aus der Spielerkarte des bisherigen Halters und wandert zum neuen; ein roter Abzug zeigt, wer sie verliert. Auf dem Brett werden dazu Fähnchen gehisst: ein Wimpel auf jeder Straße der längsten Handelsstraße bzw. ein Banner mit Schwertern auf jedem Gebäude des Rittermacht-Halters (beim Wechsel werden die alten eingeholt). Ein Klick auf den abgedunkelten Bildschirm beschleunigt den Ablauf.
+Wechselt die **Längste Handelsstraße** oder die **Größte Rittermacht** den Besitzer, dunkelt der Bildschirm ab, die Karte erscheint groß in der Mitte (mit Fanfare) und wandert zur Spielerkarte oben – dort zählen die +2 Siegpunkte erst bei der Ankunft. Nimmt jemand die Auszeichnung ab, wächst die Karte aus der Spielerkarte des bisherigen Halters und wandert zum neuen; ein roter Abzug zeigt, wer sie verliert. Auf dem Brett werden dazu Fähnchen gehisst: ein Wimpel auf jeder Straße der längsten Handelsstraße bzw. ein Banner mit Schwertern auf jedem Gebäude des Rittermacht-Halters (beim Wechsel werden die alten eingeholt). Ein Klick auf den abgedunkelten Bildschirm beschleunigt den Ablauf. Wer eine Auszeichnung hält, trägt sie dauerhaft als goldene **Medaille mit Wappen (+2)** am Spielerprofil im Kopf (ein Tipp erklärt die Bedingung); eigene Kacheln am Brettrand gibt es nicht mehr.
+
+## ⏸️ Pause
+
+Der Pausen-Knopf im Kopf (oder Taste **P**; Esc/P/Leertaste setzt fort) hält das Spiel wirklich an: Bots und Handelsangebote warten (die Pausenzeit zählt nicht mit), Animationen, Würfel, Ton und Musik stehen still, das Brett ist gesperrt. „Zum Hauptmenü“ speichert den Stand. Wechselt man den Tab oder die App, pausiert das Spiel automatisch.
 
