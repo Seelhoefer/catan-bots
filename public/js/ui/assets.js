@@ -115,6 +115,6 @@ export async function preloadArt() {
   const results = await Promise.all(list.map(load));
   art.ok = results.every(Boolean);
   // Karten im Hintergrund nachladen (nicht kritisch)
-  ['knight', 'victory', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap'].forEach((t) => load(cardImgSrc(t)));
+  ['knight', 'victory', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'decree'].forEach((t) => load(cardImgSrc(t)));
   return art.ok;
 }

@@ -43,6 +43,7 @@ export const DEV_INFO = {
   plenty: { name: 'Erfindung', icon: 'bulb', desc: 'Nimm dir 2 beliebige Rohstoffe aus der Bank.' },
   monopoly: { name: 'Monopol', icon: 'coin', desc: 'Nenne einen Rohstoff – alle Gegner geben dir alle Karten dieser Sorte.' },
   harvest: { name: 'Ernte', icon: 'wheat', desc: 'Wähle eines deiner Felder mit Siedlung oder Stadt und erhalte sofort dessen Ertrag (Stadt = doppelt).' },
+  decree: { name: 'Erlass', icon: 'scroll', desc: 'Lege für eine Runde einen Zoll oder eine Strafe auf einen Rohstoff fest. Zoll: Gegner, die ihn würfeln, zahlen dir 1 Karte. Strafe: Gegner erhalten 1 Karte weniger.' },
   remap: { name: 'Weltenwandel', icon: 'globe', desc: 'Alle Landfelder werden zufällig neu verteilt. Siedlungen und Straßen bleiben stehen.' },
 };
 
@@ -93,6 +94,8 @@ export const DEFAULT_SETTINGS = {
   remapCard: true,
   harvestCard: true,
   goldField: true, // Feld mit freier Rohstoffwahl
+  worldHarbor: false, // Erweiterung: ein einziger Welthafen, an dem alle Rohstoffe 2:1 getauscht werden
+  decreeCard: false, // Erweiterung: Erlass-Karte – Zoll oder Strafe auf einen Rohstoff
 };
 
 /** Spielpläne der Bots (siehe bot.js). */

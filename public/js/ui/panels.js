@@ -38,7 +38,7 @@ export function renderHand(g, inflight = {}) {
 export function renderHandBar(g, inflight = {}, landing = {}, sel = null) {
   const p = g.s.players[HUMAN];
   const resHtml = renderResGroups(g, p, inflight, landing, sel);
-  const devHtml = ['knight', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'victory'].map((t) => {
+  const devHtml = ['knight', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'decree', 'victory'].map((t) => {
     const cards = p.dev.filter((c) => c.type === t);
     if (!cards.length) return '';
     const ready = t !== 'victory' && g.playableDev(HUMAN, t);
@@ -142,7 +142,7 @@ function pieceIcon(g, kind) {
   return null;
 }
 
-const anyPlayable = (g) => ['knight', 'roadbuilding', 'plenty', 'monopoly', 'remap', 'harvest'].some((t) => g.playableDev(HUMAN, t));
+const anyPlayable = (g) => ['knight', 'roadbuilding', 'plenty', 'monopoly', 'remap', 'harvest', 'decree'].some((t) => g.playableDev(HUMAN, t));
 
 const BUILD_ITEMS = [ // von oben nach unten (die Straße liegt am nächsten am Knopf)
   ['devcard', 'Entwicklungskarte', 'card'],
@@ -234,6 +234,21 @@ export function awardHeroHTML(kind, holder, { prev = null, value = 0 } = {}) {
     <div class="ah-sub">${sub}</div>
     ${holder ? '<div class="ah-pts">+2 Siegpunkte</div>' : ''}
   </div>`;
+}
+
+/** Aktive Erlasse (Zoll / Strafe) als kleine Hinweise: Symbol, Rohstoff, Aussteller. */
+export function renderDecrees(g) {
+  const list = g.s.decrees || [];
+  if (!list.length || g.s.phase === 'setup') return '';
+  return list.map((d) => {
+    const p = g.s.players[d.by];
+    const mine = d.by === HUMAN;
+    const kind = d.kind === 'toll' ? 'Zoll' : 'Strafe';
+    const tip = d.kind === 'toll'
+      ? `Zoll auf ${RES_INFO[d.res].name} (${mine ? 'du' : p.name}): Wer ${RES_INFO[d.res].name} erwürfelt, zahlt 1 Karte an ${mine ? 'dich' : p.name} – bis ${mine ? 'du' : p.name} wieder am Zug ${mine ? 'bist' : 'ist'}.`
+      : `Strafe auf ${RES_INFO[d.res].name} (${mine ? 'du' : p.name}): Wer ${RES_INFO[d.res].name} erwürfelt, erhält 1 Karte weniger – bis ${mine ? 'du' : p.name} wieder am Zug ${mine ? 'bist' : 'ist'}.`;
+    return `<span class="dpill ${d.kind} ${mine ? 'mine' : ''}" data-act="decree-info" data-by="${d.by}" title="${esc(tip)}" aria-label="${esc(tip)}">${ic('scroll', 'inline')}<b>${kind}</b>${ic(d.res, 'inline')}<span class="dp-av">${avatarSVG(p.face, p.color, 20)}</span></span>`;
+  }).join('');
 }
 
 export function renderMissionBox(g, open) {

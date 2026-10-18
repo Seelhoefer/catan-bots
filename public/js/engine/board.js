@@ -141,7 +141,7 @@ function buildGraph(board) {
   board.edgeIndex = Object.fromEntries(emap);
 }
 
-function placePorts(board, rng) {
+function placePorts(board, rng, opts = {}) {
   const coast = board.edges.filter((e) => e.hexes.length === 1);
   const cx = 0;
   const cy = 0;
@@ -160,6 +160,7 @@ function placePorts(board, rng) {
   const anyCount = Math.round((P * 4) / 9);
   const types = [];
   for (let i = 0; i < anyCount; i++) types.push('any');
+  if (opts.worldHarbor) { const i = types.indexOf('any'); if (i >= 0) types[i] = 'all'; } // genau ein Welthafen (ersetzt einen 3:1-Hafen)
   const specific = shuffle(RES, rng);
   for (let i = 0; types.length < P; i++) types.push(specific[i % specific.length]);
   const shuffled = shuffle(types, rng);
@@ -222,7 +223,7 @@ export function generateBoard(sizeId, variant, rng, opts = {}) {
   placeNumbers(board, buildNumberList(types.filter((t) => t !== 'desert').length), rng);
 
   buildGraph(board);
-  placePorts(board, rng);
+  placePorts(board, rng, opts);
   if (variant === 'fog') placeFog(board, rng);
 
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;

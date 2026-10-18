@@ -159,3 +159,9 @@ Wechselt die **Längste Handelsstraße** oder die **Größte Rittermacht** den B
 
 Der Pausen-Knopf im Kopf (oder Taste **P**; Esc/P/Leertaste setzt fort) hält das Spiel wirklich an: Bots und Handelsangebote warten (die Pausenzeit zählt nicht mit), Animationen, Würfel, Ton und Musik stehen still, das Brett ist gesperrt. „Zum Hauptmenü“ speichert den Stand. Wechselt man den Tab oder die App, pausiert das Spiel automatisch.
 
+
+
+## 🧩 Erweiterungen (beim Einrichten wählbar)
+
+- **Welthafen:** Auf dem Brett gibt es genau einen goldenen Hafen („2:1 ALLE“), an dem sich jeder Rohstoff 2:1 tauschen lässt. Er ersetzt einen der normalen 3:1-Häfen (`worldHarbor` in den Einstellungen; Bots bewerten ihn beim Siedeln und beim Hafenplan höher als gewöhnliche Häfen).
+- **Erlass-Karte:** Neue Entwicklungskarte (`decreeCard`, 2× pro Kartengröße im Stapel). Beim Ausspielen wählst du **Zoll** (Gegner, die den Rohstoff erwürfeln, zahlen dir 1 Karte davon) oder **Strafe** (sie erhalten 1 Karte weniger, die Karte bleibt in der Bank) und einen Rohstoff. Der Erlass gilt für alle Würfe der anderen, bis du wieder am Zug bist; ein Spieler hat höchstens einen aktiven Erlass. Aktive Erlasse stehen als Hinweis oben links auf dem Brett. Bots spielen die Karte, wenn der Ertrag der Gegner auf einem Rohstoff hoch ist.

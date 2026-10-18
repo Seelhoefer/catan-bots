@@ -585,3 +585,92 @@ test('Längste Handelsstraße: der Pfad enthält genau so viele Straßen wie die
     for (const eid of path) assert.equal(g.s.roads[eid], p.id);
   }
 });
+
+// ---------------------------------------------------------------- Erweiterungen
+test('Welthafen: genau ein Hafen tauscht alle Rohstoffe 2:1, nur wenn eingestellt', () => {
+  for (const size of ['small', 'large', 'huge']) {
+    const on = generateBoard(size, 'classic', makeRng(9), { worldHarbor: true });
+    assert.equal(on.ports.filter((p) => p.type === 'all').length, 1);
+    const off = generateBoard(size, 'classic', makeRng(9));
+    assert.equal(off.ports.filter((p) => p.type === 'all').length, 0);
+    assert.equal(on.ports.length, off.ports.length, 'ersetzt einen 3:1-Hafen');
+  }
+  const g = afterSetup({ worldHarbor: true }, 12);
+  clearBoard(g);
+  const world = g.board.ports.find((p) => p.type === 'all');
+  g.s.buildings[world.verts[0]] = { owner: 0, type: 'settlement' };
+  for (const r of RES) assert.equal(g.portRatio(0, r), 2);
+  g.s.players[0].hand.wood = 2;
+  g.s.sub = 'actions';
+  const res = g.bankTrade(0, 'wood', 'ore');
+  assert.equal(res.ok, true);
+  assert.equal(g.s.players[0].hand.ore, 1);
+});
+
+function decreeSetup(kind, res) {
+  const g = afterSetup({ decreeCard: true, antiBad: false }, 14);
+  clearBoard(g);
+  const hex = g.board.hexes.find((h) => h.num === 8 && RES.includes(h.type));
+  g.s.robber = g.board.hexes.find((h) => h.type === 'desert').id;
+  g.s.buildings[hex.verts[0]] = { owner: 1, type: 'settlement' };
+  g.s.buildings[hex.verts[2]] = { owner: 2, type: 'settlement' };
+  g.s.players[0].dev = [{ type: 'decree', turn: 1 }];
+  g.s.sub = 'actions';
+  const r = g.playDev(0, 'decree', { res: res || hex.type, kind });
+  assert.equal(r.ok, true);
+  g.s.sub = 'roll';
+  return { g, hex };
+}
+
+test('Erlass-Karte: Zoll – Gegner zahlen 1 Karte vom Ertrag an den Aussteller', () => {
+  const { g, hex } = decreeSetup('toll');
+  const total = () => RES.reduce((a, r) => a + g.s.bank[r], 0) + g.s.players.reduce((a, p) => a + g.handCount(p.id), 0);
+  const before = total();
+  g.rollDice(0, [4, 4]); // der Aussteller würfelt selbst: Zoll gilt für die Erträge der anderen
+  const t = hex.type;
+  assert.equal(g.s.players[1].hand[t], 0);
+  assert.equal(g.s.players[2].hand[t], 0);
+  assert.equal(g.s.players[0].hand[t], 2);
+  assert.equal(total(), before, 'Karten bleiben erhalten');
+});
+
+test('Erlass-Karte: Strafe – Gegner erhalten 1 Karte weniger, der Aussteller ist ausgenommen', () => {
+  const { g, hex } = decreeSetup('penalty');
+  g.s.buildings[hex.verts[4]] = { owner: 0, type: 'city' };
+  g.rollDice(0, [4, 4]);
+  const t = hex.type;
+  assert.equal(g.s.players[1].hand[t], 0);
+  assert.equal(g.s.players[2].hand[t], 0);
+  assert.equal(g.s.players[0].hand[t], 2, 'eigene Erträge bleiben unberührt');
+});
+
+test('Erlass-Karte: gilt nur für den gewählten Rohstoff und endet, wenn der Aussteller wieder dran ist', () => {
+  const g = afterSetup({ decreeCard: true, antiBad: false }, 14);
+  clearBoard(g);
+  const hex = g.board.hexes.find((h) => h.num === 8 && RES.includes(h.type));
+  const other = RES.find((r) => r !== hex.type);
+  g.s.robber = g.board.hexes.find((h) => h.type === 'desert').id;
+  g.s.buildings[hex.verts[0]] = { owner: 1, type: 'settlement' };
+  g.s.players[0].dev = [{ type: 'decree', turn: 1 }];
+  g.s.sub = 'actions';
+  assert.equal(g.playDev(0, 'decree', { res: other, kind: 'penalty' }).ok, true);
+  assert.equal(g.s.decrees.length, 1);
+  g.s.sub = 'roll';
+  g.rollDice(0, [4, 4]);
+  assert.equal(g.s.players[1].hand[hex.type], 1, 'anderer Rohstoff: keine Strafe');
+  assert.equal(g.playDev(0, 'decree', { res: other, kind: 'toll' }).ok, false, 'nur eine Karte pro Zug');
+  // bis der Aussteller wieder dran ist
+  g.s.sub = 'actions';
+  for (let i = 0; i < g.s.players.length; i++) {
+    g.endTurn(g.s.turn);
+    if (g.s.turn !== 0) assert.equal(g.s.decrees.length, 1, 'Erlass gilt weiter');
+    g.s.sub = 'actions';
+  }
+  assert.equal(g.s.turn, 0);
+  assert.equal(g.s.decrees.length, 0, 'Erlass abgelaufen');
+});
+
+test('Erlass-Karte ist nur mit der Einstellung im Stapel', () => {
+  assert.equal(newGame({ decreeCard: false }).s.devDeck.some((t) => t === 'decree'), false);
+  assert.equal(newGame({ decreeCard: true }).s.devDeck.some((t) => t === 'decree'), true);
+});

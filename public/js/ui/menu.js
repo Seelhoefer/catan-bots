@@ -181,6 +181,10 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
     range.style.setProperty('--p', `${((settings.targetVP - 5) / (MAX_TARGET_VP - 5)) * 100}%`);
     const points = sec('Siegpunkte', el('div', { class: 'mw-vp' }, el('span', { class: 'mw-vp-ico', html: ic('trophy') }), num), range, hint);
 
+    const ext = sec('Erweiterungen', el('div', { class: 'mw-rules' },
+      sw('worldHarbor', 'Welthafen', 'Ein einziger Hafen, an dem alle Rohstoffe 2:1 getauscht werden'),
+      sw('decreeCard', 'Erlass-Karte', 'Neue Karte: Zoll oder Strafe auf einen Rohstoff festlegen')));
+
     const more = el('section', { class: 'mw-sec more' },
       el('button', { type: 'button', class: `mw-more ${moreOpen ? 'open' : ''}`, 'aria-expanded': String(moreOpen), onclick: () => { moreOpen = !moreOpen; draw(); } }, el('span', {}, 'Weitere Regeln'), el('span', { class: 'mw-chev', html: ic('chev') })),
       moreOpen ? el('div', { class: 'mw-rules' },
@@ -190,7 +194,7 @@ export function renderMenu(root, { hasSave, onStart, onResume, onRules }) {
       el('div', { class: 'mw-top' },
         el('button', { type: 'button', class: 'hbtn mw-back', 'aria-label': 'Zurück zum Start', title: 'Zurück', onclick: () => { view = 'home'; draw(); }, html: ic('arrow') }),
         el('h2', {}, 'Spiel einrichten')),
-      you, island, bots, points, more,
+      you, island, bots, points, ext, more,
       el('div', { class: 'mw-foot' }, el('button', { type: 'button', class: 'mw-start', onclick: startGame }, 'Spiel starten'))));
     const g = window.gsap;
     if (g && !this_animated) {

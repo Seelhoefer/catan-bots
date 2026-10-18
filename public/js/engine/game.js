@@ -27,7 +27,7 @@ export class Game {
     settings.bots = Math.max(1, Math.min(settings.bots, size.maxPlayers - 1));
     settings.targetVP = Math.max(4, Math.min(50, settings.targetVP));
 
-    const board = generateBoard(settings.size, settings.variant, r, { gold: settings.goldField });
+    const board = generateBoard(settings.size, settings.variant, r, { gold: settings.goldField, worldHarbor: settings.worldHarbor });
     const extra = size.sizeBonus + Math.ceil(Math.max(0, settings.targetVP - 10) / 2);
     const pieces = { road: 15 + extra * 3, settlement: 5 + extra, city: 4 + extra };
 
@@ -66,6 +66,7 @@ export class Game {
     add('plenty', 2 * f); add('monopoly', 2 * f);
     if (settings.remapCard) add('remap', 2 * f);
     if (settings.harvestCard) add('harvest', 2 * f);
+    if (settings.decreeCard) add('decree', 2 * f);
 
     const bank = {};
     for (const res of RES) bank[res] = 19 * f;
@@ -108,6 +109,7 @@ export class Game {
       longestRoad: { holder: null, len: 0 },
       largestArmy: { holder: null, count: 0 },
       missions,
+      decrees: [], // aktive Erlasse: { by, res, kind: 'toll' | 'penalty' } – gelten bis der Aussteller wieder am Zug ist
       gold: {},
       offers: [],
       trades: [],
@@ -185,7 +187,8 @@ export class Game {
     let best = 4;
     for (const b of this.buildingsOf(pi)) {
       const port = this.board.vertices[b.vid].port;
-      if (port === 'any') best = Math.min(best, 3);
+      if (port === 'all') best = Math.min(best, 2);
+      else if (port === 'any') best = Math.min(best, 3);
       else if (port === res) best = Math.min(best, 2);
     }
     return best;
@@ -373,6 +376,8 @@ export class Game {
       }
     }
     const received = s.players.map(() => 0);
+    const tolls = {};
+    const hits = [];
     for (const res of RES) {
       const takers = s.players.filter((p) => gains[p.id][res] > 0);
       const totalWanted = takers.reduce((a, p) => a + gains[p.id][res], 0);
@@ -385,12 +390,26 @@ export class Game {
           this.log(`Die Bank hat nicht genug ${RES_INFO[res].name} – niemand erhält welches.`);
         }
       }
+      for (const d of (s.decrees || []).filter((x) => x.res === res)) { // Erlass: Zoll (geht an den Aussteller) oder Strafe (geht zurück an die Bank)
+        const hit = [];
+        for (const p of takers) {
+          if (p.id === d.by || gains[p.id][res] <= 0) continue;
+          gains[p.id][res] -= 1;
+          hit.push(p.id);
+        }
+        if (!hit.length) continue;
+        if (d.kind === 'toll') { tolls[d.by] = tolls[d.by] || emptyHand(); tolls[d.by][res] += hit.length; }
+        hits.push({ ...d, from: hit });
+      }
       for (const p of takers) {
         const n = gains[p.id][res];
         p.hand[res] += n;
         s.bank[res] -= n;
         received[p.id] += n;
       }
+    }
+    for (const [by, h] of Object.entries(tolls)) {
+      for (const res of RES) { s.players[by].hand[res] += h[res]; s.bank[res] -= h[res]; received[by] += h[res]; }
     }
     s.gold = {};
     let bankTotal = RES.reduce((a, r) => a + s.bank[r], 0); // der Vorrat der Bank wird unter allen Wählern aufgeteilt
@@ -420,6 +439,14 @@ export class Game {
         this.emit({ type: 'token', pi: p.id });
       }
     }
+    for (const h of hits) {
+      const names = h.from.map((id) => s.players[id].name).join(', ');
+      this.log(h.kind === 'toll'
+        ? `📜 Zoll auf ${RES_INFO[h.res].icon}: ${names} zahl${h.from.length > 1 ? 'en' : 't'} je 1 Karte an ${s.players[h.by].name}.`
+        : `📜 Strafe auf ${RES_INFO[h.res].icon}: ${names} erhält${h.from.length > 1 ? 'en' : ''} 1 Karte weniger.`, h.by);
+      this.emit({ type: 'decreeHit', by: h.by, kind: h.kind, res: h.res, from: h.from });
+    }
+    for (const [by, h] of Object.entries(tolls)) this.emit({ type: 'gain', pi: Number(by), hand: h });
     if (s.settings.antiBad) {
       const lucky = s.players.filter((p) => received[p.id] === 0).map((p) => p.name);
       if (lucky.length) this.log(`🍀 Anti-Pech-Marker für: ${lucky.join(', ')}.`);
@@ -700,6 +727,16 @@ export class Game {
       this.log(`${p.name} spielt Ernte auf ${RES_INFO[h.type].terrain} (${h.num}) und erhält ${n}× ${RES_INFO[h.type].icon}.`, pi);
       this.emit({ type: 'gain', pi, hand: { ...emptyHand(), [h.type]: n } });
       this.emit({ type: 'harvest', pi, hex: hexId });
+    } else if (type === 'decree') {
+      const { res, kind } = params;
+      if (!RES.includes(res)) return fail('Wähle einen Rohstoff.');
+      if (kind !== 'toll' && kind !== 'penalty') return fail('Wähle Zoll oder Strafe.');
+      p.dev.splice(idx, 1);
+      s.decrees = (s.decrees || []).filter((d) => d.by !== pi).concat({ by: pi, res, kind });
+      this.log(kind === 'toll'
+        ? `📜 ${p.name} erlässt einen Zoll auf ${RES_INFO[res].icon}: Wer ${RES_INFO[res].name} erwürfelt, zahlt 1 Karte an ${p.name} – bis ${p.name} wieder am Zug ist.`
+        : `📜 ${p.name} verhängt eine Strafe auf ${RES_INFO[res].icon}: Wer ${RES_INFO[res].name} erwürfelt, erhält 1 Karte weniger – bis ${p.name} wieder am Zug ist.`, pi);
+      this.emit({ type: 'decree', pi, res, kind });
     } else if (type === 'remap') {
       p.dev.splice(idx, 1);
       remapBoard(this.board, this.rng);
@@ -903,6 +940,7 @@ export class Game {
     for (const o of [...s.offers]) this.closeOffer(o, 'expired');
     s.turn = (s.turn + 1) % s.players.length;
     s.turnNumber++;
+    s.decrees = (s.decrees || []).filter((d) => d.by !== s.turn); // der Erlass endet, wenn sein Aussteller wieder dran ist
     s.sub = 'roll';
     s.dice = null;
     s.devPlayed = false;

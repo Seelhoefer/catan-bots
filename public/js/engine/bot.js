@@ -56,7 +56,8 @@ function vertexValue(g, vid, pi, owned = ownedTypes(g, pi)) {
   val += seen.size * 0.8;
   if (v.port) {
     // Ein Hafen lohnt, wenn man viel von dem Rohstoff erzeugt (2:1) bzw. insgesamt viel produziert (3:1)
-    if (v.port === 'any') val += 0.9 + Math.min(1.6, productionPips(g, pi) / 14);
+    if (v.port === 'all') val += 1.6 + Math.min(3, productionPips(g, pi) / 8); // Welthafen: 2:1 für alles
+    else if (v.port === 'any') val += 0.9 + Math.min(1.6, productionPips(g, pi) / 14);
     else {
       const here = v.hexes.reduce((a, hid) => { const h = g.board.hexes[hid]; return a + (h.type === v.port && !h.fog ? PIP[h.num] : 0); }, 0);
       val += 0.5 + Math.min(4.2, (resourcePips(g, pi, v.port) + here) * 0.5);
@@ -139,7 +140,7 @@ function myPorts(g, pi) {
     const port = g.board.vertices[b.vid].port;
     if (!port || seen.has(port)) continue;
     seen.add(port);
-    out.push({ type: port, pips: port === 'any' ? productionPips(g, pi) : resourcePips(g, pi, port) });
+    out.push({ type: port, pips: port === 'any' || port === 'all' ? productionPips(g, pi) : resourcePips(g, pi, port) });
   }
   return out;
 }
@@ -163,7 +164,7 @@ function strategyScores(g, pi) {
   const cities = 1.5 + (cityOk ? 1.8 : -3) + Math.min(3, (pips('ore') + pips('wheat')) / 5)
     + (settlements >= 3 ? 1.2 : 0) + (tr === 'strategist' ? 1.6 : 0) + (!spots.length && !rt ? 1.5 : 0);
   const ports = myPorts(g, pi);
-  const portVal = ports.reduce((a, x) => a + (x.type === 'any' ? 0.7 + Math.min(1.2, x.pips / 14) : 0.8 + Math.min(2.6, x.pips * 0.35)), 0);
+  const portVal = ports.reduce((a, x) => a + (x.type === 'all' ? 1.6 + Math.min(2.4, x.pips / 8) : x.type === 'any' ? 0.7 + Math.min(1.2, x.pips / 14) : 0.8 + Math.min(2.6, x.pips * 0.35)), 0);
   const harbor = 0.8 + portVal * 1.1 + (tr === 'trader' ? 1.8 : 0) + (ports.length ? 0.5 : -1.5);
   const army = (s.devDeck.length ? 1.2 : -6) + knights * 0.9 + (s.largestArmy.holder === pi ? 1 : s.largestArmy.count >= 3 && knights < s.largestArmy.count ? -1.2 : 0)
     + Math.min(2, (pips('ore') + pips('wheat') + pips('sheep')) / 9) + (tr === 'knight' ? 2 : tr === 'gambler' ? 1.6 : 0);
@@ -416,6 +417,20 @@ function tryPlayDev(g, pi, beforeRoll) {
       if (opp > bestV) { bestV = opp; bestR = r; }
     }
     if (bestR && bestV >= 14) return g.playDev(pi, 'monopoly', { res: bestR }).ok;
+  }
+  if (g.playableDev(pi, 'decree')) {
+    // Erlass: den Rohstoff wählen, der den Gegnern am meisten bringt und mir am wenigsten schadet
+    const lead = s.players.filter((o) => o.id !== pi).sort((a, b) => g.vp(b.id, true) - g.vp(a.id, true))[0];
+    let best = null;
+    for (const r of RES) {
+      let opp = 0;
+      for (const o of s.players) if (o.id !== pi) opp += resourcePips(g, o.id, r);
+      const mine = resourcePips(g, pi, r);
+      const toll = opp * 1.0 - mine * 0.2;
+      const penalty = opp * 0.7 + (lead ? resourcePips(g, lead.id, r) * 0.6 : 0);
+      for (const [kind, v] of [['toll', toll], ['penalty', penalty]]) if (!best || v > best.v) best = { res: r, kind, v };
+    }
+    if (best && best.v >= 6) return g.playDev(pi, 'decree', { res: best.res, kind: best.kind }).ok;
   }
   if (g.playableDev(pi, 'roadbuilding') && p.pieces.road >= 2) {
     const rt = roadTarget(g, pi);

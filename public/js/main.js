@@ -10,7 +10,7 @@ import {
 import { installIcons } from './ui/icons.js';
 import { renderMenu, rememberLast } from './ui/menu.js';
 import {
-  renderHand, renderHandBar, renderPlayers, renderFab, renderNext, renderDice, renderMissionBox, displayVp, awardHeroHTML, renderHeroRoll,
+  renderHand, renderHandBar, renderPlayers, renderFab, renderNext, renderDice, renderMissionBox, renderDecrees, displayVp, awardHeroHTML, renderHeroRoll,
 } from './ui/panels.js';
 import { renderMarket, suggestTrade } from './ui/market.js';
 import { sfx } from './ui/sfx.js';
@@ -272,6 +272,20 @@ class App {
         if (e.pi !== HUMAN) this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + ms - 300);
         break;
       }
+      case 'decree':
+        this.toastHTML(`${ic('scroll', 'inline')} ${esc(name(e.pi))} ${e.kind === 'toll' ? 'erlässt einen Zoll' : 'verhängt eine Strafe'} auf ${ic(e.res, 'inline')} ${RES_INFO[e.res].name}`, 'big');
+        break;
+      case 'decreeHit': {
+        const wait = Math.max(0, this.diceRevealAt - Date.now()) + 500;
+        const mineHit = e.from.includes(HUMAN);
+        const total = e.from.length;
+        setTimeout(() => {
+          if (this.game !== g) return;
+          if (mineHit) { this.toastHTML(`${ic('scroll', 'inline')} ${e.kind === 'toll' ? `Zoll: du zahlst 1 ${ic(e.res, 'inline')} an ${esc(name(e.by))}` : `Strafe: du erhältst 1 ${ic(e.res, 'inline')} weniger`}`, 'warn'); sfx.play('steal', { vol: 0.6 }); }
+          else if (e.by === HUMAN) { this.toastHTML(`${ic('scroll', 'inline')} ${e.kind === 'toll' ? `Zoll kassiert: +${total} ${ic(e.res, 'inline')}` : `Strafe wirkt: ${total} ${total === 1 ? 'Gegner erhält' : 'Gegner erhalten'} 1 ${ic(e.res, 'inline')} weniger`}`, 'info'); }
+        }, wait);
+        break;
+      }
       case 'harvest': this.flash([e.hex], 2400); sfx.play('harvest'); break;
       case 'steal': {
         // nach dem Sprung des Räubers fliegt die Karte vom Opfer zum Dieb; beim Dieb zählt sie erst bei der Ankunft
@@ -464,6 +478,7 @@ class App {
     if (act.startsWith('mk-') || act.startsWith('bank-')) { this.handleMarket(act, el); return; }
     this.closePopover();
     switch (act) {
+      case 'decree-info': this.toast(el.title, 'info'); break;
       case 'award-info': {
         const road = el.dataset.kind === 'road';
         const st = g.s;
@@ -880,6 +895,8 @@ class App {
     $('#diceBox').innerHTML = renderDice(g, this.rolling);
     this.renderMarketLayer();
     $('#missionBox').innerHTML = renderMissionBox(g, this.ui.missionsOpen);
+    const decrees = renderDecrees(g);
+    if (decrees !== this.decreeHtml) { this.decreeHtml = decrees; $('#decreeBox').innerHTML = decrees; }
 
     if (s.phase === 'main' && s.sub === 'discard' && s.discard[HUMAN] !== undefined) {
       const rest = this.rollPauseUntil + 300 - Date.now();

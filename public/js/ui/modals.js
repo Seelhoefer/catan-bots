@@ -97,7 +97,7 @@ export function devModal(app) {
       return;
     }
     const grid = el('div', { class: 'cardgrid' });
-    for (const t of ['knight', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'victory']) {
+    for (const t of ['knight', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'decree', 'victory']) {
       const cards = me.dev.filter((c) => c.type === t);
       if (!cards.length) continue;
       const info = DEV_INFO[t];
@@ -110,7 +110,7 @@ export function devModal(app) {
       else if (!ready && g.s.devPlayed) note = 'Nur 1 Karte pro Zug';
       else if (!ready && t === 'harvest') note = 'Kein passendes Feld';
       const play = () => {
-        if (t === 'harvest') { app.startHarvest(); m.close(); } else if (t === 'plenty') { pick = { type: 'plenty', chosen: [] }; draw(); } else if (t === 'monopoly') { pick = { type: 'monopoly' }; draw(); } else if (t === 'remap') {
+        if (t === 'harvest') { app.startHarvest(); m.close(); } else if (t === 'decree') { m.close(); decreeModal(app); } else if (t === 'plenty') { pick = { type: 'plenty', chosen: [] }; draw(); } else if (t === 'monopoly') { pick = { type: 'monopoly' }; draw(); } else if (t === 'remap') {
           confirmDialog('Weltenwandel einsetzen?', 'Alle Landfelder werden zufällig neu verteilt – für alle Spieler! Siedlungen und Straßen bleiben stehen.', 'Neu mischen').then((yes) => {
             if (yes) { const x = app.act('playDev', HUMAN, 'remap'); if (x.ok) m.close(); }
           });
@@ -149,6 +149,7 @@ export function playDevCard(app, type) {
     confirmDialog('Weltenwandel einsetzen?', 'Alle Landfelder werden zufällig neu verteilt – für alle Spieler! Siedlungen und Straßen bleiben stehen.', 'Neu mischen').then((yes) => { if (yes) app.act('playDev', HUMAN, 'remap'); });
     return;
   }
+  if (type === 'decree') { decreeModal(app); return; }
   if (type === 'monopoly') {
     const m = openModal({ title: 'Monopol', bare: true });
     m.body.append(el('div', { class: 'pk-row' }, RES.map((r) => circPick(r, { onclick: () => { const x = app.act('playDev', HUMAN, 'monopoly', { res: r }); if (x.ok) m.close(); } }))));
@@ -179,6 +180,21 @@ export function playDevCard(app, type) {
     return;
   }
   app.act('playDev', HUMAN, type);
+}
+
+/** Erlass: erst Zoll oder Strafe wählen, dann den Rohstoff antippen. */
+export function decreeModal(app) {
+  const m = openModal({ title: 'Erlass', bare: true });
+  let kind = 'toll';
+  const draw = () => m.body.replaceChildren(
+    el('div', { class: 'dc-kinds' }, [['toll', 'Zoll', 'Gegner zahlen dir 1 Karte'], ['penalty', 'Strafe', 'Gegner erhalten 1 Karte weniger']].map(([k, label, sub]) => el('button', {
+      type: 'button', class: `dc-kind ${kind === k ? 'on' : ''}`, 'aria-pressed': String(kind === k), onclick: () => { kind = k; draw(); },
+    }, el('b', {}, label), el('small', {}, sub)))),
+    el('p', { class: 'dc-hint' }, 'Gilt für jeden Wurf, bei dem ein Gegner den Rohstoff erhält – bis du wieder am Zug bist. Rohstoff wählen:'),
+    el('div', { class: 'pk-row' }, RES.map((r) => circPick(r, { onclick: () => { const x = app.act('playDev', HUMAN, 'decree', { res: r, kind }); if (x.ok) m.close(); } }))),
+  );
+  draw();
+  return m;
 }
 
 export function confirmDialog(title, text, okLabel = 'OK') {
@@ -314,6 +330,8 @@ export function rulesModal() {
       <li>🌫️ <b>Nebel-Variante (Seefahrer):</b> Verdeckte Felder werden aufgedeckt, sobald eine Straße an sie grenzt – und du erhältst 1 Rohstoff davon.</li>
       <li>🌾 <b>Ernte:</b> Neue Entwicklungskarte. Du wählst eines deiner Felder mit Siedlung oder Stadt und erhältst sofort dessen Ertrag (Stadt = doppelt).</li>
       <li>🌍 <b>Weltenwandel:</b> Neue Entwicklungskarte. Alle Landfelder werden zufällig neu gemischt; Siedlungen &amp; Straßen bleiben.</li>
+      <li>⚓ <b>Welthafen (Erweiterung):</b> Ein einziger Hafen am Rand tauscht alle Rohstoffe 2:1 – er ersetzt einen 3:1-Hafen und ist golden markiert.</li>
+      <li>📜 <b>Erlass-Karte (Erweiterung):</b> Entwicklungskarte. Lege einen <b>Zoll</b> (Gegner, die den Rohstoff erwürfeln, zahlen dir 1 Karte) oder eine <b>Strafe</b> (sie erhalten 1 Karte weniger) auf einen Rohstoff. Gilt für jeden Wurf, bis du wieder am Zug bist; du selbst bist ausgenommen.</li>
       <li>🍀 <b>Anti-Pech-Marker:</b> Erhältst du bei einem Wurf (außer 7) nichts, bekommst du 1 Marker. So viele Marker wie du Siegpunkte hast = 1 Rohstoff deiner Wahl.</li>
       <li>🎖️ <b>Öffentliche Missionen:</b> 3 zufällige Ziele für alle sichtbar. Wer sie als Erster schafft, bekommt +1 Siegpunkt.</li>
     </ul>

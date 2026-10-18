@@ -10,6 +10,8 @@ const configs = [
   { size: 'huge', variant: 'classic', bots: 5, targetVP: 15 },
   { size: 'huge', variant: 'classic', bots: 3, targetVP: 50 },
   { size: 'small', variant: 'classic', bots: 3, targetVP: 10, antiBad: false, missions: false, remapCard: false },
+  { size: 'small', variant: 'classic', bots: 3, targetVP: 10, worldHarbor: true, decreeCard: true },
+  { size: 'large', variant: 'fog', bots: 4, targetVP: 14, worldHarbor: true, decreeCard: true },
 ];
 
 for (const [i, cfg] of configs.entries()) {

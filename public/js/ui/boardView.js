@@ -54,6 +54,7 @@ export class BoardView {
           </linearGradient>`).join('')}
         ${roadDefs()}
         <radialGradient id="tokenGrad" cx="40%" cy="32%" r="75%"><stop offset="0" stop-color="#fffaea"/><stop offset="1" stop-color="#e6d6aa"/></radialGradient>
+        <radialGradient id="worldGrad" cx="40%" cy="32%" r="75%"><stop offset="0" stop-color="#fff2c4"/><stop offset="1" stop-color="#d9a73a"/></radialGradient>
         <radialGradient id="portGrad" cx="40%" cy="32%" r="75%"><stop offset="0" stop-color="#fff6dc"/><stop offset="1" stop-color="#ead9a6"/></radialGradient>
         <radialGradient id="fogVeil" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
         <pattern id="grain" width=".5" height=".5" patternUnits="userSpaceOnUse">
@@ -422,6 +423,10 @@ export class BoardView {
     // Hafen-Marker
     out.push('<g class="portmarks">');
     for (const p of board.ports) {
+      if (p.type === 'all') { // Welthafen: goldene Marke, alle Rohstoffe 2:1
+        out.push(`<g transform="translate(${p.x},${p.y})" class="port world"><circle r="0.52" cy="0.05" class="port-shadow"/><circle r="0.52" class="port-all-bg"/><circle r="0.44" class="port-all-inner"/><text y="-0.02" class="port-ratio big world">2:1</text><text y="0.26" class="port-all-sub">ALLE</text></g>`);
+        continue;
+      }
       const hb = art.ok ? harborImg(p.type) : null;
       if (hb) {
         out.push(`<g transform="translate(${p.x},${p.y})" class="port${p.type === 'any' ? ' any' : ''}"><circle r="0.45" cy="0.05" class="port-shadow"/><image href="${hb}" x="-0.47" y="-0.47" width="0.94" height="0.94" class="port-img"/></g>`);
