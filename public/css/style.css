@@ -1686,8 +1686,8 @@ td.who { display: flex; align-items: center; gap: 8px; }
   .hdr-left .rchip { pointer-events: auto; flex: 1 1 0; max-width: 62px; height: 40px; justify-content: center; gap: 4px; padding: 0 6px 0 3px; border-radius: 14px; background: rgba(9, 19, 31, .88); border: 1px solid rgba(255, 255, 255, .12); }
   .hdr-left .rsq { width: 26px; height: 26px; }
   .hdr-left .rchip b { font-size: 16px; }
-  /* nur die Rohstoffe, die man hat – als Gruppe mittig über den Aktionen */
-  .hdr-left .rchip[data-res].zero { display: none; }
+  /* alle fünf Rohstoffe immer sichtbar (fehlende gedimmt), gleich breit und als Gruppe mittig über den Aktionen */
+  .hdr-left .rchip.zero { opacity: .4; }
   .hdr-left { gap: 8px; }
   .hdr-left .rchip { flex: 0 0 auto; width: 62px; max-width: none; }
   .hdr-left .rchip.tok { width: auto; min-width: 74px; }
