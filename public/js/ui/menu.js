@@ -132,10 +132,39 @@ export function renderMenu(root, {
   };
 
   // ---------------------------------------------------------------- Assistent
-  const sw = (key, title, hint) => el('label', { class: 'mw-sw' },
-    el('input', { type: 'checkbox', checked: settings[key] || undefined, onchange: (e) => { settings[key] = e.target.checked; saveSettings(settings); } }),
-    el('span', { class: 'knob' }),
-    el('span', { class: 'mw-sw-t' }, el('b', {}, title), hint ? el('small', {}, hint) : null));
+  const openInfo = new Set(); // aufgeklappte Regelerklärungen (bleiben beim Neuzeichnen offen)
+  /** Info-Knopf (ⓘ) und die dazugehörige aufklappbare Regelerklärung. */
+  const infoPair = (key, title, info) => {
+    if (!info) return { btn: null, explain: null };
+    const explain = el('p', { class: 'mw-explain', id: `ex-${key}`, hidden: !openInfo.has(key) || undefined }, info);
+    const btn = el('button', {
+      type: 'button', class: `mw-info ${openInfo.has(key) ? 'on' : ''}`, 'aria-label': `Regel erklären: ${title}`, 'aria-expanded': String(openInfo.has(key)), 'aria-controls': `ex-${key}`,
+      onclick: () => { if (openInfo.has(key)) openInfo.delete(key); else openInfo.add(key); explain.hidden = !openInfo.has(key); btn.classList.toggle('on', openInfo.has(key)); btn.setAttribute('aria-expanded', String(openInfo.has(key))); },
+      html: ic('info'),
+    });
+    return { btn, explain };
+  };
+  /** Schalter mit Info-Knopf: ⓘ klappt die Regel darunter auf. */
+  const sw = (key, title, hint, info) => {
+    const { btn, explain } = infoPair(key, title, info);
+    return el('div', { class: 'mw-swrow' },
+      el('label', { class: 'mw-sw' },
+        el('input', { type: 'checkbox', checked: settings[key] || undefined, onchange: (e) => { settings[key] = e.target.checked; saveSettings(settings); } }),
+        el('span', { class: 'knob' }),
+        el('span', { class: 'mw-sw-t' }, el('b', {}, title), hint ? el('small', {}, hint) : null)),
+      btn, explain);
+  };
+  const RULE_INFO = {
+    fog: 'Ein Teil der Insel ist unter Nebel verborgen. Sobald eine deiner Straßen an ein verdecktes Feld grenzt, wird es aufgedeckt – und du erhältst 1 Rohstoff davon. Gründen darfst du nur an Ecken ohne Nebel.',
+    worldHarbor: 'Auf dem Brett gibt es genau einen goldenen Welthafen („2:1 ALLE“). Wer dort eine Siedlung oder Stadt hat, tauscht jeden Rohstoff 2:1 mit der Bank. Er ersetzt einen der normalen 3:1-Häfen, es gibt also nur diesen einen.',
+    decreeCard: 'Neue Entwicklungskarte „Erlass“: Du legst für eine Runde einen Zoll oder eine Strafe auf einen Rohstoff fest. Zoll: Gegner, die ihn erwürfeln, zahlen dir 1 Karte davon. Strafe: Sie erhalten 1 Karte weniger. Gilt, bis du wieder am Zug bist.',
+    eventCards: 'Fünf zusätzliche Karten im Entwicklungsstapel, wie die Ereigniskarten bei Monopoly: Schutzbrief (einmal vom Dieb verschont – er darf dich nicht bestehlen oder du musst bei einer 7 nichts abwerfen), Rückenwind (nächster Wurf: jedes getroffene Feld bringt 1 Karte extra), Marktprivileg (bis Zugende tauschst du mit der Bank 2:1), Dieb vertreiben (der Räuber geht in die Wüste) und Geburtstag (jeder Gegner schenkt dir 1 Karte).',
+    antiBad: 'Erhältst du bei einem Wurf (außer einer 7) gar nichts, bekommst du 1 Anti-Pech-Marker. Hast du so viele Marker, wie du Siegpunkte hast, tauschst du sie gegen 1 Rohstoff deiner Wahl. So gleicht sich Pech aus.',
+    missions: 'Missionskarten liegen für alle sichtbar aus (3, auf größeren Inseln 4 oder 5). Wer eine Bedingung als Erster erfüllt – etwa Weltentdecker (Gebäude an allen 5 Rohstoffen), Metropole (mehrere Städte) oder Goldregen (viele Karten mit einem Wurf) –, erhält +1 Siegpunkt. Jede Mission gibt es nur einmal.',
+    remapCard: 'Entwicklungskarte „Weltenwandel“: Alle Landfelder werden zufällig neu gemischt (Rohstoffe und Zahlen). Siedlungen und Straßen bleiben stehen – für alle Spieler ändert sich, was sie ernten.',
+    harvestCard: 'Entwicklungskarte „Ernte“: Du wählst eines deiner Felder mit Siedlung oder Stadt und erhältst sofort dessen Ertrag (Stadt = doppelt), ganz ohne zu würfeln.',
+    goldField: 'Ein Wahlfeld (violett) auf dem Brett: Wird seine Zahl gewürfelt, darfst du dir für jede angrenzende Siedlung (Stadt = 2) einen beliebigen Rohstoff aussuchen.',
+  };
   let moreOpen = false;
 
   const drawWizard = () => {
@@ -155,10 +184,15 @@ export function renderMenu(root, {
         onclick: () => { settings.size = sz.id; ensureCast(); draw(); },
         html: `${miniBoard(sz.radius, settings.variant === 'fog')}<b>${sz.label}</b>`,
       }))),
-      el('label', { class: 'mw-sw tight' },
-        el('input', { type: 'checkbox', checked: settings.variant === 'fog' || undefined, onchange: (e) => { settings.variant = e.target.checked ? 'fog' : 'classic'; draw(); } }),
-        el('span', { class: 'knob' }),
-        el('span', { class: 'mw-sw-t' }, el('b', {}, 'Nebel'), el('small', {}, 'Ein Teil der Insel ist verdeckt'))));
+      (() => {
+        const { btn, explain } = infoPair('fog', 'Nebel', RULE_INFO.fog);
+        return el('div', { class: 'mw-swrow tight' },
+          el('label', { class: 'mw-sw' },
+            el('input', { type: 'checkbox', checked: settings.variant === 'fog' || undefined, onchange: (e) => { settings.variant = e.target.checked ? 'fog' : 'classic'; draw(); } }),
+            el('span', { class: 'knob' }),
+            el('span', { class: 'mw-sw-t' }, el('b', {}, 'Nebel'), el('small', {}, 'Ein Teil der Insel ist verdeckt'))),
+          btn, explain);
+      })());
 
     clampFriends();
     const room = SIZES[settings.size].maxPlayers - 1;
@@ -219,13 +253,16 @@ export function renderMenu(root, {
     const points = sec('Siegpunkte', el('div', { class: 'mw-vp' }, el('span', { class: 'mw-vp-ico', html: ic('trophy') }), num), range, hint);
 
     const ext = sec('Erweiterungen', el('div', { class: 'mw-rules' },
-      sw('worldHarbor', 'Welthafen', 'Ein einziger Hafen, an dem alle Rohstoffe 2:1 getauscht werden'),
-      sw('decreeCard', 'Erlass-Karte', 'Neue Karte: Zoll oder Strafe auf einen Rohstoff festlegen')));
+      sw('worldHarbor', 'Welthafen', 'Ein einziger Hafen, an dem alle Rohstoffe 2:1 getauscht werden', RULE_INFO.worldHarbor),
+      sw('decreeCard', 'Erlass-Karte', 'Neue Karte: Zoll oder Strafe auf einen Rohstoff festlegen', RULE_INFO.decreeCard),
+      sw('eventCards', 'Ereigniskarten', 'Schutzbrief, Rückenwind, Marktprivileg, Dieb vertreiben, Geburtstag', RULE_INFO.eventCards),
+      sw('missions', 'Missionskarten', 'Ziele für +1 Siegpunkt: Weltentdecker, Metropole …', RULE_INFO.missions)));
 
     const more = el('section', { class: 'mw-sec more' },
       el('button', { type: 'button', class: `mw-more ${moreOpen ? 'open' : ''}`, 'aria-expanded': String(moreOpen), onclick: () => { moreOpen = !moreOpen; draw(); } }, el('span', {}, 'Weitere Regeln'), el('span', { class: 'mw-chev', html: ic('chev') })),
       moreOpen ? el('div', { class: 'mw-rules' },
-        sw('antiBad', 'Anti-Pech-Marker'), sw('missions', 'Missionen'), sw('remapCard', 'Weltenwandel'), sw('harvestCard', 'Ernte'), sw('goldField', 'Wahlfeld')) : null);
+        sw('antiBad', 'Anti-Pech-Marker', 'Pech wird ausgeglichen', RULE_INFO.antiBad), sw('remapCard', 'Weltenwandel', 'Karte: alle Felder neu mischen', RULE_INFO.remapCard),
+        sw('harvestCard', 'Ernte', 'Karte: sofortiger Ertrag eines Feldes', RULE_INFO.harvestCard), sw('goldField', 'Wahlfeld', 'Feld mit freier Rohstoffwahl', RULE_INFO.goldField)) : null);
 
     root.replaceChildren(el('div', { class: 'mw' },
       el('div', { class: 'mw-top' },

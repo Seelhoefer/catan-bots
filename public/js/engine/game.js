@@ -1,11 +1,11 @@
 // Regel-Engine: kompletter Spielzustand (JSON-serialisierbar) + alle Aktionen.
 
 import {
-  RES, RES_INFO, COSTS, SIZES, DEV_INFO, PLAYER_COLORS, BOT_ROSTER, HUMAN_FACES, DEFAULT_SETTINGS,
+  RES, RES_INFO, COSTS, SIZES, DEV_INFO, PASSIVE_CARDS, PLAYER_COLORS, BOT_ROSTER, HUMAN_FACES, DEFAULT_SETTINGS,
 } from './constants.js';
 import { makeRng, shuffle } from './rng.js';
 import { generateBoard, remapBoard } from './board.js';
-import { MISSION_POOL, missionById } from './missions.js';
+import { MISSION_POOL, missionById, missionMax } from './missions.js';
 
 const ok = (extra = {}) => ({ ok: true, ...extra });
 const fail = (error) => ({ ok: false, error });
@@ -56,6 +56,10 @@ export class Game {
         tokens: 0,
         bankTrades: 0,
         devBought: 0,
+        devPlayed: 0, // ausgespielte Karten (für Missionen)
+        playerTrades: 0, // Tauschgeschäfte mit Mitspielern
+        steals: 0, // erfolgreich gestohlene Karten
+        bestHaul: 0, // meiste Karten aus einem einzigen Wurf
         pieces: { ...pieces },
         missions: [],
       });
@@ -69,6 +73,7 @@ export class Game {
     if (settings.remapCard) add('remap', 2 * f);
     if (settings.harvestCard) add('harvest', 2 * f);
     if (settings.decreeCard) add('decree', 2 * f);
+    if (settings.eventCards) { for (const t of ['shield', 'blessing', 'fair', 'exile', 'birthday']) add(t, 2 * f); }
 
     const bank = {};
     for (const res of RES) bank[res] = 19 * f;
@@ -77,7 +82,7 @@ export class Game {
     robber = robber ? robber.id : board.hexes[0].id;
 
     const missions = settings.missions
-      ? shuffle(MISSION_POOL, r).slice(0, 3).map((m) => ({ id: m.id, claimedBy: null }))
+      ? shuffle(MISSION_POOL, r).slice(0, 2 + size.factor).map((m) => ({ id: m.id, claimedBy: null }))
       : [];
 
     const start = Math.floor(r() * n);
@@ -186,7 +191,7 @@ export class Game {
   tokenCost(pi) { return Math.max(1, this.vp(pi)); }
 
   portRatio(pi, res) {
-    let best = 4;
+    let best = this.player(pi).fairTurn === this.s.turnNumber ? 2 : 4; // Marktprivileg: bis zum Ende des Zuges 2:1
     for (const b of this.buildingsOf(pi)) {
       const port = this.board.vertices[b.vid].port;
       if (port === 'all') best = Math.min(best, 2);
@@ -341,7 +346,7 @@ export class Game {
       s.discard = {};
       for (const p of s.players) {
         const n = this.handCount(p.id);
-        if (n > 7) s.discard[p.id] = Math.floor(n / 2);
+        if (n > 7 && !this.useShield(p.id, 'discard')) s.discard[p.id] = Math.floor(n / 2);
       }
       s.returnSub = 'actions';
       if (Object.keys(s.discard).length) {
@@ -364,6 +369,7 @@ export class Game {
     const gains = s.players.map(() => emptyHand());
     const goldPick = {};
     const src = s.players.map(() => []); // Herkunft der Erträge (Feld, Rohstoff, Menge) für die Animation
+    const blessed = new Map(); // Felder des Würflers, die getroffen wurden
     for (const h of this.board.hexes) {
       if (h.num !== total || h.fog || h.id === s.robber) continue;
       for (const vid of h.verts) {
@@ -374,8 +380,15 @@ export class Game {
           const n = b.type === 'city' ? 2 : 1;
           gains[b.owner][h.type] += n;
           src[b.owner].push({ hex: h.id, res: h.type, n });
+          if (b.owner === s.turn && !blessed.has(h.id)) blessed.set(h.id, h.type);
         }
       }
+    }
+    const roller = s.players[s.turn];
+    if (roller.blessing) { // Rückenwind: jedes getroffene Feld des Würflers bringt 1 Karte extra (einmalig)
+      roller.blessing = false;
+      for (const [hid, type] of blessed) { gains[roller.id][type] += 1; src[roller.id].push({ hex: hid, res: type, n: 1 }); }
+      if (blessed.size) this.log(`🍃 Rückenwind: ${roller.name} erhält ${blessed.size} Karte${blessed.size > 1 ? 'n' : ''} extra.`, roller.id);
     }
     const received = s.players.map(() => 0);
     const tolls = {};
@@ -424,6 +437,7 @@ export class Game {
       this.log(`✨ ${s.players[pid].name} darf ${amount} Rohstoff${amount > 1 ? 'e' : ''} frei wählen (Wahlfeld).`, Number(pid));
     }
     for (const p of s.players) {
+      p.bestHaul = Math.max(p.bestHaul || 0, sumHand(gains[p.id]));
       if (received[p.id] > 0 && RES.some((r) => gains[p.id][r] > 0)) {
         this.log(`${p.name} erhält ${this.fmtHand(gains[p.id])}.`, p.id);
         // Herkunft an die tatsächlich erhaltenen Mengen anpassen (Bank kann zu wenig haben)
@@ -513,6 +527,17 @@ export class Game {
     return ok();
   }
 
+  /** Schutzbrief verbrauchen (falls vorhanden): schützt einmal vor dem Dieb. `why` = 'steal' | 'discard'. */
+  useShield(pi, why) {
+    const p = this.player(pi);
+    const i = p.dev.findIndex((c) => c.type === 'shield');
+    if (i < 0) return false;
+    p.dev.splice(i, 1);
+    this.log(why === 'steal' ? `🛡️ ${p.name} hat einen Schutzbrief: der Dieb geht leer aus!` : `🛡️ ${p.name} hat einen Schutzbrief und muss bei der 7 nichts abwerfen!`, pi);
+    this.emit({ type: 'shield', pi, why });
+    return true;
+  }
+
   moveRobber(pi, hexId) {
     const s = this.s;
     if (s.sub !== 'robber' || s.turn !== pi) return fail('Der Räuber kann jetzt nicht versetzt werden.');
@@ -538,12 +563,18 @@ export class Game {
     const s = this.s;
     if (s.turn !== pi || (s.sub !== 'steal' && s.sub !== 'robber')) return fail('Jetzt kann nicht gestohlen werden.');
     if (!this.stealTargets(s.robber).includes(victim)) return fail('Von diesem Spieler kannst du nicht stehlen.');
+    if (this.useShield(victim, 'steal')) { // Schutzbrief: der Dieb geht leer aus
+      s.sub = s.returnSub;
+      this.afterAction();
+      return ok({ shielded: true });
+    }
     const v = this.player(victim);
     const pool = [];
     for (const r of RES) for (let i = 0; i < v.hand[r]; i++) pool.push(r);
     const res = pool[Math.floor(this.rng() * pool.length)];
     v.hand[res]--;
     this.cur.hand[res]++;
+    this.cur.steals = (this.cur.steals || 0) + 1;
     this.log(`${this.cur.name} stiehlt eine Karte von ${v.name}.`, pi);
     this.emit({ type: 'steal', from: victim, to: pi, res });
     s.sub = s.returnSub;
@@ -669,12 +700,15 @@ export class Game {
     return n;
   }
 
+  desertHex() { return this.board.hexes.find((h) => h.type === 'desert' && !h.fog) || null; }
+
   playableDev(pi, type) {
     const s = this.s;
     if (s.phase !== 'main' || s.turn !== pi) return false;
     if (s.sub !== 'roll' && s.sub !== 'actions') return false;
     if (s.devPlayed || s.roadBuildingLeft > 0) return false;
-    if (type === 'victory') return false;
+    if (PASSIVE_CARDS.has(type)) return false;
+    if (type === 'exile' && (!this.desertHex() || this.desertHex().id === s.robber)) return false;
     if (type === 'harvest' && this.harvestHexes(pi).length === 0) return false;
     return this.player(pi).dev.some((c) => c.type === type && c.turn < s.turnNumber);
   }
@@ -739,6 +773,36 @@ export class Game {
         ? `📜 ${p.name} erlässt einen Zoll auf ${RES_INFO[res].icon}: Wer ${RES_INFO[res].name} erwürfelt, zahlt 1 Karte an ${p.name} – bis ${p.name} wieder am Zug ist.`
         : `📜 ${p.name} verhängt eine Strafe auf ${RES_INFO[res].icon}: Wer ${RES_INFO[res].name} erwürfelt, erhält 1 Karte weniger – bis ${p.name} wieder am Zug ist.`, pi);
       this.emit({ type: 'decree', pi, res, kind });
+    } else if (type === 'blessing') {
+      p.dev.splice(idx, 1);
+      p.blessing = true;
+      this.log(`🍃 ${p.name} spielt ${info.name}: Beim nächsten Wurf bringt jedes getroffene Feld 1 Karte extra.`, pi);
+    } else if (type === 'fair') {
+      p.dev.splice(idx, 1);
+      p.fairTurn = s.turnNumber;
+      this.log(`⚖️ ${p.name} spielt ${info.name}: bis Zugende tauscht er mit der Bank 2:1.`, pi);
+    } else if (type === 'exile') {
+      const d = this.desertHex();
+      p.dev.splice(idx, 1);
+      s.robber = d.id;
+      this.log(`🌵 ${p.name} spielt ${info.name}: Der Räuber wird in die Wüste verbannt.`, pi);
+      this.emit({ type: 'robber', id: d.id, exile: true });
+    } else if (type === 'birthday') {
+      p.dev.splice(idx, 1);
+      const got = emptyHand();
+      const from = [];
+      for (const o of s.players) {
+        if (o.id === pi) continue;
+        const most = Math.max(...RES.map((r) => o.hand[r]));
+        if (most <= 0) continue;
+        const best = RES.filter((r) => o.hand[r] === most);
+        const res = best[Math.floor(this.rng() * best.length)];
+        o.hand[res]--; p.hand[res]++; got[res]++;
+        from.push(o.id);
+      }
+      this.log(`🎁 ${p.name} hat Geburtstag: ${from.length ? `${from.map((id) => s.players[id].name).join(', ')} schenken je 1 Karte` : 'niemand hat etwas zu verschenken'}.`, pi);
+      if (from.length) this.emit({ type: 'gain', pi, hand: got });
+      this.emit({ type: 'birthday', pi, from });
     } else if (type === 'remap') {
       p.dev.splice(idx, 1);
       remapBoard(this.board, this.rng);
@@ -747,6 +811,7 @@ export class Game {
     } else return fail('Unbekannte Karte.');
 
     s.devPlayed = true;
+    p.devPlayed = (p.devPlayed || 0) + 1;
     this.emit({ type: 'devplay', pi, card: type });
     this.afterAction();
     return ok();
@@ -788,6 +853,8 @@ export class Game {
       a.hand[r] += (get[r] || 0) - (give[r] || 0);
       b.hand[r] += (give[r] || 0) - (get[r] || 0);
     }
+    a.playerTrades = (a.playerTrades || 0) + 1;
+    b.playerTrades = (b.playerTrades || 0) + 1;
     this.log(`${a.name} tauscht ${this.fmtHand(give)} gegen ${this.fmtHand(get)} mit ${b.name}.`, pi);
     this.emit({ type: 'trade', from: pi, to: other, give: { ...give }, get: { ...get } });
     this.afterAction();
@@ -1074,7 +1141,8 @@ export class Game {
 
   missionProgress(pi, missionId) {
     const m = missionById(missionId);
-    return { cur: Math.min(m.max, m.progress(this, pi)), max: m.max };
+    const max = missionMax(m, this);
+    return { cur: Math.min(max, m.progress(this, pi)), max };
   }
 
   checkMissions() {
@@ -1086,7 +1154,7 @@ export class Game {
       if (ms.claimedBy !== null) continue;
       const def = missionById(ms.id);
       for (const pi of order) {
-        if (def.progress(this, pi) >= def.max) {
+        if (def.progress(this, pi) >= missionMax(def, this)) {
           ms.claimedBy = pi;
           s.players[pi].missions.push(ms.id);
           this.log(`🎖️ Mission „${def.name}“ erfüllt: ${s.players[pi].name} erhält +1 Siegpunkt!`, pi);

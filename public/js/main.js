@@ -383,13 +383,21 @@ class App {
       case 'award': this.queueAward(e); break;
       case 'robber': {
         sfx.play('robber'); this.robberMoveAt = Date.now();
-        if (g.s.turn === HUMAN && !g.stealTargets(e.id).length) {
+        if (!e.exile && g.s.turn === HUMAN && !g.stealTargets(e.id).length) {
           const owners = new Set(g.board.hexes[e.id].verts.map((v) => g.s.buildings[v]?.owner).filter((o) => o !== undefined && o !== HUMAN));
           setTimeout(() => this.toast(owners.size ? `${[...owners].map(name).join(' und ')} ${owners.size > 1 ? 'haben' : 'hat'} keine Karten – nichts zu stehlen.` : 'Hier baut niemand – nichts zu stehlen.', 'info'), 900);
         }
         break;
       }
       case 'monopoly': sfx.play('monopoly'); break;
+      case 'shield':
+        sfx.play('select', { vol: 0.9 });
+        this.toastHTML(`${ic('shield', 'inline')} ${e.pi === HUMAN ? 'Dein Schutzbrief wirkt' : `${esc(name(e.pi))} hat einen Schutzbrief`}: ${e.why === 'steal' ? 'der Dieb geht leer aus!' : 'kein Abwerfen bei der 7.'}`, 'big');
+        break;
+      case 'birthday':
+        sfx.play('cardplay', { vol: 0.8 });
+        this.toastHTML(`${ic('gift', 'inline')} ${esc(name(e.pi))} hat Geburtstag${e.from.length ? ` – ${e.from.length} ${e.from.length === 1 ? 'Gegner schenkt' : 'Gegner schenken'} je 1 Karte` : ''}`, 'big');
+        break;
       case 'turn': if (e.pi === HUMAN) sfx.play('turn', { delay: 250 }); setTimeout(() => turnPulse(e.pi), 120); break;
       case 'change': {
         const vp = HUMAN < 0 ? 0 : g.vp(HUMAN);

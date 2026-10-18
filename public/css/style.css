@@ -915,7 +915,8 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .dcard img, .dcard .devcard { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; user-select: none; }
 .dcard + .dcard { margin-left: calc(var(--step, 30px) - 64px); }
 .dgroup:not(.ready) .dcard { filter: saturate(.55) brightness(.72); }
-.dgroup[data-dev=victory] .dcard { filter: none; cursor: default; }
+.dgroup[data-passive="1"] .dcard { filter: none; cursor: default; }
+.dgroup[data-dev=shield] .dcard { box-shadow: 0 0 0 2px rgba(110, 231, 168, .8), 0 6px 16px rgba(110, 231, 168, .3); }
 .dgroup.ready .dcard { box-shadow: 0 0 0 2px var(--gold), 0 6px 16px rgba(233,185,73,.35); }
 .dgroup:hover .dcard { transform: translateY(-22px) rotate(0deg); z-index: 5; }
 @media (min-width: 861px) and (min-height: 521px) {
@@ -2012,3 +2013,13 @@ body.paused .pause-ov, body.paused .pause-ov * { animation-play-state: running !
 .mw-start:disabled { opacity: .55; filter: grayscale(.4); }
 .lobby .mw-name { width: 100%; box-sizing: border-box; margin-bottom: 22px; }
 .lobby .mw-sec h3 { margin-bottom: 10px; }
+
+/* Regel-Info (ⓘ) neben den Schaltern */
+.mw-swrow { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 6px; }
+.mw-swrow.tight { margin-top: 8px; }
+.mw-swrow .mw-sw { margin-top: 0; }
+.mw-info { width: 40px; height: 40px; border-radius: 50%; border: 0; background: transparent; color: var(--muted); display: grid; place-items: center; padding: 0; }
+.mw-info .ic { width: 22px; height: 22px; }
+.mw-info.on, .mw-info:hover { color: var(--gold); }
+.mw-explain { grid-column: 1 / -1; margin: 2px 0 8px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); font-size: 13px; line-height: 1.5; color: #c9d4e3; }
+.mw-explain[hidden] { display: none; }

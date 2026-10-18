@@ -182,3 +182,9 @@ Im Einrichten-Assistenten unter **Mit Freunden** wählst du, wie viele Menschen 
 - **Dieses Gerät zeigt nur das Brett:** Der PC dient als gemeinsame Spielfläche ohne Handkarten, alle (auch du) spielen am Handy.
 
 Damit sich Handys verbinden können, muss der Server im WLAN erreichbar sein: `npm run start:lan` (der Warteraum weist darauf hin). Pause gibt es nur ohne Mitspieler am Handy. Technik: `relay.js` reicht Nachrichten per Server-Sent Events weiter (keine Abhängigkeiten), das Spiel selbst läuft im Browser des Gastgebers, Handys schicken nur erlaubte Aktionen für ihren eigenen Platz.
+
+## 🎴 Missionskarten und Ereigniskarten
+
+- **Missionskarten (`missions`, Standard an):** 3 öffentliche Ziele (große Inseln 4, riesige 5), wer sie als Erster erfüllt, bekommt +1 Siegpunkt. Das Angebot ist auf 18 Missionen gewachsen, u. a. **Weltentdecker** (Gebäude an allen 5 Rohstoffen), **Metropole** (3/4/5 Städte), Pfadfinder (zusammenhängende Straße), Küstenwache, Dreiländereck, Monokultur, Diplomat (Tausch mit Mitspielern), Aktionsheld, Taschendieb, **Goldregen** (viele Karten mit einem Wurf), Hamsterer und Vielfalt. Zielwerte wachsen mit der Inselgröße (`missionMax`).
+- **Ereigniskarten (`eventCards`, Erweiterung):** fünf zusätzliche Karten im Entwicklungsstapel – **Schutzbrief** (wirkt von selbst: einmal vom Dieb verschont, entweder kein Bestehlen oder kein Abwerfen bei der 7), **Rückenwind** (nächster Wurf: jedes getroffene Feld +1 Karte), **Marktprivileg** (bis Zugende 2:1 mit der Bank), **Dieb vertreiben** (Räuber in die Wüste) und **Geburtstag** (jeder Gegner schenkt 1 Karte, die er am häufigsten hat). Bots spielen sie nach einfachen Regeln.
+- **Regel-Info im Menü:** Hinter jedem Schalter im Einrichten-Assistenten klappt das ⓘ die Regel darunter auf.

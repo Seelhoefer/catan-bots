@@ -43,9 +43,20 @@ export const DEV_INFO = {
   plenty: { name: 'Erfindung', icon: 'bulb', desc: 'Nimm dir 2 beliebige Rohstoffe aus der Bank.' },
   monopoly: { name: 'Monopol', icon: 'coin', desc: 'Nenne einen Rohstoff – alle Gegner geben dir alle Karten dieser Sorte.' },
   harvest: { name: 'Ernte', icon: 'wheat', desc: 'Wähle eines deiner Felder mit Siedlung oder Stadt und erhalte sofort dessen Ertrag (Stadt = doppelt).' },
+  shield: { name: 'Schutzbrief', icon: 'shield', passive: true, event: true, desc: 'Bleibt auf der Hand und wirkt von selbst: Einmal bleibst du vom Dieb verschont – er darf dich nicht bestehlen, oder du musst bei einer 7 nicht abwerfen (was zuerst passiert).' },
+  blessing: { name: 'Rückenwind', icon: 'sun', event: true, desc: 'Bei deinem nächsten Wurf bringt jedes deiner Felder, das getroffen wird, 1 Karte extra.' },
+  fair: { name: 'Marktprivileg', icon: 'trade', event: true, desc: 'Bis zum Ende deines Zuges tauschst du mit der Bank jeden Rohstoff 2:1.' },
+  exile: { name: 'Dieb vertreiben', icon: 'exit', event: true, desc: 'Der Räuber wird sofort in die Wüste verbannt – ohne dass jemand bestohlen wird.' },
+  birthday: { name: 'Geburtstag', icon: 'gift', event: true, desc: 'Jeder Gegner schenkt dir 1 Karte – die, von der er am meisten hat.' },
   decree: { name: 'Erlass', icon: 'scroll', desc: 'Lege für eine Runde einen Zoll oder eine Strafe auf einen Rohstoff fest. Zoll: Gegner, die ihn würfeln, zahlen dir 1 Karte. Strafe: Gegner erhalten 1 Karte weniger.' },
   remap: { name: 'Weltenwandel', icon: 'globe', desc: 'Alle Landfelder werden zufällig neu verteilt. Siedlungen und Straßen bleiben stehen.' },
 };
+
+/** Karten, die nicht ausgespielt werden, sondern von selbst wirken (bleiben auf der Hand). */
+/** Reihenfolge der Karten in Fächer und Übersicht. */
+export const DEV_ORDER = ['knight', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'decree', 'blessing', 'fair', 'exile', 'birthday', 'shield', 'victory'];
+
+export const PASSIVE_CARDS = new Set(['victory', 'shield']);
 
 export const PLAYER_COLORS = [
   { id: 'red', hex: '#e5484d', name: 'Rot' },
@@ -96,6 +107,7 @@ export const DEFAULT_SETTINGS = {
   remapCard: true,
   harvestCard: true,
   goldField: true, // Feld mit freier Rohstoffwahl
+  eventCards: false, // Erweiterung: Ereigniskarten (Schutzbrief, Rückenwind, Marktprivileg, Dieb vertreiben, Geburtstag)
   worldHarbor: false, // Erweiterung: ein einziger Welthafen, an dem alle Rohstoffe 2:1 getauscht werden
   decreeCard: false, // Erweiterung: Erlass-Karte – Zoll oder Strafe auf einen Rohstoff
 };

@@ -709,3 +709,122 @@ test('Zustand für einen Platz: fremde Karten und Stapel geheim, eigene sichtbar
   g.s.phase = 'over';
   assert.equal(redactFor(g.s, 0).players[1].hand.sheep, 3);
 });
+
+// ---------------------------------------------------------------- Ereigniskarten & Missionen
+const giveCard = (g, pi, type) => g.s.players[pi].dev.push({ type, turn: 1 });
+
+test('Schutzbrief: einmal vor dem Dieb sicher (Stehlen), danach nicht mehr', () => {
+  const g = afterSetup({ eventCards: true }, 21);
+  clearBoard(g);
+  const hex = g.board.hexes.find((h) => h.type !== 'desert' && h.num);
+  g.s.buildings[hex.verts[0]] = { owner: 1, type: 'settlement' };
+  g.s.players[1].hand = { wood: 2, brick: 0, sheep: 0, wheat: 0, ore: 0 };
+  giveCard(g, 1, 'shield');
+  g.s.turn = 0; g.s.sub = 'robber'; g.s.returnSub = 'actions'; g.s.robber = g.board.hexes.find((h) => h.id !== hex.id).id;
+  assert.equal(g.moveRobber(0, hex.id).ok, true);
+  assert.equal(g.handCount(0), 0, 'nichts gestohlen');
+  assert.equal(g.handCount(1), 2);
+  assert.equal(g.s.players[1].dev.length, 0, 'Schutzbrief verbraucht');
+  assert.equal(g.s.sub, 'actions');
+  g.s.sub = 'robber'; g.s.robber = g.board.hexes.find((h) => h.id !== hex.id).id;
+  g.moveRobber(0, hex.id);
+  assert.equal(g.handCount(0), 1, 'beim zweiten Mal wird gestohlen');
+});
+
+test('Schutzbrief: bei einer 7 muss man nicht abwerfen', () => {
+  const g = afterSetup({ eventCards: true }, 22);
+  clearBoard(g);
+  g.s.players[0].hand = { wood: 4, brick: 4, sheep: 0, wheat: 0, ore: 0 };
+  g.s.players[1].hand = { wood: 4, brick: 4, sheep: 0, wheat: 0, ore: 0 };
+  giveCard(g, 1, 'shield');
+  g.rollDice(0, [3, 4]);
+  assert.equal(g.s.discard[0], 4);
+  assert.equal(g.s.discard[1], undefined, 'Spieler mit Schutzbrief wirft nichts ab');
+  assert.equal(g.s.players[1].dev.length, 0);
+});
+
+test('Rückenwind: nächster Wurf bringt pro getroffenem Feld 1 Karte extra – einmalig', () => {
+  const g = afterSetup({ eventCards: true, antiBad: false }, 23);
+  clearBoard(g);
+  const hex = g.board.hexes.find((h) => h.num === 8 && RES.includes(h.type));
+  g.s.robber = g.board.hexes.find((h) => h.type === 'desert').id;
+  g.s.buildings[hex.verts[0]] = { owner: 0, type: 'settlement' };
+  giveCard(g, 0, 'blessing');
+  g.s.sub = 'roll';
+  assert.equal(g.playDev(0, 'blessing').ok, true);
+  g.rollDice(0, [4, 4]);
+  assert.equal(g.s.players[0].hand[hex.type], 2, '1 + 1 Extra');
+  assert.equal(g.s.players[0].blessing, false);
+  g.s.sub = 'roll'; g.s.devPlayed = false;
+  g.rollDice(0, [4, 4]);
+  assert.equal(g.s.players[0].hand[hex.type], 3, 'zweiter Wurf ohne Extra');
+});
+
+test('Marktprivileg, Dieb vertreiben und Geburtstag', () => {
+  const g = afterSetup({ eventCards: true }, 24);
+  clearBoard(g);
+  g.s.sub = 'actions';
+  giveCard(g, 0, 'fair');
+  assert.equal(g.portRatio(0, 'wood'), 4);
+  assert.equal(g.playDev(0, 'fair').ok, true);
+  assert.equal(g.portRatio(0, 'wood'), 2);
+  g.s.turnNumber += 1;
+  assert.equal(g.portRatio(0, 'wood'), 4, 'nur bis Zugende');
+
+  g.s.devPlayed = false;
+  const desert = g.board.hexes.find((h) => h.type === 'desert');
+  g.s.robber = g.board.hexes.find((h) => h.type !== 'desert').id;
+  giveCard(g, 0, 'exile');
+  assert.equal(g.playDev(0, 'exile').ok, true);
+  assert.equal(g.s.robber, desert.id);
+  giveCard(g, 0, 'exile');
+  g.s.devPlayed = false;
+  assert.equal(g.playableDev(0, 'exile'), false, 'Räuber ist schon in der Wüste');
+
+  g.s.devPlayed = false;
+  g.s.players[1].hand = { wood: 3, brick: 1, sheep: 0, wheat: 0, ore: 0 };
+  g.s.players[2].hand = { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 };
+  g.s.players[3].hand = { wood: 0, brick: 0, sheep: 2, wheat: 2, ore: 0 };
+  giveCard(g, 0, 'birthday');
+  assert.equal(g.playDev(0, 'birthday').ok, true);
+  assert.equal(g.s.players[0].hand.wood, 1, 'Spieler 1 gibt Holz (häufigste Sorte)');
+  assert.equal(g.handCount(0), 2, 'Spieler 3 gibt eine Karte, Spieler 2 hat nichts');
+  assert.equal(g.handCount(1), 3);
+});
+
+test('Ereigniskarten nur mit Einstellung im Stapel; Schutzbrief ist nicht spielbar', () => {
+  assert.equal(newGame({ eventCards: false }).s.devDeck.some((t) => ['shield', 'blessing', 'fair', 'exile', 'birthday'].includes(t)), false);
+  const g = newGame({ eventCards: true });
+  for (const t of ['shield', 'blessing', 'fair', 'exile', 'birthday']) assert.equal(g.s.devDeck.filter((x) => x === t).length, 2);
+  const h = afterSetup({ eventCards: true }, 25);
+  giveCard(h, 0, 'shield');
+  h.s.sub = 'actions';
+  assert.equal(h.playableDev(0, 'shield'), false);
+});
+
+test('Neue Missionen: Zählung und Zielwerte nach Inselgröße', async () => {
+  const { MISSION_POOL, missionMax, missionDesc } = await import('../public/js/engine/missions.js');
+  assert.ok(MISSION_POOL.length >= 18);
+  assert.equal(new Set(MISSION_POOL.map((m) => m.id)).size, MISSION_POOL.length);
+  const small = newGame({ size: 'small' });
+  const huge = newGame({ size: 'huge', bots: 5 });
+  const city = MISSION_POOL.find((m) => m.id === 'citybuilder');
+  assert.equal(missionMax(city, small), 3);
+  assert.equal(missionMax(city, huge), 5);
+  assert.equal(missionDesc(city), 'Besitze 3 Städte.');
+  assert.equal(small.s.missions.length, 3);
+  assert.equal(huge.s.missions.length, 5);
+  // Zähler
+  const g = afterSetup({}, 26);
+  clearBoard(g);
+  g.s.players[0].hand = { wood: 1, brick: 1, sheep: 1, wheat: 1, ore: 1 };
+  assert.equal(g.missionProgress(0, 'variety').cur, 5);
+  assert.equal(g.missionProgress(0, 'hoard').cur, 5);
+  g.s.players[0].bestHaul = 3; g.s.players[0].steals = 2; g.s.players[0].playerTrades = 1; g.s.players[0].devPlayed = 2;
+  assert.equal(g.missionProgress(0, 'haul').cur, 3);
+  assert.equal(g.missionProgress(0, 'pickpocket').cur, 2);
+  assert.equal(g.missionProgress(0, 'diplomat').cur, 1);
+  assert.equal(g.missionProgress(0, 'actor').cur, 2);
+  const tri = g.board.vertices.find((v) => v.hexes.length === 3 && new Set(v.hexes.map((h) => g.board.hexes[h].type)).size === 3 && v.hexes.every((h) => RES.includes(g.board.hexes[h].type)));
+  if (tri) { g.s.buildings[tri.id] = { owner: 0, type: 'settlement' }; assert.equal(g.missionProgress(0, 'triple').cur, 3); }
+});

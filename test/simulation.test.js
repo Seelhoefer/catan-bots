@@ -12,6 +12,8 @@ const configs = [
   { size: 'small', variant: 'classic', bots: 3, targetVP: 10, antiBad: false, missions: false, remapCard: false },
   { size: 'small', variant: 'classic', bots: 3, targetVP: 10, worldHarbor: true, decreeCard: true },
   { size: 'large', variant: 'fog', bots: 4, targetVP: 14, worldHarbor: true, decreeCard: true },
+  { size: 'small', variant: 'classic', bots: 3, targetVP: 12, eventCards: true, decreeCard: true },
+  { size: 'large', variant: 'fog', bots: 4, targetVP: 14, eventCards: true },
   { size: 'small', variant: 'classic', bots: 1, humans: 2, targetVP: 10 },
   { size: 'large', variant: 'classic', bots: 2, humans: 3, targetVP: 10 },
 ];

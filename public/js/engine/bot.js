@@ -384,7 +384,15 @@ function tryPlayDev(g, pi, beforeRoll) {
     const avg = others.reduce((a, b) => a + b, 0) / Math.max(1, others.length);
     if (mine < avg * 0.7 || mine <= 6) return g.playDev(pi, 'remap').ok;
   }
+  if (g.playableDev(pi, 'exile')) { // der Räuber blockiert eines meiner Felder → in die Wüste schicken
+    const rh = g.board.hexes[s.robber];
+    if (rh.verts.some((v) => s.buildings[v] && s.buildings[v].owner === pi)) return g.playDev(pi, 'exile').ok;
+  }
+  if (g.playableDev(pi, 'blessing') && productionPips(g, pi) >= 6 && s.turnNumber > s.players.length * 2) return g.playDev(pi, 'blessing').ok;
   if (beforeRoll) return false;
+
+  if (g.playableDev(pi, 'birthday') && s.players.reduce((a, o) => a + (o.id === pi ? 0 : g.handCount(o.id)), 0) >= 6) return g.playDev(pi, 'birthday').ok;
+  if (g.playableDev(pi, 'fair') && RES.some((r) => p.hand[r] >= 4 && g.portRatio(pi, r) > 2)) return g.playDev(pi, 'fair').ok;
 
   const goals = topGoals(g, pi);
   if (g.playableDev(pi, 'harvest')) {

@@ -1,8 +1,10 @@
 // Dialoge: Handel, Entwicklungskarten, Anti-Pech, Abwerfen, Diebstahl, Angebote, Regeln, Spielende.
 import { avatarSVG } from './avatars.js';
 import { sfx } from './sfx.js';
-import { RES, RES_INFO, DEV_INFO } from '../engine/constants.js';
-import { MISSION_POOL } from '../engine/missions.js';
+import {
+  RES, RES_INFO, DEV_INFO, DEV_ORDER, PASSIVE_CARDS,
+} from '../engine/constants.js';
+import { MISSION_POOL, missionDesc } from '../engine/missions.js';
 import {
   el, esc, ic, iconize, resSq, handHTML,
 } from './dom.js';
@@ -97,14 +99,15 @@ export function devModal(app) {
       return;
     }
     const grid = el('div', { class: 'cardgrid' });
-    for (const t of ['knight', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'decree', 'victory']) {
+    for (const t of DEV_ORDER) {
       const cards = me.dev.filter((c) => c.type === t);
       if (!cards.length) continue;
       const info = DEV_INFO[t];
       const fresh = cards.filter((c) => c.turn >= g.s.turnNumber).length;
       const ready = g.playableDev(HUMAN, t);
       let note = '';
-      if (t === 'victory') note = 'Zählt automatisch';
+      const passive = PASSIVE_CARDS.has(t);
+      if (passive) note = t === 'victory' ? 'Zählt automatisch' : 'Wirkt von selbst';
       else if (!ready && g.s.turn !== HUMAN) note = 'Nicht dein Zug';
       else if (!ready && fresh === cards.length) note = 'Ab der nächsten Runde';
       else if (!ready && g.s.devPlayed) note = 'Nur 1 Karte pro Zug';
@@ -114,11 +117,13 @@ export function devModal(app) {
           confirmDialog('Weltenwandel einsetzen?', 'Alle Landfelder werden zufällig neu verteilt – für alle Spieler! Siedlungen und Straßen bleiben stehen.', 'Neu mischen').then((yes) => {
             if (yes) { const x = app.act('playDev', HUMAN, 'remap'); if (x.ok) m.close(); }
           });
+        } else if (['blessing', 'fair', 'exile', 'birthday'].includes(t)) {
+          confirmDialog(`${info.name} ausspielen?`, info.desc, 'Ausspielen').then((yes) => { if (yes) { const x = app.act('playDev', HUMAN, t); if (x.ok) m.close(); } });
         } else { const x = app.act('playDev', HUMAN, t); if (x.ok) m.close(); }
       };
-      grid.append(el('div', { class: `cardslot ${ready || t === 'victory' ? '' : 'dim'}`, title: info.desc },
+      grid.append(el('div', { class: `cardslot ${ready || passive ? '' : 'dim'}`, title: info.desc },
         el('div', { class: 'cs-img', html: cardHTML(t) + (cards.length > 1 ? `<span class="cs-count">×${cards.length}</span>` : '') }),
-        t === 'victory' ? el('div', { class: 'cs-note' }, note)
+        passive ? el('div', { class: 'cs-note' }, note)
           : el('button', { class: `btn small ${ready ? 'solid' : ''}`, disabled: !ready || undefined, title: note, onclick: play }, ready ? 'Ausspielen' : note || 'Nicht möglich')));
     }
     m.body.append(grid);
@@ -133,6 +138,8 @@ export function devNote(g, t) {
   const cards = g.s.players[HUMAN].dev.filter((c) => c.type === t);
   const fresh = cards.filter((c) => c.turn >= g.s.turnNumber).length;
   if (t === 'victory') return 'Siegpunktkarten zählen automatisch.';
+  if (t === 'shield') return 'Der Schutzbrief wirkt von selbst: Beim nächsten Diebstahl oder bei einer 7 schützt er dich einmal.';
+  if (t === 'exile' && g.s.robber === g.desertHex()?.id) return 'Der Räuber ist schon in der Wüste.';
   if (g.s.turn !== HUMAN) return 'Du bist gerade nicht dran.';
   if (fresh === cards.length) return 'Frisch gekaufte Karten sind erst ab der nächsten Runde spielbar.';
   if (g.s.devPlayed) return 'Pro Zug darfst du nur eine Entwicklungskarte spielen.';
@@ -143,13 +150,17 @@ export function devNote(g, t) {
 /** Eine Entwicklungskarte aus dem Kartenfächer ausspielen (inkl. Rohstoffwahl bei Monopol/Erfindung). */
 export function playDevCard(app, type) {
   const g = app.game;
-  if (type === 'victory' || !g.playableDev(HUMAN, type)) { app.toast(devNote(g, type), 'info'); return; }
+  if (PASSIVE_CARDS.has(type) || !g.playableDev(HUMAN, type)) { app.toast(devNote(g, type), 'info'); return; }
   if (type === 'harvest') { app.startHarvest(); return; }
   if (type === 'remap') {
     confirmDialog('Weltenwandel einsetzen?', 'Alle Landfelder werden zufällig neu verteilt – für alle Spieler! Siedlungen und Straßen bleiben stehen.', 'Neu mischen').then((yes) => { if (yes) app.act('playDev', HUMAN, 'remap'); });
     return;
   }
   if (type === 'decree') { decreeModal(app); return; }
+  if (['blessing', 'fair', 'exile', 'birthday'].includes(type)) {
+    confirmDialog(`${DEV_INFO[type].name} ausspielen?`, DEV_INFO[type].desc, 'Ausspielen').then((yes) => { if (yes) app.act('playDev', HUMAN, type); });
+    return;
+  }
   if (type === 'monopoly') {
     const m = openModal({ title: 'Monopol', bare: true });
     m.body.append(el('div', { class: 'pk-row' }, RES.map((r) => circPick(r, { onclick: () => { const x = app.act('playDev', HUMAN, 'monopoly', { res: r }); if (x.ok) m.close(); } }))));
@@ -332,8 +343,9 @@ export function rulesModal() {
       <li>🌍 <b>Weltenwandel:</b> Neue Entwicklungskarte. Alle Landfelder werden zufällig neu gemischt; Siedlungen &amp; Straßen bleiben.</li>
       <li>⚓ <b>Welthafen (Erweiterung):</b> Ein einziger Hafen am Rand tauscht alle Rohstoffe 2:1 – er ersetzt einen 3:1-Hafen und ist golden markiert.</li>
       <li>📜 <b>Erlass-Karte (Erweiterung):</b> Entwicklungskarte. Lege einen <b>Zoll</b> (Gegner, die den Rohstoff erwürfeln, zahlen dir 1 Karte) oder eine <b>Strafe</b> (sie erhalten 1 Karte weniger) auf einen Rohstoff. Gilt für jeden Wurf, bis du wieder am Zug bist; du selbst bist ausgenommen.</li>
+      <li>🛡️ <b>Ereigniskarten (Erweiterung):</b> Fünf zusätzliche Karten im Stapel – <b>Schutzbrief</b> (einmal vor dem Dieb sicher: kein Bestehlen oder kein Abwerfen bei der 7), <b>Rückenwind</b> (nächster Wurf: jedes getroffene Feld +1 Karte), <b>Marktprivileg</b> (bis Zugende 2:1 mit der Bank), <b>Dieb vertreiben</b> (Räuber in die Wüste) und <b>Geburtstag</b> (jeder Gegner schenkt dir 1 Karte).</li>
       <li>🍀 <b>Anti-Pech-Marker:</b> Erhältst du bei einem Wurf (außer 7) nichts, bekommst du 1 Marker. So viele Marker wie du Siegpunkte hast = 1 Rohstoff deiner Wahl.</li>
-      <li>🎖️ <b>Öffentliche Missionen:</b> 3 zufällige Ziele für alle sichtbar. Wer sie als Erster schafft, bekommt +1 Siegpunkt.</li>
+      <li>🎖️ <b>Missionskarten:</b> 3 zufällige Ziele (auf größeren Inseln mehr) liegen für alle sichtbar aus – zum Beispiel Weltentdecker, Metropole oder Goldregen. Wer sie als Erster schafft, bekommt +1 Siegpunkt.</li>
     </ul>
     <h3>Bedienung</h3>
     <ul>
@@ -341,7 +353,8 @@ export function rulesModal() {
       <li>Mausrad zoomt, Ziehen verschiebt das Spielfeld.</li>
     </ul>
     <h3>Mögliche Missionen</h3>
-    <ul class="mlist">${MISSION_POOL.map((x) => `<li>${ic(x.icon, 'inline')} <b>${x.name}:</b> ${esc(x.desc)}</li>`).join('')}</ul>`) }));
+    <ul class="mlist">${MISSION_POOL.map((x) => `<li>${ic(x.icon, 'inline')} <b>${x.name}:</b> ${esc(missionDesc(x))}</li>`).join('')}</ul>
+    <p class="hint-text">Die Zielwerte steigen mit der Inselgröße; auf größeren Inseln liegen mehr Missionen aus (3 / 4 / 5).</p>`) }));
   return m;
 }
 

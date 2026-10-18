@@ -1,7 +1,9 @@
 // HUD (Kopfzeile), Aktionsleiste, Missionen, Verlauf – als HTML-Strings.
-import { RES, RES_INFO, COSTS, DEV_INFO, STRATEGY_LABEL } from '../engine/constants.js';
+import {
+  RES, RES_INFO, COSTS, DEV_INFO, DEV_ORDER, PASSIVE_CARDS, STRATEGY_LABEL,
+} from '../engine/constants.js';
 import { cardHTML } from './cards.js';
-import { missionById } from '../engine/missions.js';
+import { missionById, missionDesc } from '../engine/missions.js';
 import {
   esc, rich, ic, resSq, costHTML, dieHTML,
 } from './dom.js';
@@ -38,14 +40,15 @@ export function renderHand(g, inflight = {}) {
 export function renderHandBar(g, inflight = {}, landing = {}, sel = null) {
   const p = g.s.players[HUMAN];
   const resHtml = renderResGroups(g, p, inflight, landing, sel);
-  const devHtml = ['knight', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'decree', 'victory'].map((t) => {
+  const devHtml = DEV_ORDER.map((t) => {
     const cards = p.dev.filter((c) => c.type === t);
     if (!cards.length) return '';
-    const ready = t !== 'victory' && g.playableDev(HUMAN, t);
+    const passive = PASSIVE_CARDS.has(t);
+    const ready = !passive && g.playableDev(HUMAN, t);
     const fresh = cards.filter((c) => c.turn >= g.s.turnNumber).length;
-    const inner = cards.map((c, i) => `<div class="dcard${c.turn >= g.s.turnNumber && t !== 'victory' ? ' fresh' : ''}" style="--i:${i}">${cardHTML(t)}</div>`).join('');
-    const tip = t === 'victory' ? 'Siegpunkt – zählt automatisch' : ready ? `${DEV_INFO[t].name} ausspielen` : `${DEV_INFO[t].name}: ${g.s.turn !== HUMAN ? 'nicht dein Zug' : fresh === cards.length ? 'ab der nächsten Runde' : g.s.devPlayed ? 'nur 1 Karte pro Zug' : 'jetzt nicht möglich'}`;
-    return `<div class="dgroup ${ready ? 'ready' : ''}" data-dev="${t}" title="${esc(tip)}">${inner}</div>`;
+    const inner = cards.map((c, i) => `<div class="dcard${c.turn >= g.s.turnNumber && !passive ? ' fresh' : ''}" style="--i:${i}">${cardHTML(t)}</div>`).join('');
+    const tip = passive ? (t === 'victory' ? 'Siegpunkt – zählt automatisch' : `${DEV_INFO[t].name} – wirkt von selbst`) : ready ? `${DEV_INFO[t].name} ausspielen` : `${DEV_INFO[t].name}: ${g.s.turn !== HUMAN ? 'nicht dein Zug' : fresh === cards.length ? 'ab der nächsten Runde' : g.s.devPlayed ? 'nur 1 Karte pro Zug' : 'jetzt nicht möglich'}`;
+    return `<div class="dgroup ${ready ? 'ready' : ''}" data-dev="${t}" data-passive="${passive ? 1 : 0}" title="${esc(tip)}">${inner}</div>`;
   }).join('');
   return resHtml + (devHtml ? `<div class="hand-sep"></div>${devHtml}` : '');
 }
@@ -142,7 +145,7 @@ function pieceIcon(g, kind) {
   return null;
 }
 
-const anyPlayable = (g) => ['knight', 'roadbuilding', 'plenty', 'monopoly', 'remap', 'harvest', 'decree'].some((t) => g.playableDev(HUMAN, t));
+const anyPlayable = (g) => DEV_ORDER.filter((t) => !PASSIVE_CARDS.has(t)).some((t) => g.playableDev(HUMAN, t));
 
 const BUILD_ITEMS = [ // von oben nach unten (die Straße liegt am nächsten am Knopf)
   ['devcard', 'Entwicklungskarte', 'card'],
@@ -264,7 +267,7 @@ export function renderMissionBox(g, open) {
         <span class="msq">${ic(def.icon)}</span>
         <div class="m-body">
           <div class="m-title">${def.name}<span class="m-reward">+1</span></div>
-          <div class="m-desc">${def.desc}</div>
+          <div class="m-desc">${missionDesc(def, g)}</div>
           ${owner
     ? `<div class="m-claimed">${avatarSVG(owner.face, owner.color, 18)}${esc(owner.name)} war schneller</div>`
     : `<div class="m-bar"><div style="width:${Math.round((prog.cur / prog.max) * 100)}%"></div></div><div class="m-prog">${prog.cur} / ${prog.max}</div>`}
