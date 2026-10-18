@@ -199,3 +199,6 @@ Im Bank-Reiter wählst du erst, was du **gibst**, und tippst dann beliebig oft a
 
 ## 🎨 Design-System v5 „Siedler-Salon“
 Neue Oberfläche (alles außer den Spielgrafiken): Palette aus Hafen-Blaugrün, Pergament-Text, Siedlergold (Hauptaktion), Ziegelrot (Warnung) und Moosgrün (Erfolg); Serifen-Überschriften (Systemschrift, kein Webfont), warme Haarlinien, Goldlinie unter der Kopfzeile, ein einheitlicher Goldknopf als primäre Aktion. Einrichten als gruppierte Karten, Dialoge mit Pergamentrahmen, sichtbarer Fokusring, mindestens 44 px große Touchziele, `prefers-reduced-motion` wird respektiert. Alle Tokens stehen am Ende von `public/css/style.css` (`:root`-Block „Design-System v5“).
+
+## 🔄 Kartenstapel wird nie leer
+Wird die letzte Entwicklungs-/Ereigniskarte gekauft, mischt das Spiel sofort einen neuen Stapel (gleiche Zusammensetzung wie am Anfang: Ritter, Siegpunkte, Straßenbau, Erfindung, Monopol und alle gewählten Erweiterungskarten). So gibt es immer wieder Karten zu kaufen.

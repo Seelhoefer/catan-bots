@@ -9,6 +9,20 @@ import { MISSION_POOL, missionById, missionMax } from './missions.js';
 
 const ok = (extra = {}) => ({ ok: true, ...extra });
 const fail = (error) => ({ ok: false, error });
+/** Zusammensetzung des Entwicklungs-/Ereigniskartenstapels (auch beim Nachmischen, wenn er leer wird). */
+function devDeckCards(settings) {
+  const f = SIZES[settings.size].factor;
+  const deck = [];
+  const add = (t, c) => { for (let i = 0; i < c; i++) deck.push(t); };
+  add('knight', 14 * f); add('victory', 5 * f + Math.round(Math.max(0, settings.targetVP - 10) / 4)); add('roadbuilding', 2 * f);
+  add('plenty', 2 * f); add('monopoly', 2 * f);
+  if (settings.remapCard) add('remap', 2 * f);
+  if (settings.harvestCard) add('harvest', 2 * f);
+  if (settings.decreeCard) add('decree', 2 * f);
+  if (settings.eventCards) { for (const t of ['shield', 'blessing', 'fair', 'exile', 'birthday']) add(t, 2 * f); }
+  return deck;
+}
+
 const emptyHand = () => ({ wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 });
 const sumHand = (h) => RES.reduce((a, r) => a + (h[r] || 0), 0);
 
@@ -66,14 +80,7 @@ export class Game {
     }
 
     const f = size.factor;
-    const deck = [];
-    const add = (t, c) => { for (let i = 0; i < c; i++) deck.push(t); };
-    add('knight', 14 * f); add('victory', 5 * f + Math.round(Math.max(0, settings.targetVP - 10) / 4)); add('roadbuilding', 2 * f);
-    add('plenty', 2 * f); add('monopoly', 2 * f);
-    if (settings.remapCard) add('remap', 2 * f);
-    if (settings.harvestCard) add('harvest', 2 * f);
-    if (settings.decreeCard) add('decree', 2 * f);
-    if (settings.eventCards) { for (const t of ['shield', 'blessing', 'fair', 'exile', 'birthday']) add(t, 2 * f); }
+    const deck = devDeckCards(settings);
 
     const bank = {};
     for (const res of RES) bank[res] = 19 * f;
@@ -672,6 +679,10 @@ export class Game {
     if (!this.canAfford(pi, COSTS.devcard)) return fail('Dir fehlen Rohstoffe (Wolle, Getreide, Erz).');
     this.pay(pi, COSTS.devcard);
     const type = s.devDeck.pop();
+    if (s.devDeck.length === 0) { // Stapel aufgebraucht: neu mischen, es gibt immer wieder Karten zu kaufen
+      s.devDeck = shuffle(devDeckCards(s.settings), this.rng);
+      this.log('🔄 Der Kartenstapel war leer und wurde neu gemischt.');
+    }
     const p = this.player(pi);
     p.dev.push({ type, turn: s.turnNumber });
     p.devBought++;

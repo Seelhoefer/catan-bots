@@ -862,3 +862,17 @@ test('Banktausch: mehrere Geschäfte auf einmal (gleicher oder verschiedener Roh
   assert.equal(g.bankTrade(0, 'wood', { ore: 2 }).ok, false, 'Bank hat nicht genug');
   assert.equal(g.bankTrade(0, 'wood', { ore: 1 }).ok, true);
 });
+
+test('Entwicklungskarten-Stapel wird neu gemischt, wenn er leer ist', () => {
+  const g = Game.create({ bots: 3, size: 'small', seed: 7, eventCards: true }, makeRng(7));
+  const s = g.s;
+  s.phase = 'main'; s.turn = 0; s.sub = 'actions';
+  s.devDeck = ['knight'];
+  s.players[0].hand = { wood: 0, brick: 0, sheep: 1, wheat: 1, ore: 1 };
+  const r = g.buyDevCard(0);
+  assert.equal(r.ok, true);
+  assert.equal(r.card, 'knight');
+  assert.ok(s.devDeck.length > 20, 'neuer Stapel gemischt');
+  s.players[0].hand = { wood: 0, brick: 0, sheep: 1, wheat: 1, ore: 1 };
+  assert.equal(g.buyDevCard(0).ok, true, 'es gibt immer wieder Karten zu kaufen');
+});
