@@ -557,3 +557,20 @@ test('Wahlfeld: bei knapper Bank hängt das Spiel nicht fest', () => {
   assert.equal(g.s.sub, 'actions');
   assert.equal(g.s.gold[1], undefined);
 });
+
+test('Riesige Karte: jeder setzt 3 Startsiedlungen mit Straßen, ab der zweiten gibt es Startrohstoffe', () => {
+  const g = newGame({ size: 'huge', bots: 3 }, 8);
+  assert.equal(g.s.setup.order.length, g.s.players.length * 3);
+  let guard = 0;
+  while (g.s.phase === 'setup' && guard++ < 100) botAct(g, g.s.turn);
+  assert.equal(g.s.phase, 'main');
+  for (const p of g.s.players) {
+    assert.equal(g.buildingsOf(p.id).length, 3, `${p.name} hat 3 Siedlungen`);
+    assert.equal(g.roadsOf(p.id).length, 3, `${p.name} hat 3 Straßen`);
+    assert.ok(g.handCount(p.id) > 0, `${p.name} bekam Startrohstoffe`);
+  }
+  // kleine Karte bleibt bei 2
+  const small = newGame({ size: 'small', bots: 3 }, 8);
+  while (small.s.phase === 'setup') botAct(small, small.s.turn);
+  assert.equal(small.buildingsOf(0).length, 2);
+});

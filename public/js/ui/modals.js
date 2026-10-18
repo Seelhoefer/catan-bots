@@ -301,7 +301,7 @@ export function rulesModal() {
   m.body.append(el('div', { class: 'rules', html: iconize(`
     <h3>So spielst du</h3>
     <ul>
-      <li><b>Gründung:</b> Setze reihum 2 Siedlungen mit je einer Straße. Die zweite Siedlung bringt Startrohstoffe.</li>
+      <li><b>Gründung:</b> Setze reihum 2 Siedlungen mit je einer Straße (auf der riesigen Karte 3). Jede Siedlung nach der ersten bringt Startrohstoffe.</li>
       <li><b>Dein Zug:</b> 🎲 Würfeln → alle Felder mit der Zahl bringen Rohstoffe (Siedlung 1×, Stadt 2×) → bauen, handeln, Karten spielen → Zug beenden.</li>
       <li><b>Bauen:</b> Straße (🌲🧱), Siedlung (🌲🧱🐑🌾, mind. 2 Kanten Abstand, an eigener Straße), Stadt (🌾🌾⛰️⛰️⛰️ auf einer Siedlung), Entwicklungskarte (🐑🌾⛰️).</li>
       <li><b>Eine 7:</b> Wer mehr als 7 Karten hat, gibt die Hälfte ab. Der Würfler versetzt den Räuber und stiehlt eine Karte.</li>

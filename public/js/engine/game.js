@@ -80,7 +80,10 @@ export class Game {
     const start = Math.floor(r() * n);
     const order = [];
     for (let i = 0; i < n; i++) order.push((start + i) % n);
-    const setupOrder = [...order, ...order.slice().reverse()];
+    // Gründungsrunden: vor, zurück (, vor) – auf der riesigen Karte setzt jeder 3 Siedlungen mit Straßen
+    const rounds = size.startSettlements || 2;
+    const setupOrder = [];
+    for (let k = 0; k < rounds; k++) setupOrder.push(...(k % 2 === 0 ? order : order.slice().reverse()));
 
     const state = {
       version: 1,
@@ -273,14 +276,15 @@ export class Game {
     p.pieces.settlement--;
     s.setup.lastSettlement = vid;
     s.sub = 'road';
-    // Zweite Runde: Startrohstoffe
-    if (s.setup.step >= s.players.length) {
+    // Ab der zweiten Siedlung: Startrohstoffe
+    const round = Math.floor(s.setup.step / s.players.length) + 1;
+    if (round >= 2) {
       const got = emptyHand();
       for (const hid of this.board.vertices[vid].hexes) {
         const h = this.board.hexes[hid];
         if (RES.includes(h.type) && s.bank[h.type] > 0) { got[h.type]++; s.bank[h.type]--; p.hand[h.type]++; }
       }
-      this.log(`${p.name} gründet eine zweite Siedlung und erhält ${this.fmtHand(got)}.`, pi);
+      this.log(`${p.name} gründet eine ${round === 2 ? 'zweite' : 'dritte'} Siedlung und erhält ${this.fmtHand(got)}.`, pi);
       this.emit({ type: 'gain', pi, hand: got });
     } else {
       this.log(`${p.name} gründet eine Siedlung.`, pi);

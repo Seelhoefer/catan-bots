@@ -39,7 +39,7 @@ Größte Rittermacht, Sieg bei Erreichen der Siegpunktzahl in deinem Zug.
 - Die vier neuen Regeln lassen sich einzeln ausschalten
 
 **Nebel-Variante:** Rund 30 % der Landfelder liegen verdeckt (🌫️). Sobald eine Straße an ein Nebelfeld grenzt,
-wird es aufgedeckt und der Entdecker bekommt 1 Rohstoff dieses Feldes. Startsiedlungen dürfen nicht an Nebel liegen.
+wird es aufgedeckt und der Entdecker bekommt 1 Rohstoff dieses Feldes. Startsiedlungen dürfen nicht an Nebel liegen. Auf der **riesigen Karte** setzt jeder (auch die Gegner) **3 Startsiedlungen** mit je einer Straße – Reihenfolge vor, zurück, vor –, und jede Siedlung nach der ersten bringt Startrohstoffe.
 
 **🌾 Ernte (neue Entwicklungskarte):** Du wählst eines deiner Felder, an dem du eine Siedlung (1 Karte) oder Stadt (2 Karten)
 hast, und erhältst sofort dessen Ertrag. Spielbare Felder werden auf dem Brett markiert.

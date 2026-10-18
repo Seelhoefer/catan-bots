@@ -21,15 +21,15 @@ export const COSTS = {
 export const SIZES = {
   small: {
     id: 'small', label: 'Klein', radius: 2, hexes: 19, maxPlayers: 4,
-    sizeBonus: 0, factor: 1, desc: '19 Felder · klassisch',
+    sizeBonus: 0, factor: 1, startSettlements: 2, desc: '19 Felder · klassisch',
   },
   large: {
     id: 'large', label: 'Groß', radius: 3, hexes: 37, maxPlayers: 6,
-    sizeBonus: 2, factor: 2, desc: '37 Felder · lange Partie',
+    sizeBonus: 2, factor: 2, startSettlements: 2, desc: '37 Felder · lange Partie',
   },
   huge: {
     id: 'huge', label: 'Riesig', radius: 4, hexes: 61, maxPlayers: 6,
-    sizeBonus: 4, factor: 3, desc: '61 Felder · Epos',
+    sizeBonus: 4, factor: 3, startSettlements: 3, desc: '61 Felder · 3 Startsiedlungen',
   },
 };
 
