@@ -302,7 +302,7 @@ class App {
         break;
       case 'mission':
         if (e.pi !== HUMAN) sfx.play('vpOther');
-        if (artStyle() === 'mobile') { // Mobil-Set: die Missionskarte erscheint groß
+        if (artStyle() === 'mobile' || (artStyle() === 'new' && missionCardImg(e.id))) { // Missionskarte erscheint groß
           const ms = showCardHero(null, `${avatarSVG(g.s.players[e.pi].face, g.s.players[e.pi].color, 34)} <span>${e.pi === HUMAN ? 'Du erfüllst' : `${esc(name(e.pi))} erfüllt`} <b>${missionById(e.id).name}</b> · +1 Siegpunkt</span>`, 2800 * Math.max(0.6, this.sf), missionCardImg(e.id));
           this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + ms - 300);
         } else this.toastHTML(`${ic(missionById(e.id).icon, 'inline')} ${esc(name(e.pi))} erfüllt „${missionById(e.id).name}“ (+1 Siegpunkt)`, 'big');

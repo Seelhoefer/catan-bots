@@ -337,8 +337,8 @@ test('Bots haben Charaktere (Name, Eigenschaft, Gesicht)', () => {
   const bots = g.s.players.filter((p) => p.isBot);
   assert.equal(new Set(bots.map((b) => b.name)).size, 5);
   for (const b of bots) { assert.ok(b.trait && b.tagline && b.face.skin); }
-  const g2 = newGame({ bots: 2, botIds: ['mira', 'amir'] });
-  assert.deepEqual(g2.s.players.slice(1).map((p) => p.name), ['Mira', 'Amir']);
+  const g2 = newGame({ bots: 2, botIds: ['mira', 'aurelio'] });
+  assert.deepEqual(g2.s.players.slice(1).map((p) => p.name), ['Mira', 'Aurelio']);
 });
 
 test('Goldfeld: bei passender Zahl wählt der Besitzer frei (Stadt = 2), kein Anti-Pech-Marker', () => {
@@ -397,9 +397,9 @@ test('Angebote (deferred): Zusagen werden nur vorgemerkt, getauscht wird erst na
 });
 
 test('Schwierigkeit lässt sich pro Gegner einstellen', () => {
-  const g = newGame({ difficulty: 'normal', botIds: ['fritz', 'greta', 'otto'], botDifficulty: { greta: 'hard', otto: 'easy' } });
+  const g = newGame({ difficulty: 'normal', botIds: ['mira', 'cassian', 'elara'], botDifficulty: { cassian: 'hard', elara: 'easy' } });
   const byName = Object.fromEntries(g.s.players.filter((p) => p.isBot).map((p) => [p.name, p.difficulty]));
-  assert.deepEqual(byName, { Fritz: 'normal', Greta: 'hard', Otto: 'easy' });
+  assert.deepEqual(byName, { Mira: 'normal', Cassian: 'hard', Elara: 'easy' });
   assert.equal(g.player(0).difficulty, null);
 });
 

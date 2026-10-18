@@ -211,4 +211,7 @@ Neue Felder, Häfen, Siedlungen/Städte, Rohstoffkarten und die fünf Entwicklun
 - **Felder:** Namensschilder entfernt, der vom Schild verdeckte untere Rand ist aus dem Bild ergänzt (weich gespiegelt, Rahmen nachgezeichnet).
 - **Häfen:** Szene ohne Namenstafel, auf dem Brett größer gezeichnet.
 - **Siedlungen/Städte:** Rot, Blau, Grün aus dem Paket; Orange, Violett und Pink sind aus Gelb, Blau und Rot umgefärbt (das Paket hat nur 5 Farben, zwei davon – Gelb, Weiß – gibt es im Spiel nicht).
-- **Noch alt:** Räuber (im Paket ist der Kopf abgeschnitten), Ereigniskarten (Bildtexte passen nicht zu den Regeln), Erlass, Weltenwandel, Ernte, Straßen, Missionskarten, Meer-Hintergrund.
+- **Karten:** Entwicklungskarten (Ritter, Siegpunkt, Straßenbau, Erfindung, Monopol) und Kartenrücken aus dem Paket, Ränder von Rand-Resten befreit. Die fünf Ereigniskarten und drei Missionskarten (Weltentdecker, Metropole, Goldregen) haben **neu gesetzten Text, der zu den Spielregeln passt** (Bildtext war falsch) – Bild und Rahmen aus dem Paket. Missionskarten erscheinen beim Erfüllen groß.
+- **Bots:** Mira, Cassian, Elara, Lyra, Valen, Aurelio (neue Porträts, Zuschnitt aus den Premium-Portraits). Die bisherigen Bots (Fritz, Greta, Otto, Lea, Amir) sind ersetzt.
+- **Hintergrund:** mediterrane Bucht auf Startseite und Brett (Stil „Illustriert“). **Palette:** Deep Forest / Antique Brass / Parchment aus dem Paket.
+- **Noch alt:** Räuber (im Paket Kopf abgeschnitten), Erlass, Weltenwandel, Ernte, Straßen, übrige Missionen (ohne Bild, nur Hinweis), Auszeichnungs-Karten (Rittermacht, Handelsstraße).

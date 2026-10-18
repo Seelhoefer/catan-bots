@@ -10,7 +10,8 @@ export const COLOR_ID = Object.fromEntries(PLAYER_COLORS.map((c) => [c.hex, c.id
 const MOBILE = 'assets/mobile/';
 /** Web-Set (Illustriert): neue Felder, Häfen, Siedlungen/Städte in allen sechs Spielerfarben, Entwicklungskarten, Rohstoffkarten. */
 const WEB = 'assets/web/';
-const WEB_CARDS = new Set(['knight', 'victory', 'roadbuilding', 'plenty', 'monopoly']);
+const WEB_CARDS = new Set(['knight', 'victory', 'roadbuilding', 'plenty', 'monopoly', 'shield', 'blessing', 'fair', 'exile', 'birthday']);
+const WEB_MISSIONS = new Set(['explorer', 'citybuilder', 'haul']);
 /** Neue Ereigniskarten im Mobil-Set (die anderen Karten bleiben wie sie sind). */
 const MOBILE_CARDS = new Set(['shield', 'blessing', 'fair', 'exile', 'birthday']);
 
@@ -19,7 +20,9 @@ export const cardImgSrc = (type) => (styleId === 'mobile' && MOBILE_CARDS.has(ty
 /** Rohstoffkarte (Mobil-Set) für die Hand am Handy. */
 export const resCardImg = (res) => `${MOBILE}cards/res-${res}.webp`;
 /** Missionskarte (Mobil-Set); Missionen ohne eigenes Bild bekommen die allgemeine „Mission“-Karte. */
-export const missionCardImg = (id) => `${MOBILE}missions/${{ explorer: 'weltentdecker', citybuilder: 'metropole', haul: 'goldregen' }[id] || 'mission'}.webp`;
+/** Missionskarte als Bild (null = keine vorhanden, dann nur Hinweis-Toast). */
+export const missionCardImg = (id) => (styleId === 'new' ? (WEB_MISSIONS.has(id) ? `${WEB}missions/${id}.webp` : null) : missionCardImgMobile(id));
+const missionCardImgMobile = (id) => `${MOBILE}missions/${{ explorer: 'weltentdecker', citybuilder: 'metropole', haul: 'goldregen' }[id] || 'mission'}.webp`;
 export const IMG = {
   oceanMinimal: `${BASE}ocean-minimal.webp`,
   get thief() { return styleId === 'mobile' ? `${MOBILE}robber/robber.webp` : `${BASE}thief.webp`; },
@@ -117,7 +120,7 @@ const styleList = (id) => {
     ...(st.fog ? [st.fog] : []),
     ...(st.tile ? ['wood', 'brick', 'sheep', 'wheat', 'ore', 'desert', 'gold'].map(st.tile) : []),
     ...(id === 'new' ? [ART_STYLES.new.world, ...PLAYER_COLORS.flatMap((c) => ['settlement', 'city'].map((k) => `${WEB}pieces/${c.id}-${k}.webp`)),
-      ...['wood', 'brick', 'sheep', 'wheat', 'ore'].map((r) => `${WEB}cards/res-${r}.webp`), ...[...WEB_CARDS].map((t) => `${WEB}cards/${t}.webp`)] : []),
+      ...['wood', 'brick', 'sheep', 'wheat', 'ore'].map((r) => `${WEB}cards/res-${r}.webp`), ...[...WEB_CARDS].map((t) => `${WEB}cards/${t}.webp`), ...[...WEB_MISSIONS].map((t) => `${WEB}missions/${t}.webp`)] : []),
     ...(id === 'mobile' ? [`${MOBILE}robber/robber.webp`, ...PLAYER_COLORS.flatMap((c) => ['settlement', 'city'].map((k) => `${MOBILE}pieces/${c.id}-${k}.webp`)),
       ...['wood', 'brick', 'sheep', 'wheat', 'ore'].map(resCardImg), ...[...MOBILE_CARDS].map((t) => `${MOBILE}cards/${t}.webp`)] : []),
   ];
