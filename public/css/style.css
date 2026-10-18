@@ -197,8 +197,8 @@ kbd { background: var(--surface-2); border-radius: 5px; padding: 1px 6px; font-s
 .num { font-size: .36px; font-weight: 800; text-anchor: middle; dominant-baseline: central; fill: #3a2f1c; font-family: Inter, 'Segoe UI', system-ui, -apple-system, sans-serif; font-variant-numeric: lining-nums tabular-nums; letter-spacing: -.01em; }
 .num.two { font-size: .31px; letter-spacing: -.03em; }
 .num.red { fill: #c62828; }
-.num.big { font-size: .5px; dominant-baseline: alphabetic; font-variant-numeric: lining-nums proportional-nums; letter-spacing: 0; }
-.num.big.two { font-size: .42px; letter-spacing: -.02em; }
+.num.big { font-size: .54px; dominant-baseline: alphabetic; font-variant-numeric: lining-nums proportional-nums; letter-spacing: 0; }
+.num.big.two { font-size: .45px; letter-spacing: -.02em; }
 .token { }
 .port-bg { fill: #e0b64f; stroke: #8a6a1f; stroke-width: .03; }
 .port-inner { fill: url(#portGrad); stroke: rgba(120,90,30,.5); stroke-width: .015; }
@@ -1686,8 +1686,11 @@ td.who { display: flex; align-items: center; gap: 8px; }
   .hdr-left .rchip { pointer-events: auto; flex: 1 1 0; max-width: 62px; height: 40px; justify-content: center; gap: 4px; padding: 0 6px 0 3px; border-radius: 14px; background: rgba(9, 19, 31, .88); border: 1px solid rgba(255, 255, 255, .12); }
   .hdr-left .rsq { width: 26px; height: 26px; }
   .hdr-left .rchip b { font-size: 16px; }
-  .hdr-left .rchip.zero { opacity: .45; }
-  .hdr-left .rchip.tok { max-width: 74px; }
+  /* nur die Rohstoffe, die man hat – als Gruppe mittig über den Aktionen */
+  .hdr-left .rchip[data-res].zero { display: none; }
+  .hdr-left { gap: 8px; }
+  .hdr-left .rchip { flex: 0 0 auto; width: 62px; max-width: none; }
+  .hdr-left .rchip.tok { width: auto; min-width: 74px; }
 
   /* Bretthinweise oben links: eine Zeile, Missionen nur als Symbol */
   .floatcol { top: 6px; left: 6px; flex-direction: row; flex-wrap: wrap; align-items: center; max-width: calc(100vw - 100px); gap: 6px; }
