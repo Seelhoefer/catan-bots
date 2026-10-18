@@ -197,6 +197,8 @@ kbd { background: var(--surface-2); border-radius: 5px; padding: 1px 6px; font-s
 .num { font-size: .36px; font-weight: 800; text-anchor: middle; dominant-baseline: central; fill: #3a2f1c; font-family: Inter, 'Segoe UI', system-ui, -apple-system, sans-serif; font-variant-numeric: lining-nums tabular-nums; letter-spacing: -.01em; }
 .num.two { font-size: .31px; letter-spacing: -.03em; }
 .num.red { fill: #c62828; }
+.num.big { font-size: .5px; dominant-baseline: alphabetic; font-variant-numeric: lining-nums proportional-nums; letter-spacing: 0; }
+.num.big.two { font-size: .42px; letter-spacing: -.02em; }
 .token { }
 .port-bg { fill: #e0b64f; stroke: #8a6a1f; stroke-width: .03; }
 .port-inner { fill: url(#portGrad); stroke: rgba(120,90,30,.5); stroke-width: .015; }

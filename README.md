@@ -168,6 +168,6 @@ Der Pausen-Knopf im Kopf (oder Taste **P**, auch bei geöffnetem Dialog; Esc/P/L
 
 ## 📱 Handy: Vektor-Grafik, Pause-Knopf, Pinch-Zoom
 
-- **Vektor-Grafik auf dem Handy:** Das Rohstoff-Symbol steht über der Zahl, beides mittig im Feld; die Häfen zeigen die normalen illustrierten Hafenkarten (am Desktop bleiben die Vektor-Medaillons und die Anordnung nebeneinander).
+- **Vektor-Grafik auf dem Handy:** Das Rohstoff-Bild (die ersten illustrierten Rohstoff-Assets) steht groß über der Zahl, die Zahl ist größer und genau mittig im Kreis, beides mittig im Feld; die Häfen zeigen die normalen illustrierten Hafenkarten (am Desktop bleiben die Vektor-Medaillons und die Anordnung nebeneinander).
 - **Kopfzeile hochkant:** Einstellungen und darunter Pause sind so groß wie die Spielerkarten (54 px); bei 5–6 Spielern schrumpfen die Spielerbilder, damit nichts unter die Knöpfe läuft.
 - **Zwei-Finger-Zoom:** Pinch zoomt um die Fingermitte und schiebt mit; gerechnet wird gegen den Start der Geste (keine Drift), je Bild eine Aktualisierung. An den Zoomgrenzen gibt das Brett gedämpft nach und federt beim Loslassen zurück; bleibt ein Finger liegen, schiebt er ohne Sprung weiter. Seiten-Zoom des Browsers ist abgeschaltet (`user-scalable=no`), damit die Geste nur das Brett betrifft.

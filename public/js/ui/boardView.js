@@ -1,7 +1,7 @@
 // SVG-Darstellung des Spielfelds inkl. Zoom/Pan und anklickbarer Positionen.
 import { RES_INFO } from '../engine/constants.js';
 import {
-  art, COLOR_ID, piece, resImg, harborImg, fogImg, tileImg, IMG, PIECE_BOX, artStyle, compactView,
+  art, COLOR_ID, piece, resImg, harborImg, fogImg, tileImg, IMG, PIECE_BOX, artStyle, compactView, classicResImg,
 } from './assets.js';
 import { roadDefs, roadOnEdge } from './road.js';
 
@@ -425,22 +425,23 @@ export class BoardView {
           if (art.ok && h.type === 'gold') {
             // Wahlfeld: alle fünf Rohstoffe im Kreis = „such dir einen aus“
             const cx = stacked ? h.x : h.x - 0.4;
-            const cy = stacked ? h.y - 0.5 : h.y - 0.1;
+            const cy = stacked ? h.y - 0.46 : h.y - 0.1;
             const five = ['wood', 'brick', 'sheep', 'wheat', 'ore'].map((r, i) => {
               const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
               // doppelt so groß zeichnen und halbieren: sehr kleine SVG-Bilder werden von manchen Browsern sonst nicht gerendert
-              return `<image href="${resImg(r)}" x="-0.34" y="-0.34" width="0.68" height="0.68" transform="translate(${(cx + Math.cos(a) * 0.27).toFixed(3)} ${(cy + Math.sin(a) * 0.27).toFixed(3)}) scale(.5)"/>`;
+              return `<image href="${stacked ? classicResImg(r) : resImg(r)}" x="-0.34" y="-0.34" width="0.68" height="0.68" transform="translate(${(cx + Math.cos(a) * 0.27).toFixed(3)} ${(cy + Math.sin(a) * 0.27).toFixed(3)}) scale(.5)"/>`;
             }).join('');
             out.push(`<g class="hex-art gold-emblem${blocked ? ' dim' : ''}"><circle cx="${cx}" cy="${cy}" r="0.5" class="gold-ring"/>${five}${stacked ? '' : `<text x="${cx}" y="${(h.y + 0.62).toFixed(3)}" class="gold-label">WAHL</text>`}</g>`);
           } else if (art.ok) {
-            if (stacked) out.push(`<image href="${resImg(h.type)}" x="${(h.x - 0.27).toFixed(3)}" y="${(h.y - 0.8).toFixed(3)}" width="0.54" height="0.54" class="hex-art${blocked ? ' dim' : ''}"/>`);
+            if (stacked) out.push(`<image href="${classicResImg(h.type)}" x="${(h.x - 0.34).toFixed(3)}" y="${(h.y - 0.84).toFixed(3)}" width="0.68" height="0.68" class="hex-art${blocked ? ' dim' : ''}"/>`);
             else out.push(`<image href="${resImg(h.type)}" x="${(h.x - 0.63).toFixed(3)}" y="${(h.y - 0.33).toFixed(3)}" width="0.62" height="0.62" class="hex-art${blocked ? ' dim' : ''}"/>`);
           }
           else out.push(`<use href="#i-${h.type === 'gold' ? 'coin' : h.type}" x="${h.x - 0.6}" y="${h.y - 0.3}" width="0.56" height="0.56" class="hex-ico"/>`);
           const red = h.num === 6 || h.num === 8;
           const two = h.num >= 10;
-          out.push(`<g transform="${stacked ? `translate(${h.x},${h.y + 0.02}) scale(.82)` : `translate(${h.x + 0.33},${h.y + 0.02})`}" class="token${blocked ? ' dim' : ''}"><circle r="0.36" cy="0.035" class="token-shadow"/><circle r="0.36" fill="url(#tokenGrad)" stroke="#b69a58" stroke-width="0.035"/><circle r="0.3" fill="none" stroke="rgba(120,90,40,.35)" stroke-width="0.016"/>`);
-          out.push(`<text y="0.012" class="num${red ? ' red' : ''}${two ? ' two' : ''}">${h.num}</text></g>`);
+          out.push(`<g transform="${stacked ? `translate(${h.x},${h.y + 0.1}) scale(.92)` : `translate(${h.x + 0.33},${h.y + 0.02})`}" class="token${blocked ? ' dim' : ''}"><circle r="0.36" cy="0.035" class="token-shadow"/><circle r="0.36" fill="url(#tokenGrad)" stroke="#b69a58" stroke-width="0.035"/><circle r="0.3" fill="none" stroke="rgba(120,90,40,.35)" stroke-width="0.016"/>`);
+          if (stacked) out.push(`<text y="${two ? 0.15 : 0.18}" class="num big${red ? ' red' : ''}${two ? ' two' : ''}">${h.num}</text></g>`); // Grundlinie = halbe Ziffernhöhe: Zahl sitzt genau mittig im Kreis
+          else out.push(`<text y="0.012" class="num${red ? ' red' : ''}${two ? ' two' : ''}">${h.num}</text></g>`);
         }
 
       }

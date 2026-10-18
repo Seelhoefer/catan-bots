@@ -57,6 +57,8 @@ try { const saved = localStorage.getItem(STYLE_KEY); if (ART_STYLES[saved]) styl
 
 export const artStyle = () => styleId;
 export const resImg = (r) => ART_STYLES[styleId].res(r);
+/** Die ersten illustrierten Rohstoffbilder (Handy-Vektoransicht: groß über den Zahlen). */
+export const classicResImg = (r) => `${BASE}resources/${r}.webp`;
 /** Hafen-Medaillon als fertiges Bild (null = selbst zusammensetzen). */
 export const harborImg = (type) => ART_STYLES[styleId].harbor(type);
 /** Nebelkachel als Bild über dem Sechseck (null = Platzhalter-Symbol). */
@@ -78,6 +80,7 @@ const styleList = (id) => {
   return [
     ...['wood', 'brick', 'sheep', 'wheat', 'ore'].map(st.res),
     ...['any', 'wood', 'brick', 'sheep', 'wheat', 'ore'].map(st.harbor).filter(Boolean),
+    ...(id === 'vector' ? ['wood', 'brick', 'sheep', 'wheat', 'ore'].map(classicResImg) : []),
     ...(id === 'vector' ? ['any', 'wood', 'brick', 'sheep', 'wheat', 'ore'].map((t) => `assets/art-v2/harbors/${harborName(t)}.webp`) : []),
     ...(st.fog ? [st.fog] : []),
     ...(st.tile ? ['wood', 'brick', 'sheep', 'wheat', 'ore', 'desert', 'gold'].map(st.tile) : []),
