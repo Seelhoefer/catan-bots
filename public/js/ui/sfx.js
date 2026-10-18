@@ -225,15 +225,13 @@ const SOUNDS = {
   robberLand: (t) => { tone(t, { f: 130, to: 60, dur: 0.25, gain: 0.5 }); noise(t, { dur: 0.08, f: 500, type: 'lowpass', gain: 0.35 }); },
   deal: (t, o) => { // Karte löst sich vom Feld
     const k = o.pitch || 1;
-    noise(t, { dur: 0.1, f: 900 * k, sweep: 3600 * k, q: 0.9, gain: 0.22 });
-    tone(t + 0.02, { f: 700 * k, to: 1100 * k, dur: 0.06, gain: 0.04, type: 'triangle' });
+    noise(t, { dur: 0.08, f: 900 * k, sweep: 3000 * k, q: 0.9, gain: 0.16 });
   },
   land: (t, o) => { // Karte kommt an: weiches Plopp mit kleinem Funkeln
     const k = o.pitch || 1;
-    tone(t, { f: 420 * k, to: 300 * k, dur: 0.09, gain: 0.3 });
-    tone(t, { f: 1260 * k, dur: 0.14, gain: 0.07, type: 'triangle' });
+    tone(t, { f: 420 * k, to: 300 * k, dur: 0.07, gain: 0.22 });
   },
-  jackpot: (t) => { [79, 84, 88, 91, 96].forEach((n, i) => bell(t + i * 0.06, N(n), { gain: 0.1, dur: 0.7 })); coin(t + 0.25, 2637, 0.1); },
+  jackpot: (t) => { tone(t, { f: N(84), dur: 0.16, gain: 0.07, type: 'triangle' }); tone(t + 0.07, { f: N(91), dur: 0.2, gain: 0.05, type: 'triangle' }); }, // kurz und trocken, kein Nachhall
   diceLand: (t, o) => { // Würfel bleiben liegen: letztes leises Auskullern der Aufnahme; Ton richtet sich nach der Augensumme
     if (!diceSample(t, { offset: DICE_CLACKS[5], dur: 0.26, gain: 0.2, rate: rr(0.95, 1), wet: 0.25 })) knock(t, { pitch: 240, gain: 0.5 });
     else knock(t, { pitch: 240, gain: 0.22 });
@@ -241,8 +239,8 @@ const SOUNDS = {
     if (total === 7) { tone(t + 0.05, { f: 98, to: 55, dur: 0.6, gain: 0.45 }); tone(t + 0.05, { f: 104, to: 58, dur: 0.6, gain: 0.25, type: 'triangle' }); return; }
     const hot = total === 6 || total === 8;
     const base = 60 + (total - 2) * 1.1;
-    bell(t + 0.08, N(base + 12), { gain: hot ? 0.2 : 0.12, dur: hot ? 0.9 : 0.5 });
-    if (hot) bell(t + 0.16, N(base + 19), { gain: 0.14, dur: 0.9 });
+    bell(t + 0.08, N(base + 12), { gain: hot ? 0.13 : 0.09, dur: hot ? 0.4 : 0.28 });
+    if (hot) bell(t + 0.15, N(base + 19), { gain: 0.07, dur: 0.3 });
   },
   award: (t) => { // Auszeichnung: echte Fanfare, bewusst zurückgenommen und weich gefiltert; ohne Aufnahme ein kurzer Akkord
     if (sampleOut(samples.fanfare, t, { gain: 0.27, eq: 'soft', wet: 0.32 })) { tone(t + 0.05, { f: 98, to: 82, dur: 0.7, gain: 0.12 }); return; }
@@ -257,7 +255,7 @@ const SOUNDS = {
     if (!real) { click(t, { f: 3300 * k, gain: 0.55 }); noise(t, { dur: 0.04, f: 900, type: 'lowpass', gain: 0.18 }); }
     tone(t, { f: 190 * k, to: 110, dur: 0.07, gain: real ? 0.12 : 0.3 });
   },
-  gain: (t) => { tone(t, { f: 660, to: 990, dur: 0.09, gain: 0.1, type: 'triangle' }); tone(t + 0.07, { f: 1320, dur: 0.1, gain: 0.06, type: 'triangle' }); },
+  gain: (t) => { tone(t, { f: 660, to: 880, dur: 0.07, gain: 0.07, type: 'triangle' }); },
   token: (t) => { [84, 88, 91, 96].forEach((n, i) => tone(t + i * 0.05, { f: N(n), dur: 0.25, gain: 0.07 })); },
 
   trade: (t) => { coin(t, 2093); coin(t + 0.09, 2637); coin(t + 0.2, 3136, 0.14); },
@@ -291,9 +289,9 @@ const BOOST = {
 
 // Dezenter: häufige Klänge sehr leise, Ereignisse mittel, nur Sieg/Höhepunkte etwas präsenter
 const SOFT = {
-  tick: 0.55, select: 0.6, error: 0.6, deal: 0.5, land: 0.5, gain: 0.65, token: 0.7, dice: 1, diceHit: 1, diceLand: 1, whirl: 0.6, gather: 0.6,
+  tick: 0.55, select: 0.6, error: 0.6, deal: 0.4, land: 0.4, gain: 0.65, token: 0.7, dice: 1, diceHit: 1, diceLand: 1, whirl: 0.6, gather: 0.6,
   turn: 0.6, offer: 0.7, trade: 0.7, card: 0.7, cardplay: 0.7, steal: 0.55, robber: 0.7, robberLand: 0.6, harvest: 0.7, remap: 0.75, monopoly: 0.75,
-  road: 0.7, settlement: 0.75, city: 0.75, vp: 0.8, award: 1, vpOther: 0.6, lose: 0.7, win: 0.85, jackpot: 0.75,
+  road: 0.7, settlement: 0.75, city: 0.75, vp: 0.8, award: 1, vpOther: 0.6, lose: 0.7, win: 0.85, jackpot: 0.6,
 };
 
 // ------------------------------------------------------------------ API
@@ -304,7 +302,7 @@ export const sfx = {
     const c = ensure();
     if (!c || !SOUNDS[name]) return;
     const now = performance.now();
-    if (now - (last[name] || 0) < (name === 'deal' || name === 'land' || name === 'tick' ? 70 : 45)) return; // keine Doppelklänge
+    if (now - (last[name] || 0) < (name === 'deal' || name === 'land' || name === 'tick' ? 110 : 45)) return; // keine Doppelklänge
     last[name] = now;
     if (c.state === 'suspended') c.resume();
     const t = c.currentTime + 0.01 + (opts.delay || 0) / 1000;
