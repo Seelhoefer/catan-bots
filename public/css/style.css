@@ -1939,7 +1939,8 @@ body.paused .pause-ov, body.paused .pause-ov * { animation-play-state: running !
 .port-all-bg { fill: url(#worldGrad); stroke: #fff2c4; stroke-width: .035; }
 .port-all-inner { fill: #15294a; stroke: #b98a26; stroke-width: .02; }
 .port-ratio.big.world { fill: #ffe9a6; font-size: .3px; }
-.port-all-sub { font: 800 .12px Inter, system-ui, sans-serif; letter-spacing: .12px; text-anchor: middle; dominant-baseline: central; fill: #f1c95a; }
+.port-all-sub { font: 800 .13px Inter, system-ui, sans-serif; letter-spacing: .01px; text-anchor: middle; dominant-baseline: central; fill: #ffe9a6; }
+.port-all-ribbon { fill: #173560; stroke: #e2b343; stroke-width: .03; }
 .decrees { display: flex; flex-wrap: wrap; gap: 6px; }
 .decrees:empty { display: none; }
 .dpill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 8px; border-radius: 999px; font-size: 12.5px; color: var(--text); cursor: pointer;

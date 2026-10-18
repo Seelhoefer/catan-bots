@@ -163,7 +163,7 @@ Der Pausen-Knopf im Kopf (oder Taste **P**, auch bei geöffnetem Dialog; Esc/P/L
 
 ## 🧩 Erweiterungen (beim Einrichten wählbar)
 
-- **Welthafen:** Auf dem Brett gibt es genau einen goldenen Hafen („2:1 ALLE“), an dem sich jeder Rohstoff 2:1 tauschen lässt. Er ersetzt einen der normalen 3:1-Häfen (`worldHarbor` in den Einstellungen; Bots bewerten ihn beim Siedeln und beim Hafenplan höher als gewöhnliche Häfen).
+- **Welthafen:** Auf dem Brett gibt es genau einen goldenen Hafen („2:1 ALLE“, mit dem Hafenbild `assets/art-v2/harbors/world-harbor.webp`), an dem sich jeder Rohstoff 2:1 tauschen lässt. Er ersetzt einen der normalen 3:1-Häfen (`worldHarbor` in den Einstellungen; Bots bewerten ihn beim Siedeln und beim Hafenplan höher als gewöhnliche Häfen).
 - **Erlass-Karte:** Neue Entwicklungskarte (`decreeCard`, 2× pro Kartengröße im Stapel). Beim Ausspielen wählst du **Zoll** (Gegner, die den Rohstoff erwürfeln, zahlen dir 1 Karte davon) oder **Strafe** (sie erhalten 1 Karte weniger, die Karte bleibt in der Bank) und einen Rohstoff. Der Erlass gilt für alle Würfe der anderen, bis du wieder am Zug bist; ein Spieler hat höchstens einen aktiven Erlass. Aktive Erlasse stehen als Hinweis oben links auf dem Brett. Bots spielen die Karte, wenn der Ertrag der Gegner auf einem Rohstoff hoch ist.
 
 ## 📱 Handy: Vektor-Grafik, Pause-Knopf, Pinch-Zoom

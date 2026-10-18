@@ -117,7 +117,7 @@ export async function preloadArt() {
   const list = [
     ...PLAYER_COLORS.flatMap((c) => ['settlement', 'city'].map((k) => piece(c.id, k))),
     ...styleList(styleId),
-    IMG.thief, IMG.trophy, IMG.hammer, IMG.scale, IMG.harbor, IMG.choice, IMG.wild, IMG.desert,
+    'assets/art-v2/harbors/world-harbor.webp', IMG.thief, IMG.trophy, IMG.hammer, IMG.scale, IMG.harbor, IMG.choice, IMG.wild, IMG.desert,
   ];
   const results = await Promise.all(list.map(load));
   art.ok = results.every(Boolean);
