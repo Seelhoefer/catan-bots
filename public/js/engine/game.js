@@ -965,24 +965,34 @@ export class Game {
     this._lr ||= {};
     if (this._lr[pi]?.key === key) return this._lr[pi].val;
     let best = 0;
+    let bestPath = [];
+    const stack = [];
     let budget = 400000; // Netze mit vielen Kreisen: nach dieser Suchtiefe gilt das bisher beste Ergebnis
     const used = new Set();
     const dfs = (v, len) => {
-      if (len > best) best = len;
+      if (len > best) { best = len; bestPath = stack.slice(); }
       if (best >= mine.length || budget <= 0) return;
       for (const e of adj[v] || []) {
         if (used.has(e.id)) continue;
         const nv = e.a === v ? e.b : e.a;
         used.add(e.id);
+        stack.push(e.id);
         budget -= 1;
-        if (blocked(nv)) { if (len + 1 > best) best = len + 1; } else dfs(nv, len + 1);
+        if (blocked(nv)) { if (len + 1 > best) { best = len + 1; bestPath = stack.slice(); } } else dfs(nv, len + 1);
+        stack.pop();
         used.delete(e.id);
         if (best >= mine.length || budget <= 0) return;
       }
     };
     for (const v of Object.keys(adj)) { if (budget <= 0 || best >= mine.length) break; dfs(Number(v), 0); }
-    this._lr[pi] = { key, val: best };
+    this._lr[pi] = { key, val: best, path: bestPath };
     return best;
+  }
+
+  /** Die Straßen (Kanten-IDs) der längsten zusammenhängenden Handelsstraße des Spielers. */
+  longestRoadPath(pi) {
+    this.longestRoadFor(pi);
+    return this._lr?.[pi]?.path || [];
   }
 
   updateLongestRoad() {

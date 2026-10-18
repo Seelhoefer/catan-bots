@@ -539,3 +539,58 @@ export function turnPulse(pid) {
   if (!g || !node || !shown(node)) return;
   g.fromTo(node, { scale: 1.07, y: -2 }, { scale: 1, y: 0, duration: 0.7, ease: 'elastic.out(1, 0.5)', clearProps: 'transform' });
 }
+
+/** Roter Abzug über der Spielerkarte, z. B. wenn eine Auszeichnung verloren geht. */
+export function vpLose(pid, n = 2) {
+  const g = gs();
+  const node = document.querySelector(`.pcard[data-pid="${pid}"] .pc-vp`);
+  if (!g || !node || !shown(node)) return;
+  const r = node.getBoundingClientRect();
+  g.fromTo(node, { scale: 0.7 }, { scale: 1, duration: 0.7, ease: 'elastic.out(1, 0.5)', clearProps: 'transform' });
+  const tag = mkEl('floater', `left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px;font-size:15px;color:#ff8f93;border-color:rgba(255,120,125,.5);`, `−${n}`);
+  g.fromTo(tag, { xPercent: -50, yPercent: -20, y: 0, opacity: 0, scale: 0.7 }, {
+    opacity: 1, scale: 1, y: 22, duration: 0.4, ease: 'back.out(2)',
+    onComplete: () => g.to(tag, { opacity: 0, y: 40, duration: 0.5, ease: 'power2.in', delay: 0.4, onComplete: () => tag.remove() }),
+  });
+}
+
+/**
+ * Zeremonie für Längste Handelsstraße / Größte Rittermacht: Bildschirm dunkelt ab, die Karte erscheint groß in der Mitte
+ * (bei einem Wechsel wächst sie aus der Spielerkarte des bisherigen Halters) und wandert dann zur Spielerkarte des neuen Halters.
+ * `onLeave` kommt, wenn die Karte die Mitte verlässt, `onLand` bei der Ankunft. Ein Klick beschleunigt.
+ */
+export function awardCeremony({ html, kind, toPid = null, fromPid = null, onLeave, onLand }) {
+  return new Promise((resolve) => {
+    const g = gs();
+    const stage = document.createElement('div');
+    stage.className = 'aw-stage';
+    stage.innerHTML = `<div class="aw-dim"></div><div class="aw-card">${html}</div>`;
+    document.body.append(stage);
+    const dim = stage.querySelector('.aw-dim');
+    const card = stage.querySelector('.aw-card');
+    const center = (el) => { const r = el?.getBoundingClientRect(); return r && r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null; };
+    const pcard = (pid) => center(document.querySelector(`.pcard[data-pid="${pid}"] .pc-av`)) || center(document.querySelector(`.pcard[data-pid="${pid}"]`));
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight * 0.46;
+    let landed = false;
+    const land = () => { if (!landed) { landed = true; onLand?.(); } };
+    const end = () => { land(); stage.remove(); resolve(); };
+    if (!g) { setTimeout(end, 600); return; }
+
+    const from = fromPid !== null && fromPid !== undefined ? pcard(fromPid) : null;
+    g.set(card, { xPercent: -50, yPercent: -50, opacity: 0 });
+    const tl = g.timeline({ onComplete: end });
+    tl.fromTo(dim, { opacity: 0 }, { opacity: 1, duration: 0.45, ease: 'power2.out' }, 0);
+    if (from) tl.fromTo(card, { x: from.x - cx, y: from.y - cy, scale: 0.12, opacity: 0 }, { x: 0, y: 0, scale: 1, opacity: 1, duration: 0.9, ease: 'power3.out' }, 0.15);
+    else tl.fromTo(card, { x: 0, y: 50, scale: 0.7, opacity: 0, rotationY: -25 }, { y: 0, scale: 1, opacity: 1, rotationY: 0, duration: 0.8, ease: 'back.out(1.6)' }, 0.2);
+    tl.call(() => sfx.play('award'), null, 0.25);
+    tl.to(card, { y: -8, duration: 0.95, yoyo: true, repeat: 1, ease: 'sine.inOut' }, '>');
+    tl.call(() => onLeave?.());
+    const target = () => (toPid !== null && toPid !== undefined ? pcard(toPid) : center(document.querySelector(`.acard.${kind}`))) || { x: cx, y: 40 };
+    tl.to(card, { x: () => target().x - cx, y: () => target().y - cy, scale: 0.14, duration: 0.85, ease: 'power3.inOut', invalidateOnRefresh: true });
+    tl.to(dim, { opacity: 0, duration: 0.5, ease: 'power1.in' }, '<0.15');
+    tl.to(card, { opacity: 0, duration: 0.18 }, '>-0.2');
+    tl.call(land, null, '>-0.12');
+    stage.addEventListener('click', () => tl.timeScale(3.2));
+  });
+}

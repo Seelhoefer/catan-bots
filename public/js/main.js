@@ -10,7 +10,7 @@ import {
 import { installIcons } from './ui/icons.js';
 import { renderMenu, rememberLast } from './ui/menu.js';
 import {
-  renderHand, renderHandBar, renderPlayers, renderFab, renderNext, renderDice, renderMissionBox, renderAwards, renderHeroRoll,
+  renderHand, renderHandBar, renderPlayers, renderFab, renderNext, renderDice, renderMissionBox, renderAwards, displayVp, awardHeroHTML, renderHeroRoll,
 } from './ui/panels.js';
 import { renderMarket, suggestTrade } from './ui/market.js';
 import { sfx } from './ui/sfx.js';
@@ -18,7 +18,7 @@ import { music } from './ui/music.js';
 import { preloadDice3d } from './ui/dice3d.js';
 import { avatarSVG } from './ui/avatars.js';
 import {
-  floatGain, flyCards, showDiceHero, showCardHero, lastDice, whirlHexes, celebrate, buildFxPiece, buildFxRoad, stealFx, discardFx, vpPop, turnPulse, produceFx, bumpPlayer,
+  floatGain, flyCards, showDiceHero, showCardHero, lastDice, whirlHexes, celebrate, buildFxPiece, buildFxRoad, stealFx, discardFx, vpPop, vpLose, turnPulse, awardCeremony, produceFx, bumpPlayer,
 } from './ui/fx.js';
 import { preloadArt, ART_STYLES, artStyle, setArtStyle } from './ui/assets.js';
 import {
@@ -135,6 +135,9 @@ class App {
     preloadDice3d();
     this.lastVp = undefined;
     this.prevVps = null;
+    this.awardShown = { road: game.s.longestRoad.holder, army: game.s.largestArmy.holder }; // was gerade angezeigt wird (Zeremonie läuft zeitversetzt)
+    this.awardPending = 0;
+    this.awardChain = Promise.resolve();
     this.inflightH = {};
     this.inflightO = {};
     this.landing = {};
@@ -271,7 +274,10 @@ class App {
         break;
       case 'win':
         sfx.play(e.pi === HUMAN ? 'win' : 'lose', { delay: 300 });
-        setTimeout(() => { this.showGameOver(); celebrate('final'); }, 700);
+        {
+          const showWin = () => { if (this.awardPending) { setTimeout(showWin, 400); return; } this.showGameOver(); celebrate('final'); };
+          setTimeout(showWin, 700);
+        }
         break;
       case 'discard': {
         const ms = discardFx({ pid: e.pi, n: e.n, cards: e.cards });
@@ -279,22 +285,7 @@ class App {
         this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + ms + 250);
         break;
       }
-      case 'award': {
-        const road = e.kind === 'road';
-        const label = road ? 'die Längste Handelsstraße' : 'die Größte Rittermacht';
-        if (e.holder !== null) {
-          const who = e.holder === HUMAN ? 'Du hast' : `${name(e.holder)} hat`;
-          this.toastHTML(`${ic(road ? 'road' : 'sword', 'inline')} ${who} jetzt ${label} – <b>+2 Siegpunkte</b>${e.prev !== null && e.prev !== undefined ? ` (${e.prev === HUMAN ? 'dir' : name(e.prev)} abgenommen)` : ''}`, 'big');
-          sfx.play(e.holder === HUMAN ? 'vp' : 'vpOther', { delay: 200 });
-          if (e.holder === HUMAN) setTimeout(celebrate, 250);
-        } else this.toast(`${road ? 'Die Längste Handelsstraße' : 'Die Größte Rittermacht'} ist wieder frei.`, 'info');
-        setTimeout(() => {
-          const card = document.querySelector(`.acard.${e.kind}`);
-          if (card && window.gsap) window.gsap.fromTo(card, { scale: 1.25 }, { scale: 1, duration: 0.9, ease: 'elastic.out(1, 0.4)', clearProps: 'transform' });
-        }, 80);
-        this.queueRender();
-        break;
-      }
+      case 'award': this.queueAward(e); break;
       case 'robber': {
         sfx.play('robber'); this.robberMoveAt = Date.now();
         if (g.s.turn === HUMAN && !g.stealTargets(e.id).length) {
@@ -736,6 +727,51 @@ class App {
     this.queueRender();
   }
 
+  /**
+   * Auszeichnung wechselt: Bildschirm dunkelt ab, die Karte erscheint groß und wandert zur Spielerkarte des neuen Halters
+   * (bei einem Wechsel aus der des bisherigen). Erst bei der Ankunft zählen Punkte, Karte oben links und Fähnchen auf dem Brett.
+   */
+  queueAward(e) {
+    const g = this.game;
+    this.awardPending += 1;
+    this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + 5800); // Bots warten, bis die Zeremonie vorbei ist
+    this.awardChain = this.awardChain.then(async () => {
+      try {
+        if (this.game !== g) return;
+        await sleep(650); // erst den Bau-Effekt sehen
+        if (this.game !== g) return;
+        const holder = e.holder !== null ? g.s.players[e.holder] : null;
+        const prev = e.prev !== null && e.prev !== undefined ? g.s.players[e.prev] : null;
+        await awardCeremony({
+          html: awardHeroHTML(e.kind, holder, { prev, value: e.value }),
+          kind: e.kind,
+          toPid: e.holder,
+          fromPid: e.prev,
+          onLeave: () => {
+            if (prev) { vpLose(prev.id, 2); sfx.play('vpOther'); }
+          },
+          onLand: () => {
+            this.awardShown[e.kind] = e.holder;
+            this.queueRender();
+            if (holder) sfx.play(e.holder === HUMAN ? 'vp' : 'vpOther', { delay: 120 });
+            if (e.holder === HUMAN) setTimeout(celebrate, 200);
+            if (!holder) this.toast(`${e.kind === 'road' ? 'Die Längste Handelsstraße' : 'Die Größte Rittermacht'} ist wieder frei.`, 'info');
+            setTimeout(() => {
+              const card = document.querySelector(`.acard.${e.kind}`);
+              if (card && window.gsap) window.gsap.fromTo(card, { scale: 1.2 }, { scale: 1, duration: 0.9, ease: 'elastic.out(1, 0.4)', clearProps: 'transform' });
+            }, 60);
+          },
+        });
+      } finally {
+        this.awardPending -= 1;
+        if (this.game === g && this.awardPending === 0) { // am Ende immer auf dem aktuellen Stand
+          this.awardShown = { road: g.s.longestRoad.holder, army: g.s.largestArmy.holder };
+          this.queueRender();
+        }
+      }
+    });
+  }
+
   // ------------------------------------------------------------- Rendering
   queueRender() {
     if (this.renderQueued) return;
@@ -789,11 +825,12 @@ class App {
       }
     } else this.robberHinted = false;
     this.view.render(g, this.highlights());
+    if (s.phase !== 'setup') this.view.setFlags(g, this.awardShown);
     this.fresh = { pieces: new Set(), hexes: new Set(), remap: false };
 
     $('#hudHand').innerHTML = renderHand(g, this.inflightH);
-    $('#hudOpps').innerHTML = renderPlayers(g, this.busy, this.inflightO);
-    const vps = s.players.map((p) => g.vp(p.id, p.id !== HUMAN));
+    $('#hudOpps').innerHTML = renderPlayers(g, this.busy, this.inflightO, this.awardShown);
+    const vps = s.players.map((p) => displayVp(g, p.id, this.awardShown, p.id !== HUMAN));
     if (this.prevVps && this.prevVps.length === vps.length && s.phase !== 'setup') {
       vps.forEach((v, i) => { if (v > this.prevVps[i]) vpPop(i, v - this.prevVps[i]); });
     }
@@ -805,7 +842,7 @@ class App {
     $('#heroRoll').innerHTML = renderHeroRoll(g);
     $('#diceBox').innerHTML = renderDice(g, this.rolling);
     this.renderMarketLayer();
-    const awards = renderAwards(g);
+    const awards = renderAwards(g, this.awardShown);
     if (awards !== this.awardHtml) { this.awardHtml = awards; $('#awardBox').innerHTML = awards; }
     $('#missionBox').innerHTML = renderMissionBox(g, this.ui.missionsOpen);
 

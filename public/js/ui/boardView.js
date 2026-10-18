@@ -67,9 +67,13 @@ export class BoardView {
         </filter>
       </defs>
       <g id="world"></g>
+      <g id="flagLayer" pointer-events="none"></g>
       <g id="robberLayer" pointer-events="none"></g>`;
     this.world = svg.querySelector('#world');
     this.robberLayer = svg.querySelector('#robberLayer');
+    this.flagLayer = svg.querySelector('#flagLayer');
+    this.flags = new Map();
+    this.flagsFresh = true;
     this.robberAt = null;
     this.robberEnd = 0;
     this.bindEvents();
@@ -318,7 +322,7 @@ export class BoardView {
   render(game, ui = {}) {
     const board = game.s.board;
     const key = `${board.size}-${board.variant}-${board.hexes.length}-${board.bounds.maxX}`;
-    if (this.fitKey !== key) { this.board = board; this.fit(board); this.fitKey = key; }
+    if (this.fitKey !== key) { this.board = board; this.fit(board); this.fitKey = key; this.flags.clear(); this.flagLayer.innerHTML = ''; this.flagsFresh = true; }
     this.board = board;
     const s = game.s;
     const out = [];
@@ -541,6 +545,77 @@ export class BoardView {
     // Landung: ruhiges Absetzen
     tl.fromTo(body, { scaleY: 0.95, scaleX: 1.03, transformOrigin: '50% 100%' }, { scaleY: 1, scaleX: 1, duration: 0.3, ease: 'power2.out' }, T);
     tl.call(() => { this.onRobberLand?.(x, y); }, null, T);
+  }
+
+  /**
+   * Fähnchen für die Auszeichnungen: auf jeder Straße der längsten Handelsstraße weht ein kleiner Wimpel, auf den Gebäuden des Rittermacht-Halters
+   * ein Banner mit Schwertern – beim Wechsel werden die alten eingeholt und die neuen nacheinander gehisst.
+   * `shown` = {road, army} (Spielerindex oder null), ohne Animation beim ersten Aufruf eines Spiels.
+   */
+  setFlags(game, shown) {
+    if (!this.flagLayer) return;
+    const s = game.s;
+    const board = s.board;
+    const g = window.gsap;
+    const want = new Map();
+    if (shown.road !== null && shown.road !== undefined) {
+      const color = s.players[shown.road].color;
+      for (const eid of game.longestRoadPath(shown.road)) {
+        const e = board.edges[eid];
+        const a = board.vertices[e.a];
+        const b = board.vertices[e.b];
+        want.set(`r${eid}`, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, color, kind: 'road' });
+      }
+    }
+    if (shown.army !== null && shown.army !== undefined) {
+      const color = s.players[shown.army].color;
+      for (const b of game.buildingsOf(shown.army)) {
+        const v = board.vertices[b.vid];
+        want.set(`a${b.vid}`, { x: v.x + 0.3, y: v.y + 0.14, color, kind: 'army' });
+      }
+    }
+    const animate = !this.flagsFresh && !!g;
+    this.flagsFresh = false;
+    for (const [k, f] of [...this.flags]) {
+      const w = want.get(k);
+      if (w && w.color === f.color) continue;
+      this.flags.delete(k);
+      const el = f.el;
+      if (!animate) { el.remove(); continue; }
+      const pole = el.querySelector('.fp');
+      const cloth = el.querySelector('.fc');
+      g.killTweensOf([el, pole, cloth]);
+      g.to(cloth, { y: f.kind === 'army' ? 0.5 : 0.36, opacity: 0, duration: 0.35, ease: 'power2.in' });
+      g.to(pole, { scaleY: 0, duration: 0.4, delay: 0.15, ease: 'power2.in', transformOrigin: '0px 0px', onComplete: () => el.remove() });
+    }
+    let i = 0;
+    for (const [k, w] of want) {
+      if (this.flags.has(k)) continue;
+      const army = w.kind === 'army';
+      const h = army ? 0.78 : 0.5;
+      const el = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      el.setAttribute('transform', `translate(${w.x.toFixed(3)},${w.y.toFixed(3)})`);
+      el.innerHTML = `<g class="fl"><line class="fp" x1="0" y1="0" x2="0" y2="${-h}" stroke="#4a3418" stroke-width="0.05" stroke-linecap="round"/>`
+        + (army
+          ? `<path class="fc" d="M0.025 ${-h} h0.3 v0.36 l-0.15 -0.11 l-0.15 0.11 Z" fill="${w.color}" stroke="rgba(0,0,0,.5)" stroke-width="0.022" stroke-linejoin="round"/>
+             <path class="fc fs" d="M0.11 ${-h + 0.07} L0.24 ${-h + 0.22} M0.24 ${-h + 0.07} L0.11 ${-h + 0.22}" stroke="#fff" stroke-width="0.04" stroke-linecap="round" fill="none"/>`
+          : `<path class="fc" d="M0.025 ${-h} L0.36 ${-h + 0.11} L0.025 ${-h + 0.22} Z" fill="${w.color}" stroke="rgba(0,0,0,.5)" stroke-width="0.022" stroke-linejoin="round"/>`)
+        + `<circle cx="0" cy="${-h}" r="0.04" fill="#e9b949"/></g>`;
+      this.flagLayer.append(el);
+      this.flags.set(k, { el, color: w.color, kind: w.kind });
+      if (!animate) continue;
+      const pole = el.querySelector('.fp');
+      const cloths = el.querySelectorAll('.fc');
+      const delay = i++ * 0.12;
+      g.fromTo(pole, { scaleY: 0, transformOrigin: '0px 0px' }, { scaleY: 1, duration: 0.5, delay, ease: 'power2.out' });
+      g.fromTo(cloths, { y: h, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, delay: delay + 0.15, ease: 'back.out(1.5)' });
+      g.fromTo(el.querySelector('.fl'), { rotation: -3, transformOrigin: '0px 0px' }, { rotation: 3, duration: 1.3 + Math.random() * 0.5, yoyo: true, repeat: -1, ease: 'sine.inOut', delay: delay + 0.8 });
+    }
+    if (!animate) for (const f of this.flags.values()) { // ohne Hissen: Wehen trotzdem anschalten
+      if (f.waving || !g) continue;
+      f.waving = true;
+      g.fromTo(f.el.querySelector('.fl'), { rotation: -3, transformOrigin: '0px 0px' }, { rotation: 3, duration: 1.3 + Math.random() * 0.5, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+    }
   }
 
   hexPoints(board, h, scale) {

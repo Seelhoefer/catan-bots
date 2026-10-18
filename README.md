@@ -151,3 +151,7 @@ Die Tests spielen komplette Partien (alle Feldgrößen, mit/ohne Nebel) nur mit 
 - **Layout hochkant:** Oben nur die Spieler als runde Bilder (Punkte-Marke, Kartenzahl; ein Tipp zeigt Details und Plan), unten die Rohstoffleiste und darunter Bauen, Handeln, Entwicklungskarten und der große Weiter-Knopf. Auszeichnungen und Missionen sind kompakte Symbole oben links, die Einstellungen (inkl. Musik) liegen hinter dem Zahnrad.
 - **Flüssig:** Auf Touch-Geräten sind Unschärfe-Effekte und Dauer-Animationen aus; Listen und Fenster scrollen weich ohne Gummiband. Der Desktop sieht weiter aus wie bisher.
 
+## 🏅 Auszeichnungen
+
+Wechselt die **Längste Handelsstraße** oder die **Größte Rittermacht** den Besitzer, dunkelt der Bildschirm ab, die Karte erscheint groß in der Mitte (mit Fanfare) und wandert zur Spielerkarte oben – dort zählen die +2 Siegpunkte erst bei der Ankunft. Nimmt jemand die Auszeichnung ab, wächst die Karte aus der Spielerkarte des bisherigen Halters und wandert zum neuen; ein roter Abzug zeigt, wer sie verliert. Auf dem Brett werden dazu Fähnchen gehisst: ein Wimpel auf jeder Straße der längsten Handelsstraße bzw. ein Banner mit Schwertern auf jedem Gebäude des Rittermacht-Halters (beim Wechsel werden die alten eingeholt). Ein Klick auf den abgedunkelten Bildschirm beschleunigt den Ablauf.
+

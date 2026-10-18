@@ -1869,3 +1869,31 @@ td.who { display: flex; align-items: center; gap: 8px; }
   .mh-music { top: 8px; }
   .mw { padding-top: 10px; gap: 20px; }
 }
+
+/* ======================================================================
+   Zeremonie: Auszeichnung erscheint groß in der Mitte und wandert zum Spieler
+   ====================================================================== */
+.aw-stage { position: fixed; inset: 0; z-index: 90; perspective: 900px; cursor: pointer; }
+.aw-dim { position: absolute; inset: 0; background: radial-gradient(ellipse 60% 50% at 50% 46%, rgba(40, 30, 8, .35), rgba(2, 6, 12, .86) 70%); }
+.aw-card { position: absolute; left: 50%; top: 46%; will-change: transform, opacity; filter: drop-shadow(0 30px 40px rgba(0, 0, 0, .55)); }
+.ah { position: relative; width: min(300px, 80vw); padding: 70px 22px 24px; border-radius: 22px; text-align: center; color: var(--text); overflow: visible;
+  background: linear-gradient(165deg, #1b3355, #0b1626); border: 2px solid rgba(160, 178, 205, .5); }
+.ah.held { background: linear-gradient(165deg, #6a521c, #241a09 72%); border-color: #f1c95a; box-shadow: 0 0 0 3px rgba(241, 201, 90, .25), 0 0 60px rgba(233, 185, 73, .35), inset 0 1px 0 rgba(255, 236, 170, .4); }
+.ah::before { content: ''; position: absolute; left: 50%; top: 0; width: 380px; height: 380px; margin: -190px 0 0 -190px; border-radius: 50%; pointer-events: none; z-index: -1;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 220, 130, .22) 0deg 7deg, transparent 7deg 20deg); -webkit-mask-image: radial-gradient(circle, #000 5%, transparent 68%); mask-image: radial-gradient(circle, #000 5%, transparent 68%); animation: vcSpin 30s linear infinite; }
+.ah.free::before { display: none; }
+.ah-emb { position: absolute; left: 50%; top: -46px; width: 108px; height: 108px; margin-left: -54px; border-radius: 50%; display: grid; place-items: center; color: #ffe9a6;
+  background: radial-gradient(circle at 35% 28%, #8a6a28, #2c200b 78%); border: 3px solid #f1c95a; box-shadow: 0 0 30px rgba(233, 185, 73, .5), 0 8px 18px rgba(0, 0, 0, .5); }
+.ah.free .ah-emb { color: #a9bbd3; background: radial-gradient(circle at 35% 28%, #2f527c, #0f1f34 78%); border-color: #5f7391; box-shadow: 0 8px 18px rgba(0, 0, 0, .5); }
+.ah-emb svg { width: 62px; height: 62px; }
+.ah-title { display: block; font-size: 13px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #f1d58a; margin-top: 6px; }
+.ah.free .ah-title { color: #aebdd2; }
+.ah-who { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 14px 0 6px; }
+.ah-who b { font-family: Georgia, serif; font-size: 26px; color: #fff; }
+.ah-who b.dim { color: #9fb0c6; font-size: 22px; }
+.ah-av { line-height: 0; }
+.ah-av.none { width: 48px; height: 48px; border-radius: 50%; border: 2px dashed rgba(255, 255, 255, .4); }
+.ah-av .avatar-svg { box-shadow: 0 0 0 3px #f1c95a, 0 6px 14px rgba(0, 0, 0, .5); }
+.ah-sub { font-size: 13px; color: #c4d0e0; min-height: 18px; }
+.ah-pts { display: inline-block; margin-top: 16px; padding: 7px 18px; border-radius: 999px; font-weight: 800; font-size: 15px; letter-spacing: .03em; color: var(--ivory-ink); background: linear-gradient(180deg, #fff2c4, #e6bd55); box-shadow: 0 6px 16px rgba(0, 0, 0, .4); }
+@media (max-width: 860px) { .ah { padding-top: 62px; } .ah-emb { width: 92px; height: 92px; margin-left: -46px; top: -40px; } .ah-emb svg { width: 52px; height: 52px; } }

@@ -63,8 +63,20 @@ function renderResGroups(g, p, inflight, landing, sel) {
   }).join('');
 }
 
+/** Angezeigte Siegpunkte: Auszeichnungs-Punkte zählen erst, wenn die Karte beim Spieler angekommen ist (`shown` = angezeigte Halter). */
+export function displayVp(g, pid, shown, publicOnly = false) {
+  let v = g.vp(pid, publicOnly);
+  if (shown) {
+    for (const [kind, live] of [['road', g.s.longestRoad.holder], ['army', g.s.largestArmy.holder]]) {
+      if (live === pid && shown[kind] !== pid) v -= 2;
+      if (shown[kind] === pid && live !== pid) v += 2;
+    }
+  }
+  return v;
+}
+
 // ------------------------------------------------------------------ Kopfzeile: alle Spieler als Karten (Reihenfolge = Zugfolge)
-export function renderPlayers(g, busy = new Set(), inflight = {}) {
+export function renderPlayers(g, busy = new Set(), inflight = {}, shown = null) {
   const s = g.s;
   return s.players.map((p) => {
     const active = s.phase !== 'over' && s.turn === p.id;
@@ -83,7 +95,7 @@ export function renderPlayers(g, busy = new Set(), inflight = {}) {
             <span title="Entwicklungskarten auf der Hand">${ic('card', 'inline')}${p.dev.length}</span>
           </div>
         </div>
-        <div class="pc-vp" title="${mine ? 'Deine Siegpunkte' : 'Öffentliche Siegpunkte'} (Ziel: ${s.settings.targetVP})">${ic('trophy', 'inline')}<b>${g.vp(p.id, !mine)}</b></div>
+        <div class="pc-vp" title="${mine ? 'Deine Siegpunkte' : 'Öffentliche Siegpunkte'} (Ziel: ${s.settings.targetVP})">${ic('trophy', 'inline')}<b>${displayVp(g, p.id, shown, !mine)}</b></div>
       </div>`;
   }).join('');
 }
@@ -197,13 +209,13 @@ export function renderHeroRoll(g) {
 
 // ------------------------------------------------------------------ Missionen (einklappbar)
 /** Wappen der Auszeichnungen (einfarbig, Farbe über currentColor). */
-const EMBLEM = {
+export const EMBLEM = {
   road: `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 43C13 31 35 32 29 21S21 11 35 5" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/><path d="M9 43C13 31 35 32 29 21S21 11 35 5" fill="none" stroke="#0b1626" stroke-opacity=".75" stroke-width="1.7" stroke-dasharray="3.4 4.2" stroke-linecap="round"/></svg>`,
   army: `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 3 41 9.5v14.2C41 34.5 33.8 41.6 24 45.5 14.200 41.600 7 34.500 7 23.700V9.500Z" fill="currentColor" fill-opacity=".22" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M16 14.500 32 33M32 14.500 16 33" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><path d="M12.500 30.500l6.500-3.200M35.500 30.500 29 27.300M18.200 17.800l-3.600-3.400M29.800 17.800l3.600-3.400" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>`,
 };
 
 /** Auszeichnungen (je +2 Siegpunkte) als Karten: Wappen, Halter mit Portrait, Fortschritt – immer sichtbar. */
-export function renderAwards(g) {
+export function renderAwards(g, shown = null) {
   const s = g.s;
   if (s.phase === 'setup') return '';
   const lens = s.roadLengths || s.players.map(() => 0);
@@ -228,10 +240,32 @@ export function renderAwards(g) {
       <span class="ac-pts">+2</span></button>`;
   };
   const roadBest = lens.reduce((b, v, i) => (v > b.val ? { pi: i, val: v } : b), { pi: 0, val: 0 });
-  const road = mk('road', 'Längste Handelsstraße', 5, 'Straßen', s.longestRoad.holder, s.longestRoad.holder !== null ? { pi: s.longestRoad.holder, val: s.longestRoad.len } : roadBest, lens[HUMAN] || 0, 'Ab 5 zusammenhängenden Straßen – du brauchst mehr als der Halter.');
+  const roadH = shown ? shown.road : s.longestRoad.holder;
+  const armyH = shown ? shown.army : s.largestArmy.holder;
+  const road = mk('road', 'Längste Handelsstraße', 5, 'Straßen', roadH, roadH !== null ? { pi: roadH, val: lens[roadH] || s.longestRoad.len } : roadBest, lens[HUMAN] || 0, 'Ab 5 zusammenhängenden Straßen – du brauchst mehr als der Halter.');
   const armyBest = s.players.reduce((b, p) => (p.playedKnights > b.val ? { pi: p.id, val: p.playedKnights } : b), { pi: 0, val: 0 });
-  const army = mk('army', 'Größte Rittermacht', 3, 'Ritter', s.largestArmy.holder, s.largestArmy.holder !== null ? { pi: s.largestArmy.holder, val: s.largestArmy.count } : armyBest, s.players[HUMAN].playedKnights, 'Ab 3 ausgespielten Rittern – du brauchst mehr als der Halter.');
+  const army = mk('army', 'Größte Rittermacht', 3, 'Ritter', armyH, armyH !== null ? { pi: armyH, val: s.players[armyH].playedKnights } : armyBest, s.players[HUMAN].playedKnights, 'Ab 3 ausgespielten Rittern – du brauchst mehr als der Halter.');
   return road + army;
+}
+
+/** Große Auszeichnungs-Karte für die Zeremonie (Wappen, Titel, Halter, +2). `holder` = Spieler-Objekt oder null (frei). */
+export function awardHeroHTML(kind, holder, { prev = null, value = 0 } = {}) {
+  const road = kind === 'road';
+  const title = road ? 'Längste Handelsstraße' : 'Größte Rittermacht';
+  const unit = road ? 'Straßen' : 'Ritter';
+  const who = holder
+    ? `<span class="ah-av">${avatarSVG(holder.face, holder.color, 64)}</span><b>${esc(holder.name)}</b>`
+    : '<span class="ah-av none"></span><b class="dim">wieder frei</b>';
+  const sub = holder
+    ? (prev ? `nimmt sie ${esc(prev.name)} ab · ${value} ${unit}` : `${value} ${unit}`)
+    : 'niemand erfüllt die Bedingung';
+  return `<div class="ah ${kind} ${holder ? 'held' : 'free'}">
+    <div class="ah-emb">${EMBLEM[kind]}</div>
+    <small class="ah-title">${title}</small>
+    <div class="ah-who">${who}</div>
+    <div class="ah-sub">${sub}</div>
+    ${holder ? '<div class="ah-pts">+2 Siegpunkte</div>' : ''}
+  </div>`;
 }
 
 export function renderMissionBox(g, open) {

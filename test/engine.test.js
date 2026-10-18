@@ -574,3 +574,14 @@ test('Riesige Karte: jeder setzt 3 Startsiedlungen mit Straßen, ab der zweiten 
   while (small.s.phase === 'setup') botAct(small, small.s.turn);
   assert.equal(small.buildingsOf(0).length, 2);
 });
+
+test('Längste Handelsstraße: der Pfad enthält genau so viele Straßen wie die Länge', () => {
+  const g = afterSetup({ size: 'large' }, 12);
+  for (const p of g.s.players) {
+    const len = g.longestRoadFor(p.id);
+    const path = g.longestRoadPath(p.id);
+    assert.equal(path.length, len);
+    assert.equal(new Set(path).size, path.length, 'keine Straße doppelt');
+    for (const eid of path) assert.equal(g.s.roads[eid], p.id);
+  }
+});

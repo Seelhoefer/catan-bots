@@ -50,10 +50,13 @@ function ensure() {
 /** Mitgelieferte Aufnahmen (echte Würfel). Fehlen sie, bleibt der synthetische Klang. */
 const samples = {};
 async function loadSamples() {
-  try {
-    const res = await fetch('assets/sfx/dice-roll.mp3');
-    if (res.ok) samples.dice = await ctx.decodeAudioData(await res.arrayBuffer());
-  } catch { /* kein Sample – synthetischer Klang */ }
+  const list = { dice: 'dice-roll.mp3', fanfare: 'award-fanfare.mp3', kick: 'build-kick.mp3' };
+  await Promise.all(Object.entries(list).map(async ([key, file]) => {
+    try {
+      const res = await fetch(`assets/sfx/${file}`);
+      if (res.ok) samples[key] = await ctx.decodeAudioData(await res.arrayBuffer());
+    } catch { /* kein Sample – synthetischer Klang */ }
+  }));
 }
 
 async function loadFiles() {
@@ -96,19 +99,24 @@ function roomImpulse() {
  * Spielt (einen Ausschnitt der) Würfelaufnahme veredelt ab: Wärme im Bass, leichte Präsenz, sanft abgesenkte Höhen,
  * Stereoposition und ein Hauch Raumhall. Gibt false zurück, wenn die Aufnahme nicht geladen ist.
  */
-function diceSample(t, { offset = 0, dur = null, rate = 1, gain = 0.3, pan = 0, wet = 0.18, out = master }) {
-  const buf = samples.dice;
+function sampleOut(buf, t, { offset = 0, dur = null, rate = 1, gain = 0.3, pan = 0, wet = 0.18, eq = true, out = master }) {
   if (!buf) return false;
   const src = ctx.createBufferSource();
   src.buffer = buf;
   src.playbackRate.value = rate;
-  const low = ctx.createBiquadFilter(); low.type = 'lowshelf'; low.frequency.value = 220; low.gain.value = 3.5;
-  const mid = ctx.createBiquadFilter(); mid.type = 'peaking'; mid.frequency.value = 2800; mid.Q.value = 0.8; mid.gain.value = 1.5;
-  const high = ctx.createBiquadFilter(); high.type = 'highshelf'; high.frequency.value = 7500; high.gain.value = -3;
   const g = ctx.createGain();
   g.gain.setValueAtTime(gain, t);
   if (dur) { g.gain.setValueAtTime(gain, t + dur * 0.7); g.gain.linearRampToValueAtTime(0.0001, t + dur); }
-  src.connect(low); low.connect(mid); mid.connect(high); high.connect(g);
+  if (eq === true) { // Würfel: Wärme im Bass, Präsenz, sanfte Höhen
+    const low = ctx.createBiquadFilter(); low.type = 'lowshelf'; low.frequency.value = 220; low.gain.value = 3.5;
+    const mid = ctx.createBiquadFilter(); mid.type = 'peaking'; mid.frequency.value = 2800; mid.Q.value = 0.8; mid.gain.value = 1.5;
+    const high = ctx.createBiquadFilter(); high.type = 'highshelf'; high.frequency.value = 7500; high.gain.value = -3;
+    src.connect(low); low.connect(mid); mid.connect(high); high.connect(g);
+  } else if (eq === 'soft') { // Fanfare: runder, weniger schneidend
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4200; lp.Q.value = 0.5;
+    const sh = ctx.createBiquadFilter(); sh.type = 'peaking'; sh.frequency.value = 2400; sh.Q.value = 0.9; sh.gain.value = -3;
+    src.connect(lp); lp.connect(sh); sh.connect(g);
+  } else src.connect(g);
   const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
   if (panner) { panner.pan.value = pan; g.connect(panner); panner.connect(out); } else g.connect(out);
   if (wet > 0) {
@@ -119,6 +127,9 @@ function diceSample(t, { offset = 0, dur = null, rate = 1, gain = 0.3, pan = 0, 
   src.start(t, offset, dur ? dur + 0.03 : undefined);
   return true;
 }
+const diceSample = (t, o) => sampleOut(samples.dice, t, o);
+/** Wumms beim Bauen: tiefer Kick, je nach Gewicht des Bauteils höher oder tiefer. */
+const kick = (t, { rate = 1, gain = 0.5 } = {}) => sampleOut(samples.kick, t, { rate, gain, wet: 0.08, eq: false });
 
 // ------------------------------------------------------------------ Bausteine
 /** Ton mit Hüllkurve; `to` = Zielfrequenz für Gleiten. */
@@ -192,10 +203,10 @@ const SOUNDS = {
   select: (t) => { tone(t, { f: 520, to: 700, dur: 0.07, gain: 0.12, type: 'triangle' }); },
   error: (t) => { tone(t, { f: 180, to: 120, dur: 0.14, gain: 0.18, type: 'triangle' }); },
 
-  road: (t) => { knock(t, { pitch: 200 }); knock(t + 0.07, { pitch: 170, gain: 0.35 }); },
-  settlement: (t) => { knock(t, { pitch: 230 }); knock(t + 0.09, { pitch: 190 }); bell(t + 0.12, N(79), { gain: 0.08, dur: 0.4 }); },
+  road: (t) => { kick(t, { rate: 1.3, gain: 0.3 }); knock(t, { pitch: 200, gain: 0.7 }); knock(t + 0.07, { pitch: 170, gain: 0.3 }); },
+  settlement: (t) => { kick(t, { rate: 1, gain: 0.38 }); knock(t, { pitch: 230, gain: 0.7 }); knock(t + 0.09, { pitch: 190 }); bell(t + 0.12, N(79), { gain: 0.08, dur: 0.4 }); },
   city: (t) => {
-    tone(t, { f: 95, to: 50, dur: 0.28, gain: 0.55 });
+    if (!kick(t, { rate: 0.82, gain: 0.45 })) tone(t, { f: 95, to: 50, dur: 0.28, gain: 0.55 });
     noise(t, { dur: 0.06, f: 900, q: 0.7, gain: 0.4 });
     knock(t + 0.1, { pitch: 170 });
     knock(t + 0.19, { pitch: 150 });
@@ -231,6 +242,10 @@ const SOUNDS = {
     const base = 60 + (total - 2) * 1.1;
     bell(t + 0.08, N(base + 12), { gain: hot ? 0.2 : 0.12, dur: hot ? 0.9 : 0.5 });
     if (hot) bell(t + 0.16, N(base + 19), { gain: 0.14, dur: 0.9 });
+  },
+  award: (t) => { // Auszeichnung: echte Fanfare, bewusst zurückgenommen und weich gefiltert; ohne Aufnahme ein kurzer Akkord
+    if (sampleOut(samples.fanfare, t, { gain: 0.27, eq: 'soft', wet: 0.32 })) { tone(t + 0.05, { f: 98, to: 82, dur: 0.7, gain: 0.12 }); return; }
+    [67, 72, 76, 79].forEach((n, i) => bell(t + i * 0.1, N(n), { gain: 0.12, dur: 0.9 }));
   },
   gather: (t) => { noise(t, { dur: 0.35, f: 600, sweep: 5200, q: 1, gain: 0.25 }); tone(t, { f: 300, to: 900, dur: 0.3, gain: 0.12, type: 'triangle' }); tone(t + 0.28, { f: 1760, dur: 0.25, gain: 0.08 }); },
   whirl: (t) => { noise(t, { dur: 1, f: 300, sweep: 2600, q: 1.4, gain: 0.2, attack: 0.5 }); [72, 76, 79, 84].forEach((n, i) => tone(t + 0.4 + i * 0.07, { f: 440 * 2 ** ((n - 69) / 12), dur: 0.4, gain: 0.06 })); },
@@ -277,7 +292,7 @@ const BOOST = {
 const SOFT = {
   tick: 0.55, select: 0.6, error: 0.6, deal: 0.5, land: 0.5, gain: 0.65, token: 0.7, dice: 1, diceHit: 1, diceLand: 1, whirl: 0.6, gather: 0.6,
   turn: 0.6, offer: 0.7, trade: 0.7, card: 0.7, cardplay: 0.7, steal: 0.55, robber: 0.7, robberLand: 0.6, harvest: 0.7, remap: 0.75, monopoly: 0.75,
-  road: 0.7, settlement: 0.75, city: 0.75, vp: 0.8, vpOther: 0.6, lose: 0.7, win: 0.85, jackpot: 0.75,
+  road: 0.7, settlement: 0.75, city: 0.75, vp: 0.8, award: 1, vpOther: 0.6, lose: 0.7, win: 0.85, jackpot: 0.75,
 };
 
 // ------------------------------------------------------------------ API
