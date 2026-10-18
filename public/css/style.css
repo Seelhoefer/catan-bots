@@ -2044,3 +2044,9 @@ body.paused .pause-ov, body.paused .pause-ov * { animation-play-state: running !
   @media (hover: none) and (pointer: coarse), (max-width: 860px) { .mc-n { text-box: trim-both cap alphabetic; padding: 5px 4px; } }
 }
 .ch-cap { max-width: min(92vw, 520px); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 10px; text-align: center; line-height: 1.35; }
+
+/* Handel schließen: großer, gut erreichbarer Knopf (nicht am Bildschirmrand) */
+.tp-top .icon-btn { width: 46px; height: 46px; right: 10px; border-radius: 50%; background: rgba(255, 255, 255, .14); border: 1.5px solid rgba(255, 255, 255, .3); z-index: 3; }
+.tp-top .icon-btn .ic { width: 22px; height: 22px; }
+.tp-top .icon-btn::after { content: ''; position: absolute; inset: -8px; }
+.tp-top { min-height: 50px; }

@@ -117,7 +117,7 @@ function composeView(app) {
     <div class="tp-lbl">Erhalte</div>${circRow(app, 'get', me.hand, false)}
     <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
     <div class="tp-lbl">Gebe</div>${circRow(app, 'give', me.hand, true)}
-    <div class="tp-actions"><button class="btn solid grow" data-act="mk-send" ${valid ? '' : 'disabled'}>An alle senden</button></div></div>`;
+    <div class="tp-actions"><button class="btn quiet" data-act="mk-close">Schließen</button><button class="btn solid grow" data-act="mk-send" ${valid ? '' : 'disabled'}>An alle senden</button></div></div>`;
 }
 
 function bankView(app) {
@@ -146,7 +146,7 @@ function bankView(app) {
     <div class="tp-divider"><i></i>${ic('trade')}<i></i></div>
     <div class="tp-lbl">Gebe</div>
     <div class="rc-row">${RES.map((r, i) => pick('bank-give', give === r, r, me.hand[r] < ports[i], `<b class="rc-n ratio">${ports[i]}:1</b>`, me.hand[r])).join('')}</div>
-    <div class="tp-actions"><button class="btn solid grow" data-act="bank-do" ${ok ? '' : 'disabled'}>${label}</button></div></div>`;
+    <div class="tp-actions"><button class="btn quiet" data-act="mk-close">Schließen</button><button class="btn solid grow" data-act="bank-do" ${ok ? '' : 'disabled'}>${label}</button></div></div>`;
 }
 
 // ------------------------------------------------------------------ Eigenes Angebot: Antworten der Gegner
