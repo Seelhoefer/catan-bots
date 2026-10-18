@@ -54,7 +54,6 @@ export class BoardView {
           </linearGradient>`).join('')}
         ${roadDefs()}
         <radialGradient id="tokenGrad" cx="40%" cy="32%" r="75%"><stop offset="0" stop-color="#fffaea"/><stop offset="1" stop-color="#e6d6aa"/></radialGradient>
-        <clipPath id="worldClip"><circle r="0.47"/></clipPath>
         <radialGradient id="worldGrad" cx="40%" cy="32%" r="75%"><stop offset="0" stop-color="#fff2c4"/><stop offset="1" stop-color="#d9a73a"/></radialGradient>
         <radialGradient id="portGrad" cx="40%" cy="32%" r="75%"><stop offset="0" stop-color="#fff6dc"/><stop offset="1" stop-color="#ead9a6"/></radialGradient>
         <radialGradient id="fogVeil" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
@@ -463,10 +462,8 @@ export class BoardView {
     out.push('<g class="portmarks">');
     for (const p of board.ports) {
       if (p.type === 'all') { // Welthafen: goldene Marke, alle Rohstoffe 2:1
-        out.push(`<g transform="translate(${p.x},${p.y})" class="port world"><circle r="0.54" cy="0.05" class="port-shadow"/><circle r="0.54" class="port-all-bg"/>`
-          + '<image href="assets/art-v2/harbors/world-harbor.webp" x="-0.47" y="-0.47" width="0.94" height="0.94" clip-path="url(#worldClip)" preserveAspectRatio="xMidYMid slice"/>'
-          + '<circle r="0.47" fill="none" stroke="#b98a26" stroke-width="0.025"/>'
-          + '<rect x="-0.37" y="0.2" width="0.74" height="0.25" rx="0.125" class="port-all-ribbon"/><text y="0.335" class="port-all-sub">2:1 ALLE</text></g>');
+        out.push(`<g transform="translate(${p.x},${p.y})" class="port world"><circle r="0.45" cy="0.05" class="port-shadow"/>`
+          + '<image href="assets/art-v2/harbors/world-harbor.webp" x="-0.5" y="-0.5" width="1" height="1" class="port-img"/></g>'); // gleicher Aufbau wie die anderen Hafenkarten, nur etwas größer
         continue;
       }
       const hb = art.ok ? harborImg(p.type) : null;
