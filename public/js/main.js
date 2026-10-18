@@ -289,7 +289,7 @@ class App {
           if (e.holder === HUMAN) setTimeout(celebrate, 250);
         } else this.toast(`${road ? 'Die Längste Handelsstraße' : 'Die Größte Rittermacht'} ist wieder frei.`, 'info');
         setTimeout(() => {
-          const card = document.querySelector(`.award.${e.kind}`);
+          const card = document.querySelector(`.acard.${e.kind}`);
           if (card && window.gsap) window.gsap.fromTo(card, { scale: 1.25 }, { scale: 1, duration: 0.9, ease: 'elastic.out(1, 0.4)', clearProps: 'transform' });
         }, 80);
         this.queueRender();

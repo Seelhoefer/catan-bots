@@ -1781,33 +1781,6 @@ td.who { display: flex; align-items: center; gap: 8px; }
 .bot-diff button:hover::before { transform: scale(1.35); }
 @media (hover: none) and (pointer: coarse) { .bot-diff button { width: 30px; height: 30px; } .bot-diff button::before { width: 12px; height: 12px; } }
 
-/* Auszeichnungen: Längste Handelsstraße / Größte Rittermacht (je +2 Siegpunkte), immer sichtbar */
-.awards { display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100vw - 28px); }
-.awards:empty { display: none; }
-.award { position: relative; display: flex; align-items: center; gap: 8px; padding: 5px 48px 5px 6px; min-height: 46px; border-radius: 999px; background: var(--glass); border: 1.5px solid var(--line); color: var(--text); text-align: left; backdrop-filter: blur(8px); box-shadow: 0 6px 16px rgba(0, 0, 0, .35); }
-.award .awd-ico { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none; background: radial-gradient(circle at 35% 28%, #2f527c, #0f1f34 75%); border: 1.5px solid #6d7f9a; color: #e8eef7; }
-.award .awd-ico .ic { width: 16px; height: 16px; }
-.award .awd-av { line-height: 0; flex: none; }
-.award .awd-av.none { width: 26px; height: 26px; border-radius: 50%; border: 1.5px dashed rgba(255, 255, 255, .45); }
-.award .awd-txt { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
-.award .awd-txt b { font-size: 13px; color: #fff; white-space: nowrap; }
-.award .awd-txt small { font-size: 11px; color: #c4d0e0; white-space: nowrap; }
-.award .awd-n { display: none; font-weight: 800; font-size: 14px; color: #fff; }
-.award .awd-pts { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); padding: 2px 7px; border-radius: 99px; background: var(--ivory); color: var(--ivory-ink); font-size: 12px; font-weight: 800; }
-.award.free { opacity: .92; }
-.award.held { border-color: #e9b949; box-shadow: 0 0 0 1px rgba(233, 185, 73, .35), 0 6px 18px rgba(233, 185, 73, .22); }
-.award.held .awd-ico { border-color: #e9b949; background: radial-gradient(circle at 35% 28%, #7a5d22, #2c200b 75%); color: #ffe9a6; }
-.award.mine { background: linear-gradient(180deg, rgba(90, 70, 24, .92), rgba(40, 30, 10, .92)); }
-@media (max-width: 860px) {
-  .awards { gap: 6px; }
-  .award { min-height: 38px; gap: 5px; padding: 4px 6px 4px 5px; }
-  .award .awd-pts { position: static; transform: none; margin-left: 2px; }
-  .award .awd-ico { width: 26px; height: 26px; }
-  .award .awd-av .avatar-svg { width: 24px; height: 24px; }
-  .award .awd-txt { display: none; }
-  .award .awd-n { display: block; }
-  .award .awd-av.none { width: 22px; height: 22px; }
-}
 
 /* Lesbarkeit: Texte direkt über dem Brett bekommen einen dunklen Grund (helles Meer / helle Felder dahinter) */
 .fab-item .fi-cost { background: rgba(8, 18, 30, .78); padding: 3px 9px; border-radius: 999px; text-shadow: none; }
@@ -1860,8 +1833,8 @@ td.who { display: flex; align-items: center; gap: 8px; }
 @keyframes screenIn { from { opacity: 0; transform: scale(1.015); } }
 
 /* Tasten: einheitliches Gefühl – leichtes Eindrücken beim Drücken, weiches Zurückfedern */
-.btn, .ts-btn, .hbtn, .icon-btn, .fab-btn, .seal, .pk-ok, .vp-b, .lb-arrow, .chip, .seg button, .award, .vp-presets button { transition-timing-function: var(--ease-out); }
-.btn:active:not(:disabled), .ts-btn:active, .hbtn:active, .icon-btn:active, .vp-b:active, .lb-arrow:active, .chip:active, .award:active, .vp-presets button:active { transform: scale(.965); transition-duration: .08s; }
+.btn, .ts-btn, .hbtn, .icon-btn, .fab-btn, .seal, .pk-ok, .vp-b, .lb-arrow, .chip, .seg button, .acard, .vp-presets button { transition-timing-function: var(--ease-out); }
+.btn:active:not(:disabled), .ts-btn:active, .hbtn:active, .icon-btn:active, .vp-b:active, .lb-arrow:active, .chip:active, .acard:active, .vp-presets button:active { transform: scale(.965); transition-duration: .08s; }
 .fab-btn:active:not([data-disabled]) { transform: scale(.94); transition-duration: .08s; }
 .seal:active { transform: scale(.94); transition-duration: .08s; }
 .rcirc:active:not(:disabled), .pk-row .rcirc:active:not(:disabled) { transform: scale(.94); transition-duration: .08s; }
@@ -1930,13 +1903,6 @@ td.who { display: flex; align-items: center; gap: 8px; }
 }
 @media (max-width: 860px) and (orientation: portrait) {
   .fab-stack.open { margin-bottom: 52px; }              /* Bau-Menü öffnet über der Rohstoffleiste */
-  .award { min-height: 32px; padding: 3px 5px 3px 4px; gap: 4px; }
-  .award .awd-ico { width: 22px; height: 22px; }
-  .award .awd-ico .ic { width: 13px; height: 13px; }
-  .award .awd-av .avatar-svg { width: 20px !important; height: 20px !important; }
-  .award .awd-av.none { width: 18px; height: 18px; }
-  .award .awd-n { font-size: 12.5px; }
-  .award .awd-pts { font-size: 10.5px; padding: 1px 5px; }
 }
 
 /* Handy hochkant: Spieler als runde Bilder mit Punkte-Marke und Kartenzahl (Details per Tipp) */
@@ -1959,17 +1925,56 @@ td.who { display: flex; align-items: center; gap: 8px; }
   .hdr-btns .hbtn { width: 40px; height: 40px; }
 }
 @media (hover: none) and (pointer: coarse) {
-  .award { min-height: 32px; padding: 3px 5px 3px 4px; gap: 4px; }
-  .award .awd-ico { width: 22px; height: 22px; }
-  .award .awd-ico .ic { width: 13px; height: 13px; }
-  .award .awd-av .avatar-svg { width: 20px !important; height: 20px !important; }
-  .award .awd-av.none { width: 18px; height: 18px; }
-  .award .awd-txt { display: none; }
-  .award .awd-n { display: block; font-size: 12.5px; }
-  .award .awd-pts { position: static; transform: none; font-size: 10.5px; padding: 1px 5px; }
   .floatcol { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px; }
 }
 @media (hover: none) and (pointer: coarse) {
   .floatcol .ftoggle > span:not(.mini-ico) { display: none; }
   .floatcol .ftoggle { padding: 5px 9px; }
+}
+
+/* ======================================================================
+   Auszeichnungen als Karten: Wappen · Titel · Halter mit Portrait · Fortschritt · +2
+   ====================================================================== */
+.awards { display: flex; flex-wrap: wrap; gap: 10px; max-width: calc(100vw - 28px); }
+.awards:empty { display: none; }
+.acard { position: relative; display: flex; align-items: center; gap: 10px; width: 238px; padding: 9px 12px 9px 9px; border-radius: 14px; color: var(--text); text-align: left; overflow: hidden;
+  background: linear-gradient(160deg, rgba(24, 44, 72, .95), rgba(10, 20, 34, .95)); border: 1.5px solid rgba(160, 178, 205, .3); box-shadow: 0 8px 20px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .07); }
+.acard.held { border-color: #e9b949; background: linear-gradient(160deg, #5b4519, #241a09 72%); box-shadow: 0 0 0 1px rgba(233, 185, 73, .4), 0 10px 26px rgba(233, 185, 73, .2), inset 0 1px 0 rgba(255, 236, 170, .3); }
+.acard.held::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 32%, rgba(255, 236, 170, .2) 48%, transparent 64%); transform: translateX(-130%); animation: acShine 7s ease-in-out infinite 1.5s; pointer-events: none; }
+.acard.mine { border-color: #f6d36a; box-shadow: 0 0 0 1px rgba(246, 211, 106, .55), 0 0 30px rgba(233, 185, 73, .35), 0 10px 26px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 236, 170, .4); }
+@keyframes acShine { 0%, 62%, 100% { transform: translateX(-130%); } 82% { transform: translateX(130%); } }
+.ac-emb { width: 46px; height: 46px; flex: none; border-radius: 50%; display: grid; place-items: center; color: #a9bbd3; background: radial-gradient(circle at 35% 28%, #2f527c, #0f1f34 78%); border: 2px solid #4d6385; }
+.acard.free .ac-emb { opacity: .8; }
+.acard.held .ac-emb { color: #ffe9a6; background: radial-gradient(circle at 35% 28%, #8a6a28, #2c200b 78%); border-color: #f1c95a; box-shadow: 0 0 16px rgba(233, 185, 73, .4); }
+.ac-emb svg { width: 28px; height: 28px; }
+.ac-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.ac-title { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #aebdd2; white-space: nowrap; }
+.acard.held .ac-title { color: #f1d58a; }
+.ac-who { display: flex; align-items: center; gap: 6px; min-height: 22px; }
+.ac-who b { font-size: 14px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ac-who b.dim { color: #9fb0c6; font-weight: 600; }
+.ac-av { line-height: 0; flex: none; }
+.ac-av.none { width: 22px; height: 22px; border-radius: 50%; border: 1.5px dashed rgba(255, 255, 255, .4); }
+.ac-prog { position: relative; display: block; height: 14px; line-height: 14px; font-size: 10px; border-radius: 99px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+.ac-prog i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: linear-gradient(90deg, #4f7fb8, #7fb0e8); transition: width .7s var(--ease-out, ease-out); }
+.acard.held .ac-prog i { background: linear-gradient(90deg, #b98a26, #f1d070); }
+.ac-prog em { position: relative; font-style: normal; font-size: 10px; font-weight: 700; line-height: 14px; padding: 0 8px; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .65); white-space: nowrap; }
+.ac-pts { position: absolute; left: 36px; bottom: 7px; padding: 1px 6px; border-radius: 99px; background: var(--ivory); color: var(--ivory-ink); font-weight: 800; font-size: 11px; line-height: 15px; box-shadow: 0 2px 6px rgba(0, 0, 0, .45); }
+.acard.held .ac-pts { background: linear-gradient(180deg, #fff2c4, #e6bd55); }
+.ac-n { display: none; }
+
+/* Handy: nur Wappen, Portrait, Zahl und +2 */
+@media (hover: none) and (pointer: coarse) {
+  .awards { gap: 6px; }
+  .acard { width: auto; min-height: 34px; padding: 3px 8px 3px 4px; gap: 5px; border-radius: 999px; overflow: visible; }
+  .acard.held::after { display: none; }
+  .ac-emb { width: 26px; height: 26px; border-width: 1.5px; }
+  .ac-emb svg { width: 16px; height: 16px; }
+  .ac-main { flex-direction: row; align-items: center; gap: 5px; flex: none; }
+  .ac-title, .ac-who b, .ac-prog { display: none; }
+  .ac-who { min-height: 0; }
+  .ac-av .avatar-svg { width: 20px !important; height: 20px !important; }
+  .ac-av.none { width: 18px; height: 18px; }
+  .ac-n { display: block; font-weight: 800; font-size: 12.5px; color: #fff; }
+  .ac-pts { position: static; border-radius: 99px; padding: 1px 5px; font-size: 10px; }
 }

@@ -196,26 +196,41 @@ export function renderHeroRoll(g) {
 }
 
 // ------------------------------------------------------------------ Missionen (einklappbar)
-/** Auszeichnungen (je +2 Siegpunkte): wer hält die Längste Handelsstraße / Größte Rittermacht – immer sichtbar. */
+/** Wappen der Auszeichnungen (einfarbig, Farbe über currentColor). */
+const EMBLEM = {
+  road: `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 43C13 31 35 32 29 21S21 11 35 5" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/><path d="M9 43C13 31 35 32 29 21S21 11 35 5" fill="none" stroke="#0b1626" stroke-opacity=".75" stroke-width="1.7" stroke-dasharray="3.4 4.2" stroke-linecap="round"/></svg>`,
+  army: `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 3 41 9.5v14.2C41 34.5 33.8 41.6 24 45.5 14.200 41.600 7 34.500 7 23.700V9.500Z" fill="currentColor" fill-opacity=".22" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M16 14.500 32 33M32 14.500 16 33" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><path d="M12.500 30.500l6.500-3.200M35.500 30.500 29 27.300M18.200 17.800l-3.600-3.400M29.800 17.800l3.600-3.400" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>`,
+};
+
+/** Auszeichnungen (je +2 Siegpunkte) als Karten: Wappen, Halter mit Portrait, Fortschritt – immer sichtbar. */
 export function renderAwards(g) {
   const s = g.s;
   if (s.phase === 'setup') return '';
   const lens = s.roadLengths || s.players.map(() => 0);
-  const mk = (cls, icon, title, need, unit, holder, best, mineVal, hint) => {
+  const mk = (cls, title, need, unit, holder, best, mineVal, hint) => {
     const p = holder !== null && holder !== undefined ? s.players[holder] : null;
     const mine = holder === HUMAN;
-    const lead = best.val > 0 ? `${esc(s.players[best.pi].name)} ${best.val}` : '–';
-    const body = p
-      ? `<span class="awd-av">${avatarSVG(p.face, p.color, 26)}</span><span class="awd-txt"><b>${mine ? 'Du' : esc(p.name)}</b><small>${best.val} ${unit}</small></span>`
-      : `<span class="awd-av none"></span><span class="awd-txt"><b>noch frei</b><small>ab ${need} ${unit} · ${lead}</small></span>`;
+    const pct = Math.min(100, Math.round((best.val / need) * 100));
+    const lead = best.val > 0 ? `${esc(s.players[best.pi].name)} ${best.val}` : 'noch niemand';
     const tip = `${title}: +2 Siegpunkte. ${hint} Dein Stand: ${mineVal}.${p ? ` Aktuell: ${p.name} (${best.val}).` : ' Noch niemand hat sie.'}`;
-    return `<button type="button" class="award ${cls} ${p ? 'held' : 'free'} ${mine ? 'mine' : ''}" data-act="award-info" data-kind="${cls}" title="${esc(tip)}" aria-label="${esc(tip)}">
-      <span class="awd-ico">${ic(icon)}</span>${body}<span class="awd-n">${p ? best.val : `${best.val}/${need}`}</span><span class="awd-pts">+2</span></button>`;
+    const who = p
+      ? `<span class="ac-av">${avatarSVG(p.face, p.color, 22)}</span><b>${mine ? 'Du' : esc(p.name)}</b>`
+      : '<span class="ac-av none"></span><b class="dim">noch frei</b>';
+    const prog = p ? `${best.val} ${unit}` : `${best.val}/${need} ${unit}`;
+    return `<button type="button" class="acard ${cls} ${p ? 'held' : 'free'} ${mine ? 'mine' : ''}" data-act="award-info" data-kind="${cls}" title="${esc(tip)}" aria-label="${esc(tip)}">
+      <span class="ac-emb">${EMBLEM[cls]}</span>
+      <span class="ac-main">
+        <small class="ac-title">${title}</small>
+        <span class="ac-who">${who}</span>
+        <span class="ac-prog" title="${lead}"><i style="width:${p ? 100 : pct}%"></i><em>${prog}</em></span>
+      </span>
+      <span class="ac-n">${p ? best.val : `${best.val}/${need}`}</span>
+      <span class="ac-pts">+2</span></button>`;
   };
   const roadBest = lens.reduce((b, v, i) => (v > b.val ? { pi: i, val: v } : b), { pi: 0, val: 0 });
-  const road = mk('road', 'road', 'Längste Handelsstraße', 5, 'Straßen', s.longestRoad.holder, s.longestRoad.holder !== null ? { pi: s.longestRoad.holder, val: s.longestRoad.len } : roadBest, lens[HUMAN] || 0, 'Ab 5 zusammenhängenden Straßen – du brauchst mehr als der Halter.');
+  const road = mk('road', 'Längste Handelsstraße', 5, 'Straßen', s.longestRoad.holder, s.longestRoad.holder !== null ? { pi: s.longestRoad.holder, val: s.longestRoad.len } : roadBest, lens[HUMAN] || 0, 'Ab 5 zusammenhängenden Straßen – du brauchst mehr als der Halter.');
   const armyBest = s.players.reduce((b, p) => (p.playedKnights > b.val ? { pi: p.id, val: p.playedKnights } : b), { pi: 0, val: 0 });
-  const army = mk('army', 'sword', 'Größte Rittermacht', 3, 'Ritter', s.largestArmy.holder, s.largestArmy.holder !== null ? { pi: s.largestArmy.holder, val: s.largestArmy.count } : armyBest, s.players[HUMAN].playedKnights, 'Ab 3 ausgespielten Rittern – du brauchst mehr als der Halter.');
+  const army = mk('army', 'Größte Rittermacht', 3, 'Ritter', s.largestArmy.holder, s.largestArmy.holder !== null ? { pi: s.largestArmy.holder, val: s.largestArmy.count } : armyBest, s.players[HUMAN].playedKnights, 'Ab 3 ausgespielten Rittern – du brauchst mehr als der Halter.');
   return road + army;
 }
 
