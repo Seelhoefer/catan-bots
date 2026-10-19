@@ -2304,7 +2304,4 @@ html[data-art="new"] .cardback::after, html[data-art="new"] .cardback::before { 
 /* Rohstoffkarten v5: Name und Text sind bei Holz, Lehm, Erz und Getreide schon im Bild */
 html[data-art="new"] .rcard.r-wood .rc-name, html[data-art="new"] .rcard.r-brick .rc-name, html[data-art="new"] .rcard.r-ore .rc-name, html[data-art="new"] .rcard.r-wheat .rc-name { display: none; }
 
-/* Hintergrund (Web-Set): mediterrane Bucht hinter Startseite und Brett */
-#menu { background: linear-gradient(rgba(5, 15, 12, .68), rgba(5, 15, 12, .93) 70%), url('../assets/web/background.webp') center / cover no-repeat fixed, var(--bg-deep); }
-html[data-art="new"] #board { background: linear-gradient(rgba(4, 20, 22, .10), rgba(4, 20, 22, .30)), url('../assets/web/background.webp') center / cover no-repeat, #0d3858; }
 .avatar-svg.portrait img { left: -12%; top: 0; width: 124%; }
