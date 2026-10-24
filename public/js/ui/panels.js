@@ -1,6 +1,6 @@
 // HUD (Kopfzeile), Aktionsleiste, Missionen, Verlauf – als HTML-Strings.
 import {
-  RES, RES_INFO, COSTS, DEV_INFO, DEV_ORDER, PASSIVE_CARDS, STRATEGY_LABEL, ERA_INFO,
+  RES, RES_INFO, COSTS, DEV_INFO, DEV_ORDER, PASSIVE_CARDS, STRATEGY_LABEL, ERA_INFO, WORLD_EVENTS,
 } from '../engine/constants.js';
 import { cardHTML } from './cards.js';
 import { missionById, missionDesc } from '../engine/missions.js';
@@ -33,7 +33,8 @@ export function renderHand(g, inflight = {}) {
     tokens = `<button class="rchip tok ${ready ? 'ready' : ''}" data-act="tokens" title="Anti-Pech-Marker: ${p.tokens} von ${cost} für 1 Rohstoff">
       <span class="rsq tokensq">${ic('clover')}</span><b>${p.tokens}</b><small>/${cost}</small></button>`;
   }
-  return `${chips}${tokens}`;
+  const gold = (s.era || 0) >= 1 || p.gold > 0 ? `<button class="rchip gold" data-act="newworld" title="Gold: ${p.gold || 0} – Neue Welt öffnen"><span class="rsq goldsq">${ic('coin')}</span><b>${p.gold || 0}</b></button>` : '';
+  return `${chips}${tokens}${gold}`;
 }
 
 /**
@@ -134,7 +135,7 @@ function buildStatus(g, kind) {
     if (!g.legalColonySpots(HUMAN).length) return 'Auf jeder neuen Insel hast du schon eine Kolonie';
   } else if (kind === 'city') {
     if (p.pieces.city <= 0) return 'Keine Städte mehr übrig';
-    if (!g.canAfford(HUMAN, COSTS.city)) return 'Dir fehlen 2 Getreide + 3 Erz';
+    if (!g.canAfford(HUMAN, g.costFor(HUMAN, 'city'))) return `Dir fehlen 2 Getreide + ${g.costFor(HUMAN, 'city').ore} Erz`;
     if (!g.legalCitySpots(HUMAN).length) return 'Du hast keine Siedlung zum Ausbauen';
   } else if (kind === 'devcard') {
     if (!s.devDeck.length) return 'Stapel leer';
@@ -153,6 +154,7 @@ function pieceIcon(g, kind) {
   return null;
 }
 
+const SPECIAL_ICON = { market: 'coin', workshop: 'hammer', fortress: 'shield' };
 const anyPlayable = (g) => DEV_ORDER.filter((t) => !PASSIVE_CARDS.has(t)).some((t) => g.playableDev(HUMAN, t));
 
 const BUILD_ITEMS = [ // von oben nach unten (die Straße liegt am nächsten am Knopf)
@@ -197,8 +199,9 @@ export function renderFab(g, mode, open) {
   return `
     <div class="fab-stack ${open && canAct ? 'open' : ''}">${items}</div>
     <div class="fab-row">
-      <button class="fab-btn main ${anyReady ? 'ready' : ''} ${mode || (open && canAct) ? 'on' : ''}" data-act="fab-toggle" ${canAct ? '' : 'data-disabled="1"'} title="${canAct ? 'Bauen' : 'Bauen: nur in deinem Zug'}" aria-label="Bauen" aria-expanded="${!!(open && canAct)}">${mode ? (pieceIcon(g, mode === 'devcard' ? 'devcard' : mode) || '') : (art.ok ? `<img class="fb-img" src="${IMG.hammer}" alt="" draggable="false">` : ic('hammer'))}</button>
+      <button class="fab-btn main ${anyReady ? 'ready' : ''} ${mode || (open && canAct) ? 'on' : ''}" data-act="fab-toggle" ${canAct ? '' : 'data-disabled="1"'} title="${canAct ? 'Bauen' : 'Bauen: nur in deinem Zug'}" aria-label="Bauen" aria-expanded="${!!(open && canAct)}">${mode ? (pieceIcon(g, mode === 'devcard' ? 'devcard' : mode) || (SPECIAL_ICON[mode] ? ic(SPECIAL_ICON[mode]) : '')) : (art.ok ? `<img class="fb-img" src="${IMG.hammer}" alt="" draggable="false">` : ic('hammer'))}</button>
       <button class="fab-btn ${canBank ? 'ready' : ''}" data-act="trade" ${canAct ? '' : 'data-disabled="1"'} title="${canAct ? 'Handeln' : 'Handeln: nur in deinem Zug'}" aria-label="Handeln">${art.ok ? `<img class="fb-img" src="${IMG.scale}" alt="" draggable="false">` : ic('trade')}</button>
+      ${(s.era || 0) >= 1 ? `<button class="fab-btn nw-cell ${canAct && s.players[HUMAN].gold >= 2 ? 'ready' : ''}" data-act="newworld" title="Neue Welt: Gold, Gebäude, Erfindungen" aria-label="Neue Welt">${ic('globe')}</button>` : ''}
       ${dev ? `<button class="fab-btn dev-cell ${anyPlayable(g) ? 'ready' : ''}" data-act="dev" title="Entwicklungskarten" aria-label="Entwicklungskarten">${ic('cards')}<i class="fab-badge">${dev}</i></button>` : ''}
     </div>`;
 }
@@ -258,10 +261,12 @@ export function renderDecrees(g) {
     const tip = `Zollhaus auf die ${l.num} (${mine ? 'du' : p.name}): Wer die ${l.num} würfelt, bringt ${mine ? 'dir' : p.name} 1 Karte je Rohstoffart des Wurfs – bis ${mine ? 'du' : p.name} wieder am Zug ${mine ? 'bist' : 'ist'}.`;
     return `<span class="dpill toll ${mine ? 'mine' : ''}" data-act="decree-info" data-by="${l.by}" title="${esc(tip)}" aria-label="${esc(tip)}">${ic('scroll', 'inline')}<b>Zollhaus</b><b class="dp-num">${l.num}</b><span class="dp-av">${avatarSVG(p.face, p.color, 20)}</span></span>`;
   });
+  const we = g.s.worldEvent;
+  const wePill = we ? `<span class="dpill world ${we.id}" data-act="decree-info" title="${esc(`Weltereignis – ${WORLD_EVENTS[we.id].name}${we.res ? ` (${RES_INFO[we.res].name})` : ''}: ${WORLD_EVENTS[we.id].text}`)}" aria-label="Weltereignis ${WORLD_EVENTS[we.id].name}">${ic(WORLD_EVENTS[we.id].icon, 'inline')}<b>${WORLD_EVENTS[we.id].name}</b>${we.res ? ic(we.res, 'inline') : ''}</span>` : '';
   const era = g.s.era || 0;
   const eraPill = era ? `<span class="dpill era" data-act="decree-info" title="${esc(`Zeitalter ${era} – ${ERA_INFO[era].name}: ${ERA_INFO[era].text}`)}" aria-label="Zeitalter ${era}">${ic('globe', 'inline')}<b>Zeitalter ${era}</b></span>` : '';
   if ((!list.length && !levies.length && !era) || g.s.phase === 'setup') return '';
-  return eraPill + levies.join('') + list.map((d) => {
+  return eraPill + wePill + levies.join('') + list.map((d) => {
     const p = g.s.players[d.by];
     const mine = d.by === HUMAN;
     const kind = d.kind === 'toll' ? 'Zoll' : 'Strafe';

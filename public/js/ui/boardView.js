@@ -508,8 +508,11 @@ export class BoardView {
       const v = board.vertices[vid];
       const pop = ui.fresh?.pieces?.has(`v${vid}`) ? ' pop' : '';
       const hit = hitVerts.has(Number(vid)) ? ' hit' : '';
-      if (art.ok) out.push(`<g><g class="bld${pop}${hit}">${pieceImage(b.type, s.players[b.owner].color, v.x, v.y)}</g></g>`);
-      else out.push(`<g transform="translate(${v.x},${v.y})" filter="url(#shadow)"><g class="bld${pop}${hit}"><path d="${b.type === 'city' ? CITY : HOUSE}" fill="${s.players[b.owner].color}" class="bld-shape"/></g></g>`);
+      const SPEC = { market: '⚖', workshop: '⚙', fortress: '♜' };
+      const badge = b.special ? `<g class="spec-badge" transform="translate(${(v.x + 0.34).toFixed(3)},${(v.y - 0.42).toFixed(3)})" pointer-events="none"><circle r="0.2" class="spec-bg"/><text y="0.09" class="spec-glyph">${SPEC[b.special]}</text></g>` : '';
+      const colony = b.colony ? `<g transform="translate(${(v.x - 0.32).toFixed(3)},${(v.y - 0.4).toFixed(3)})" pointer-events="none"><circle r="0.14" class="spec-bg col"/><text y="0.065" class="spec-glyph sm">⚓</text></g>` : '';
+      if (art.ok) out.push(`<g><g class="bld${pop}${hit}">${pieceImage(b.type, s.players[b.owner].color, v.x, v.y)}</g>${badge}${colony}</g>`);
+      else out.push(`<g transform="translate(${v.x},${v.y})" filter="url(#shadow)"><g class="bld${pop}${hit}"><path d="${b.type === 'city' ? CITY : HOUSE}" fill="${s.players[b.owner].color}" class="bld-shape"/></g></g>${badge}${colony}`);
     }
     out.push('</g>');
     if (topTokens.length) out.push(`<g class="tokenlayer" pointer-events="none">${topTokens.join('')}</g>`);

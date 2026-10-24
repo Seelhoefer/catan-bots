@@ -2314,3 +2314,29 @@ html, body { overscroll-behavior: none; }
 .bottombar .handbar { flex: 1 1 0; min-width: 0; max-width: 100%; }
 .bottombar .handbar { position: relative; }
 .bottombar .hand-fan { position: absolute; left: 50%; bottom: 0; width: max-content; height: 100%; transform-origin: 50% 100%; transform: translateX(-50%) scale(var(--fs, 1)); }
+
+/* Neue Welt: Gold, Spezialgebäude, Erfindungen, Weltereignisse */
+.rchip.gold { cursor: pointer; border-color: rgba(212, 174, 114, .55); }
+.rchip.gold:hover { background: var(--surface-2); }
+.goldsq { background: linear-gradient(160deg, #f3deb0, #b98c42); color: #3a2a0c; }
+.fab-btn.nw-cell { font-size: 0; }
+.fab-btn.nw-cell .ic { width: 30px; height: 30px; }
+.nw-gold { margin: 0; font-size: 18px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.nw-gold b { font-family: var(--font-display); font-size: 26px; color: var(--gold-hi); }
+.nw-gold small { color: var(--muted); font-size: 12.5px; }
+.nw-sec { display: flex; flex-direction: column; gap: 10px; }
+.nw-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.nw-card { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.nw-card.done { opacity: .6; }
+.nw-t { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: 16px; }
+.nw-t .ic { width: 20px; height: 20px; color: var(--gold); }
+.nw-card p { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); flex: 1; }
+.nw-cost { font-size: 13px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.spec-bg { fill: #f3e6c4; stroke: #8a5a14; stroke-width: .045; }
+.spec-bg.col { fill: #d8ecf4; stroke: #1d5d78; }
+.spec-glyph { font-size: .26px; text-anchor: middle; fill: #3a2a0c; font-family: 'Segoe UI Symbol', 'Noto Sans Symbols 2', 'DejaVu Sans', sans-serif; font-weight: 700; }
+.spec-glyph.sm { font-size: .17px; fill: #1d5d78; }
+.dpill.world { border-color: rgba(217, 105, 74, .6); }
+.dpill.world.bounty, .dpill.world.boom { border-color: rgba(141, 191, 114, .7); }
+.dpill.era { border-color: rgba(212, 174, 114, .6); }
+@media (max-width: 860px) and (orientation: portrait) { .fab-btn.nw-cell { width: 52px; height: 52px; } .fab-row { gap: 8px; } }

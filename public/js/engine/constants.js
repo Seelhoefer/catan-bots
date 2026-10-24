@@ -19,14 +19,41 @@ export const COSTS = {
 };
 
 /** Zeitalter (ab 20 Siegpunkten Ziel): so viel Prozent des Ziels muss der Führende erreichen. */
-export const ERA_STEPS = [0.3, 0.55, 0.8];
+export const ERA_STEPS = [0.25, 0.5, 0.7];
 export const ERA_MIN_VP = 20;
 export const ERA_INFO = [
   null,
-  { name: 'Entdeckung', text: 'Eine neue Insel taucht auf! Gründe dort Kolonien und handle über den Kolonialhafen.' },
-  { name: 'Handelsmesse', text: 'Der Seehandel blüht: Die Bank tauscht für alle nur noch 3:1.' },
-  { name: 'Neue Welt', text: 'Eine zweite Insel taucht auf – noch mehr Platz für Kolonien.' },
+  { name: 'Entdeckung', text: 'Eine neue Insel taucht auf! Kolonien bringen dir jede Runde Gold, ein neuer Hafen wartet.' },
+  { name: 'Industrie', text: 'Neue Gebäude (Markt, Werkstatt, Festung), Erfindungen für Gold – und Weltereignisse. Die Bank tauscht für alle nur noch 3:1.' },
+  { name: 'Neue Welt', text: 'Eine zweite Insel taucht auf, die Weltereignisse werden häufiger.' },
 ];
+
+/** Spezialgebäude (ab Zeitalter 2): werden auf eine eigene Stadt gesetzt, je Spieler eines pro Art, je Stadt eines. */
+export const SPECIALS = {
+  market: { name: 'Markt', icon: 'coin', vp: 1, text: '+1 Siegpunkt · bringt dir zu Beginn jedes eigenen Zuges 1 Gold.' },
+  workshop: { name: 'Werkstatt', icon: 'hammer', vp: 1, text: '+1 Siegpunkt · diese Stadt liefert 1 Karte mehr, wenn ihre Zahl fällt.' },
+  fortress: { name: 'Festung', icon: 'shield', vp: 1, text: '+1 Siegpunkt · der Räuber darf nicht auf die angrenzenden Felder; schützt vor Piraten.' },
+};
+COSTS.market = { wood: 1, brick: 1, sheep: 2 };
+COSTS.workshop = { wheat: 2, ore: 2, wood: 1 };
+COSTS.fortress = { brick: 3, ore: 2 };
+
+/** Erfindungen (ab Zeitalter 2): gegen Gold, einmalig. */
+export const TECHS = {
+  compass: { name: 'Kompass', gold: 3, icon: 'compass', text: 'Dein Banktausch wird um 1 günstiger (mindestens 2:1).' },
+  ironplow: { name: 'Eisenpflug', gold: 4, icon: 'wheat', text: 'Städte kosten dich nur 2 Getreide + 2 Erz.' },
+  colonial: { name: 'Kolonialrecht', gold: 4, icon: 'anchor', text: 'Jede deiner Kolonien bringt 1 Gold mehr pro Zug.' },
+  scholars: { name: 'Gelehrsamkeit', gold: 7, icon: 'bulb', vp: 1, text: '+1 Siegpunkt.' },
+};
+export const GOLD_RATE = 2; // 2 Gold = 1 Rohstoff deiner Wahl
+
+/** Weltereignisse (ab Zeitalter 2): dauern eine Runde, Piraten wirken sofort. */
+export const WORLD_EVENTS = {
+  drought: { name: 'Dürre', icon: 'sun', text: 'Ein Rohstoff bringt diese Runde keinen Ertrag.' },
+  bounty: { name: 'Erntesegen', icon: 'wheat', text: 'Jedes getroffene Gebäude bringt diese Runde 1 Karte extra.' },
+  boom: { name: 'Handelsboom', icon: 'coin', text: 'Alles Gold wird diese Runde verdoppelt.' },
+  pirates: { name: 'Piraten', icon: 'sword', text: 'Spieler mit 8 oder mehr Karten verlieren 2 zufällige – außer mit Festung.' },
+};
 
 // Spielfeldgrößen. `radius` = Anzahl der Hex-Ringe um die Mitte.
 export const SIZES = {

@@ -1,7 +1,7 @@
 // Regel-Engine: kompletter Spielzustand (JSON-serialisierbar) + alle Aktionen.
 
 import {
-  RES, RES_INFO, COSTS, ERA_STEPS, ERA_MIN_VP, ERA_INFO, SIZES, DEV_INFO, PASSIVE_CARDS, PLAYER_COLORS, BOT_ROSTER, HUMAN_FACES, DEFAULT_SETTINGS,
+  RES, RES_INFO, COSTS, ERA_STEPS, ERA_MIN_VP, ERA_INFO, SPECIALS, TECHS, GOLD_RATE, WORLD_EVENTS, SIZES, DEV_INFO, PASSIVE_CARDS, PLAYER_COLORS, BOT_ROSTER, HUMAN_FACES, DEFAULT_SETTINGS,
 } from './constants.js';
 import { makeRng, shuffle } from './rng.js';
 import { generateBoard, remapBoard, addIsland } from './board.js';
@@ -75,6 +75,8 @@ export class Game {
         steals: 0, // erfolgreich gestohlene Karten
         bestHaul: 0, // meiste Karten aus einem einzigen Wurf
         pieces: { ...pieces },
+        gold: 0, // Gold (ab Zeitalter 1): aus Kolonien und Märkten
+        techs: [], // erforschte Erfindungen
         missions: [],
       });
     }
@@ -124,6 +126,7 @@ export class Game {
       largestArmy: { holder: null, count: 0 },
       missions,
       era: 0, // Zeitalter (siehe checkEras)
+      worldEvent: null, // aktives Weltereignis { id, res?, until }
       islands: [], // neue Inseln: Feld-IDs je Insel
       levies: [], // aktive Zollhäuser: { by, num } – gelten bis der Aussteller wieder am Zug ist
       decrees: [], // aktive Erlasse: { by, res, kind: 'toll' | 'penalty' } – gelten bis der Aussteller wieder am Zug ist
@@ -176,7 +179,7 @@ export class Game {
   buildingsOf(pi) {
     const out = [];
     for (const [vid, b] of Object.entries(this.s.buildings)) {
-      if (b.owner === pi) out.push({ vid: Number(vid), type: b.type });
+      if (b.owner === pi) out.push({ vid: Number(vid), type: b.type, colony: !!b.colony, special: b.special || null });
     }
     return out;
   }
@@ -194,6 +197,8 @@ export class Game {
     if (this.s.longestRoad.holder === pi) v += 2;
     if (this.s.largestArmy.holder === pi) v += 2;
     v += p.missions.length;
+    for (const b of this.buildingsOf(pi)) if (b.special) v += SPECIALS[b.special].vp;
+    for (const t of p.techs || []) v += TECHS[t].vp || 0;
     if (!publicOnly) v += p.dev.filter((c) => c.type === 'victory').length;
     return v;
   }
@@ -208,6 +213,7 @@ export class Game {
       else if (port === 'any') best = Math.min(best, 3);
       else if (port === res) best = Math.min(best, 2);
     }
+    if ((this.player(pi).techs || []).includes('compass')) best = Math.max(2, best - 1); // Kompass
     return best;
   }
 
@@ -245,6 +251,20 @@ export class Game {
       }
     }
     return out;
+  }
+
+  /** Kosten mit Erfindungen (Eisenpflug). */
+  costFor(pi, kind) {
+    if (kind === 'city' && (this.player(pi).techs || []).includes('ironplow')) return { wheat: 2, ore: 2 };
+    return COSTS[kind];
+  }
+
+  /** Eigene Städte ohne Spezialgebäude, falls `kind` noch nicht gebaut wurde (Zeitalter 2+). */
+  legalSpecialSpots(pi, kind) {
+    if ((this.s.era || 0) < 2 || !SPECIALS[kind]) return [];
+    const mine = this.buildingsOf(pi);
+    if (mine.some((b) => b.special === kind)) return [];
+    return mine.filter((b) => b.type === 'city' && !b.special).map((b) => b.vid);
   }
 
   /** Kolonien: freie Ecken auf einer neuen Insel, auf der man noch kein Gebäude hat (ohne Straßenanschluss). */
@@ -287,7 +307,11 @@ export class Game {
   }
 
   legalRobberHexes() {
-    return this.board.hexes.filter((h) => !h.fog && h.id !== this.s.robber).map((h) => h.id);
+    const walled = new Set(); // Festung: angrenzende Felder sind für den Räuber tabu
+    for (const [vid, b] of Object.entries(this.s.buildings)) if (b.special === 'fortress') for (const h of this.board.vertices[vid].hexes) walled.add(h);
+    const all = this.board.hexes.filter((h) => !h.fog && h.id !== this.s.robber).map((h) => h.id);
+    const free = all.filter((id) => !walled.has(id));
+    return free.length ? free : all;
   }
 
   stealTargets(hexId) {
@@ -365,6 +389,7 @@ export class Game {
     s.lastRoll = total;
     this.log(`${this.cur.name} würfelt ${d1} + ${d2} = ${total}.`, pi);
     this.emit({ type: 'dice', dice: [d1, d2], pi });
+    this.payGold(pi);
     if (total === 7) {
       s.discard = {};
       for (const p of s.players) {
@@ -387,6 +412,88 @@ export class Game {
     return ok({ total });
   }
 
+  /** Gold: zu Beginn des eigenen Wurfs – Kolonien und Märkte bringen Gold (Handelsboom verdoppelt). */
+  payGold(pi) {
+    const s = this.s;
+    if ((s.era || 0) < 1) return;
+    const p = this.player(pi);
+    let n = 0;
+    for (const b of this.buildingsOf(pi)) {
+      if (b.colony) n += 1 + ((p.techs || []).includes('colonial') ? 1 : 0);
+      if (b.special === 'market') n += 1;
+    }
+    if (!n) return;
+    if (s.worldEvent && s.worldEvent.id === 'boom') n *= 2;
+    p.gold = (p.gold || 0) + n;
+    this.log(`🪙 ${p.name} erhält ${n} Gold.`, pi);
+    this.emit({ type: 'gold', pi, n });
+  }
+
+  /** 2 Gold → 1 Rohstoff deiner Wahl. */
+  exchangeGold(pi, res) {
+    const s = this.s;
+    const p = this.player(pi);
+    if (s.phase !== 'main' || s.turn !== pi || s.sub !== 'actions') return fail('Jetzt nicht möglich.');
+    if (!RES.includes(res)) return fail('Wähle einen Rohstoff.');
+    if ((p.gold || 0) < GOLD_RATE) return fail(`Dir fehlt Gold (${GOLD_RATE} nötig).`);
+    if (s.bank[res] < 1) return fail('Die Bank hat davon nichts mehr.');
+    p.gold -= GOLD_RATE;
+    p.hand[res]++;
+    s.bank[res]--;
+    this.log(`🪙 ${p.name} tauscht ${GOLD_RATE} Gold gegen 1 ${RES_INFO[res].icon}.`, pi);
+    this.emit({ type: 'gain', pi, hand: { ...emptyHand(), [res]: 1 } });
+    this.afterAction();
+    return ok();
+  }
+
+  /** Erfindung für Gold erforschen (ab Zeitalter 2). */
+  research(pi, id) {
+    const s = this.s;
+    const p = this.player(pi);
+    const t = TECHS[id];
+    if (!t) return fail('Unbekannte Erfindung.');
+    if (s.phase !== 'main' || s.turn !== pi || s.sub !== 'actions') return fail('Jetzt nicht möglich.');
+    if ((s.era || 0) < 2) return fail('Erfindungen gibt es erst ab Zeitalter 2.');
+    if ((p.techs || []).includes(id)) return fail('Schon erforscht.');
+    if ((p.gold || 0) < t.gold) return fail(`Dir fehlt Gold (${t.gold} nötig).`);
+    p.gold -= t.gold;
+    p.techs = [...(p.techs || []), id];
+    this.log(`💡 ${p.name} erfindet ${t.name}.`, pi);
+    this.emit({ type: 'research', pi, id });
+    this.afterAction();
+    return ok();
+  }
+
+  /** Neue Runde: Weltereignis beenden und ggf. ein neues auslösen (ab Zeitalter 2). */
+  rollWorldEvent() {
+    const s = this.s;
+    if (s.worldEvent && s.worldEvent.until <= s.turnNumber) {
+      this.log(`🌍 Weltereignis „${WORLD_EVENTS[s.worldEvent.id].name}“ ist vorbei.`);
+      s.worldEvent = null;
+    }
+    if ((s.era || 0) < 2 || s.worldEvent || !s.settings.eras) return;
+    if (this.rng() >= (s.era >= 3 ? 0.5 : 0.33)) return;
+    const id = ['drought', 'bounty', 'boom', 'pirates'][Math.floor(this.rng() * 4)];
+    const ev = { id, until: s.turnNumber + s.players.length };
+    if (id === 'drought') ev.res = RES[Math.floor(this.rng() * RES.length)];
+    s.worldEvent = ev;
+    const info = WORLD_EVENTS[id];
+    this.log(`🌍 Weltereignis – ${info.name}${ev.res ? ` (${RES_INFO[ev.res].icon})` : ''}: ${info.text}`);
+    const hit = [];
+    if (id === 'pirates') {
+      for (const p of s.players) {
+        if (this.buildingsOf(p.id).some((b) => b.special === 'fortress') || this.handCount(p.id) < 8) continue;
+        const pool = [];
+        for (const r of RES) for (let i = 0; i < p.hand[r]; i++) pool.push(r);
+        for (let k = 0; k < 2; k++) { const i = Math.floor(this.rng() * pool.length); const r = pool.splice(i, 1)[0]; p.hand[r]--; s.bank[r]++; }
+        hit.push(p.id);
+        this.log(`🏴‍☠️ Piraten plündern ${p.name}: 2 Karten weg.`, p.id);
+      }
+      ev.until = s.turnNumber; // wirkt sofort, endet in der nächsten Runde
+    }
+    this.emit({ type: 'world', id, res: ev.res || null, hit });
+  }
+
   produce(total) {
     const s = this.s;
     const gains = s.players.map(() => emptyHand());
@@ -395,12 +502,13 @@ export class Game {
     const blessed = new Map(); // Felder des Würflers, die getroffen wurden
     for (const h of this.board.hexes) {
       if (h.num !== total || h.fog || h.id === s.robber) continue;
+      if (s.worldEvent && s.worldEvent.id === 'drought' && s.worldEvent.res === h.type) continue; // Dürre
       for (const vid of h.verts) {
         const b = s.buildings[vid];
         if (!b) continue;
         if (h.type === 'gold') goldPick[b.owner] = (goldPick[b.owner] || 0) + (b.type === 'city' ? 2 : 1);
         else {
-          const n = b.type === 'city' ? 2 : 1;
+          const n = (b.type === 'city' ? 2 : 1) + (b.special === 'workshop' ? 1 : 0) + (s.worldEvent && s.worldEvent.id === 'bounty' ? 1 : 0);
           gains[b.owner][h.type] += n;
           src[b.owner].push({ hex: h.id, res: h.type, n });
           if (b.owner === s.turn && !blessed.has(h.id)) blessed.set(h.id, h.type);
@@ -670,13 +778,22 @@ export class Game {
       p.pieces.settlement--;
       this.log(`⚓ ${p.name} gründet eine Kolonie auf der neuen Insel.`, pi);
       this.emit({ type: 'build', kind: 'settlement', id, pi, colony: true });
+    } else if (SPECIALS[kind]) {
+      if (s.sub !== 'actions') return fail('Würfle zuerst.');
+      if ((s.era || 0) < 2) return fail('Das gibt es erst ab Zeitalter 2.');
+      if (!this.legalSpecialSpots(pi, kind).includes(id)) return fail(`${SPECIALS[kind].name}: nur auf einer eigenen Stadt ohne Spezialgebäude, einmal pro Spieler.`);
+      if (!this.canAfford(pi, COSTS[kind])) return fail('Dir fehlen Rohstoffe.');
+      this.pay(pi, COSTS[kind]);
+      s.buildings[id].special = kind;
+      this.log(`🏛️ ${p.name} baut ${kind === 'workshop' ? 'eine' : 'einen'} ${SPECIALS[kind].name}.`, pi);
+      this.emit({ type: 'build', kind: 'special', special: kind, id, pi });
     } else if (kind === 'city') {
       if (s.sub !== 'actions') return fail('Würfle zuerst.');
       if (p.pieces.city <= 0) return fail('Du hast keine Städte mehr.');
-      if (!this.canAfford(pi, COSTS.city)) return fail('Dir fehlen Rohstoffe (2 Getreide + 3 Erz).');
+      if (!this.canAfford(pi, this.costFor(pi, 'city'))) return fail(`Dir fehlen Rohstoffe (2 Getreide + ${this.costFor(pi, 'city').ore} Erz).`);
       if (!this.legalCitySpots(pi).includes(id)) return fail('Nur eigene Siedlungen können Städte werden.');
-      this.pay(pi, COSTS.city);
-      s.buildings[id] = { owner: pi, type: 'city' };
+      this.pay(pi, this.costFor(pi, 'city'));
+      s.buildings[id] = { owner: pi, type: 'city', ...(s.buildings[id].colony ? { colony: true } : {}), ...(s.buildings[id].special ? { special: s.buildings[id].special } : {}) };
       p.pieces.city--;
       p.pieces.settlement++;
       this.log(`${p.name} baut eine Stadt.`, pi);
@@ -1081,6 +1198,7 @@ export class Game {
     for (const o of [...s.offers]) this.closeOffer(o, 'expired');
     s.turn = (s.turn + 1) % s.players.length;
     s.turnNumber++;
+    if (s.turn === 0) this.rollWorldEvent(); // neue Runde
     s.levies = (s.levies || []).filter((d) => d.by !== s.turn); // das Zollhaus endet, wenn sein Aussteller wieder dran ist
     s.decrees = (s.decrees || []).filter((d) => d.by !== s.turn); // der Erlass endet, wenn sein Aussteller wieder dran ist
     s.sub = 'roll';
@@ -1106,6 +1224,7 @@ export class Game {
     if (s.turnNumber - s.stall.since < s.players.length * 30) return;
     const canGrow = s.players.some((p) => (p.pieces.settlement > 0 && (this.legalSettlementSpots(p.id).length > 0 || this.legalColonySpots(p.id).length > 0))
       || (p.pieces.city > 0 && this.legalCitySpots(p.id).length > 0)
+      || Object.keys(SPECIALS).some((k) => this.legalSpecialSpots(p.id, k).length > 0)
       || (s.devDeck.includes('victory') && this.canAfford(p.id, COSTS.devcard)));
     if (canGrow) { s.stall.since = s.turnNumber - s.players.length * 15; return; } // noch Luft: später erneut prüfen
     const top = Math.max(...s.players.map((p) => this.vp(p.id)));

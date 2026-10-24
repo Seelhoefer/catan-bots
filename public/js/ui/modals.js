@@ -2,7 +2,7 @@
 import { avatarSVG } from './avatars.js';
 import { sfx } from './sfx.js';
 import {
-  RES, RES_INFO, DEV_INFO, DEV_ORDER, PASSIVE_CARDS,
+  RES, RES_INFO, DEV_INFO, DEV_ORDER, PASSIVE_CARDS, COSTS, SPECIALS, TECHS, GOLD_RATE,
 } from '../engine/constants.js';
 import { MISSION_POOL, missionDesc } from '../engine/missions.js';
 import {
@@ -225,6 +225,46 @@ export function levyModal(app) {
   return m;
 }
 
+/** Neue Welt (ab Zeitalter 1): Gold, Spezialgebäude und Erfindungen. */
+export function newWorldModal(app) {
+  const m = openModal({ title: 'Neue Welt', wide: true });
+  const draw = () => {
+    const g = app.game;
+    const s = g.s;
+    const p = s.players[HUMAN];
+    const mine = s.turn === HUMAN && s.sub === 'actions';
+    const era = s.era || 0;
+    const why = !mine ? 'Nur in deinem Zug, nach dem Würfeln' : null;
+    const gold = p.gold || 0;
+    const sec = (h, ...kids) => el('section', { class: 'nw-sec' }, el('h4', {}, h), ...kids);
+    const costTxt = (cost) => RES.filter((r) => cost[r]).map((r) => `${cost[r]}${ic(r, 'inline')}`).join(' ');
+    m.body.replaceChildren(
+      el('p', { class: 'nw-gold', html: `${ic('coin', 'inline')} <b>${gold}</b> Gold <small>– Kolonien und Märkte bringen dir zu Beginn deines Zuges Gold</small>` }),
+      sec(`Gold tauschen · ${GOLD_RATE} Gold = 1 Rohstoff`,
+        el('div', { class: 'pk-row' }, RES.map((r) => circPick(r, { disabled: !!why || gold < GOLD_RATE || s.bank[r] < 1, title: why || `${GOLD_RATE} Gold → 1 ${RES_INFO[r].name}`, onclick: () => { if (app.act('exchangeGold', HUMAN, r).ok) draw(); } })))),
+      era >= 2 ? sec('Gebäude (auf einer eigenen Stadt)', el('div', { class: 'nw-cards' }, Object.entries(SPECIALS).map(([k, sp]) => {
+        const spots = g.legalSpecialSpots(HUMAN, k);
+        const built = g.buildingsOf(HUMAN).some((b) => b.special === k);
+        const reason = why || (built ? 'Schon gebaut' : !spots.length ? 'Du brauchst eine Stadt ohne Spezialgebäude' : !g.canAfford(HUMAN, COSTS[k]) ? 'Dir fehlen Rohstoffe' : null);
+        return el('div', { class: `nw-card ${built ? 'done' : ''}` },
+          el('div', { class: 'nw-t', html: `${ic(sp.icon)}<b>${sp.name}</b>` }), el('p', {}, sp.text), el('div', { class: 'nw-cost', html: costTxt(COSTS[k]) }),
+          el('button', { type: 'button', class: 'btn small solid', disabled: !!reason || undefined, title: reason || '', onclick: () => { app.startSpecial(k); m.close(); } }, built ? 'Gebaut' : 'Bauen'));
+      }))) : null,
+      era >= 2 ? sec('Erfindungen (einmalig, für Gold)', el('div', { class: 'nw-cards' }, Object.entries(TECHS).map(([k, t]) => {
+        const owned = (p.techs || []).includes(k);
+        const reason = why || (owned ? 'Schon erforscht' : gold < t.gold ? `Dir fehlt Gold (${t.gold})` : null);
+        return el('div', { class: `nw-card ${owned ? 'done' : ''}` },
+          el('div', { class: 'nw-t', html: `${ic(t.icon)}<b>${t.name}</b>` }), el('p', {}, t.text), el('div', { class: 'nw-cost', html: `${ic('coin', 'inline')} ${t.gold} Gold` }),
+          el('button', { type: 'button', class: 'btn small solid', disabled: !!reason || undefined, title: reason || '', onclick: () => { if (app.act('research', HUMAN, k).ok) draw(); } }, owned ? 'Erforscht' : 'Erforschen'));
+      }))) : el('p', { class: 'hint-text' }, 'Ab Zeitalter 2 kommen neue Gebäude und Erfindungen dazu.'),
+      why ? el('p', { class: 'muted' }, why) : null,
+    );
+  };
+  draw();
+  m.refresh = draw;
+  return m;
+}
+
 export function confirmDialog(title, text, okLabel = 'OK') {
   return new Promise((resolve) => {
     const m = openModal({ title, onClose: () => resolve(false) });
@@ -350,7 +390,7 @@ export function rulesModal() {
       <li><b>Bauen:</b> Straße (🌲🧱), Siedlung (🌲🧱🐑🌾, mind. 2 Kanten Abstand, an eigener Straße), Stadt (🌾🌾⛰️⛰️⛰️ auf einer Siedlung), Entwicklungskarte (🐑🌾⛰️).</li>
       <li><b>Eine 7:</b> Wer mehr als 7 Karten hat, gibt die Hälfte ab. Der Würfler versetzt den Räuber und stiehlt eine Karte.</li>
       <li><b>Handeln:</b> Mit Bots frei verhandeln, mit der Bank 4:1, mit einem 3:1-Hafen 3:1, mit einem 2:1-Hafen 2:1 für den jeweiligen Rohstoff.</li>
-      <li>🌅 <b>Zeitalter (ab 20 Siegpunkten Ziel):</b> Erreicht der Führende 30 % des Ziels, taucht eine <b>neue Insel</b> auf. Dort gründest du eine <b>Kolonie</b> (Siedlung + 1 Erz, ohne Straße, nur eine je Insel – danach baust du dort mit Straßen weiter) und handelst über den <b>Kolonialhafen</b> (2:1). Bei 55 % senkt die <b>Handelsmesse</b> den Banktausch für alle auf 3:1, bei 80 % erscheint eine zweite Insel.</li>
+      <li>🌅 <b>Zeitalter (ab 20 Siegpunkten Ziel, gemessen am Führenden):</b> <b>25 %</b> – eine <b>neue Insel</b> taucht auf; dort gründest du eine <b>Kolonie</b> (Siedlung + 1 Erz, ohne Straße, eine je Insel) und handelst über den Kolonialhafen. Kolonien bringen dir zu Beginn deines Zuges <b>Gold</b> (2 Gold = 1 Rohstoff). <b>50 %</b> – <b>Industrie</b>: <b>Markt</b> (+1 SP, 1 Gold/Zug), <b>Werkstatt</b> (+1 SP, Stadt liefert 1 Karte mehr) und <b>Festung</b> (+1 SP, Räuber darf nicht daneben, schützt vor Piraten) auf eigenen Städten; <b>Erfindungen</b> für Gold (Kompass, Eisenpflug, Kolonialrecht, Gelehrsamkeit +1 SP); die Bank tauscht für alle 3:1; und <b>Weltereignisse</b> (Dürre, Erntesegen, Handelsboom, Piraten) wechseln die Runden auf. <b>70 %</b> – eine zweite Insel, häufigere Ereignisse. Alles über das Globus-Symbol („Neue Welt“).</li>
       <li><b>Kartenstapel:</b> Ist der Stapel leer, wird er sofort neu gemischt – Ritter, Siegpunkte und alle Sonderkarten gibt es immer wieder zu kaufen.</li>
       <li><b>Sonderkarten:</b> Längste Handelsstraße (ab 5 Straßen) und Größte Rittermacht (ab 3 Rittern) geben je 2 Siegpunkte.</li>
     </ul>

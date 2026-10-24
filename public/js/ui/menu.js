@@ -157,7 +157,7 @@ export function renderMenu(root, {
   const RULE_INFO = {
     fog: 'Ein Teil der Insel ist unter Nebel verborgen. Sobald eine deiner Straßen an ein verdecktes Feld grenzt, wird es aufgedeckt – und du erhältst 1 Rohstoff davon. Gründen darfst du nur an Ecken ohne Nebel.',
     worldHarbor: 'Auf dem Brett gibt es genau einen goldenen Welthafen („2:1 ALLE“). Wer dort eine Siedlung oder Stadt hat, tauscht jeden Rohstoff 2:1 mit der Bank. Er ersetzt einen der normalen 3:1-Häfen, es gibt also nur diesen einen.',
-    eras: 'Bei langen Partien (ab 20 Siegpunkten) wird es dynamischer: Erreicht der Führende 30 % des Ziels, taucht eine neue Insel auf – dort gründest du Kolonien (Siedlung + 1 Erz, ohne Straßenanschluss) und handelst über den Kolonialhafen. Bei 55 % tauscht die Bank für alle nur noch 3:1 (Handelsmesse), bei 80 % erscheint eine zweite Insel. Bei kürzeren Partien passiert nichts davon.',
+    eras: 'Bei langen Partien (ab 20 Siegpunkten Ziel) nimmt das Spiel Fahrt auf – gemessen am Führenden: 25 %: eine neue Insel taucht auf, Kolonien dort bringen dir jede Runde Gold (neue Währung: 2 Gold = 1 Rohstoff). 50 %: Industrie – neue Gebäude (Markt, Werkstatt, Festung), Erfindungen für Gold (Kompass, Eisenpflug, Kolonialrecht, Gelehrsamkeit), die Bank tauscht für alle nur noch 3:1, und zufällige Weltereignisse (Dürre, Erntesegen, Handelsboom, Piraten) mischen die Runden auf. 70 %: eine zweite Insel, Ereignisse häufiger. Bei kürzeren Partien passiert nichts davon.',
     decreeCard: 'Neue Entwicklungskarte „Erlass“: Du legst für eine Runde einen Zoll oder eine Strafe auf einen Rohstoff fest. Zoll: Gegner, die ihn erwürfeln, zahlen dir 1 Karte davon. Strafe: Sie erhalten 1 Karte weniger. Gilt, bis du wieder am Zug bist.',
     eventCards: 'Sechs zusätzliche Karten im Entwicklungsstapel, wie die Ereigniskarten bei Monopoly: Schutzbrief (einmal vom Dieb verschont – er darf dich nicht bestehlen oder du musst bei einer 7 nichts abwerfen), Rückenwind (nächster Wurf: jedes getroffene Feld bringt 1 Karte extra), Marktprivileg (bis Zugende tauschst du mit der Bank 2:1), Dieb vertreiben (der Räuber geht in die Wüste) und Geburtstag (jeder Gegner schenkt dir 1 Karte) und Zollhaus (du wählst eine Zahl: bis zu deinem nächsten Zug bringt dir jeder Wurf darauf 1 Karte je Rohstoffart des Wurfs).',
     antiBad: 'Erhältst du bei einem Wurf (außer einer 7) gar nichts, bekommst du 1 Anti-Pech-Marker. Hast du so viele Marker, wie du Siegpunkte hast, tauschst du sie gegen 1 Rohstoff deiner Wahl. So gleicht sich Pech aus.',
@@ -269,7 +269,7 @@ export function renderMenu(root, {
     const points = sec('Siegpunkte', el('div', { class: 'mw-vp' }, el('span', { class: 'mw-vp-ico', html: ic('trophy') }), num), range, hint);
 
     const ext = sec('Erweiterungen', el('div', { class: 'mw-rules' },
-      sw('eras', 'Zeitalter', 'Ab 20 SP: neue Inseln, Kolonien und Handelsmesse', RULE_INFO.eras),
+      sw('eras', 'Zeitalter', 'Ab 20 SP: neue Inseln, Gold, Gebäude, Erfindungen, Weltereignisse', RULE_INFO.eras),
       sw('worldHarbor', 'Welthafen', 'Ein einziger Hafen, an dem alle Rohstoffe 2:1 getauscht werden', RULE_INFO.worldHarbor),
       sw('decreeCard', 'Erlass-Karte', 'Neue Karte: Zoll oder Strafe auf einen Rohstoff festlegen', RULE_INFO.decreeCard),
       sw('eventCards', 'Ereigniskarten', 'Schutzbrief, Rückenwind, Marktprivileg, Zollhaus …', RULE_INFO.eventCards),

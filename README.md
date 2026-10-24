@@ -212,3 +212,10 @@ Felder, Häfen, Siedlungen/Städte (6 Farben) und Rohstoffkarten sind wieder die
 - **Bots:** Mira, Cassian, Elara, Lyra, Valen, Aurelio (neue Porträts, Zuschnitt aus den Premium-Portraits). Die bisherigen Bots (Fritz, Greta, Otto, Lea, Amir) sind ersetzt.
 - **Hintergrund:** wieder das bisherige Meer. **Palette:** Deep Forest / Antique Brass / Parchment aus dem Paket.
 - **Noch alt:** Räuber (im Paket Kopf abgeschnitten), Erlass, Weltenwandel, Ernte, Straßen, übrige Missionen (ohne Bild, nur Hinweis), Auszeichnungs-Karten (Rittermacht, Handelsstraße).
+
+## 🌅 Bis 100 Siegpunkte: Zeitalter
+Das Siegpunktziel geht bis **100**. Damit lange Partien ihre Wendungen haben (Erweiterung **Zeitalter**, ab 20 SP Ziel, beim Einrichten schaltbar), löst der Führende (öffentliche Siegpunkte) Etappen aus:
+- **25 % – Entdeckung:** Eine **neue Insel** (7 Felder, auf großen Karten 10) mit Kolonialhafen (2:1) und 3:1-Hafen. **Kolonie:** Siedlung + 1 Erz, ohne Straßenanschluss, eine je Insel. Kolonien bringen zu Beginn deines Zuges **Gold** (neue Währung: 2 Gold = 1 Rohstoff deiner Wahl).
+- **50 % – Industrie:** Neue Gebäude auf eigenen Städten (je Spieler eines pro Art): **Markt** (+1 SP, 1 Gold je Zug), **Werkstatt** (+1 SP, die Stadt liefert 1 Karte mehr), **Festung** (+1 SP, der Räuber darf nicht auf angrenzende Felder, schützt vor Piraten). **Erfindungen** gegen Gold: Kompass (Banktausch −1), Eisenpflug (Stadt 2 Getreide + 2 Erz), Kolonialrecht (+1 Gold je Kolonie), Gelehrsamkeit (+1 SP). Die Bank tauscht für alle nur noch 3:1. **Weltereignisse** (jede Runde mit Chance): Dürre (ein Rohstoff fällt aus), Erntesegen (+1 Karte je Treffer), Handelsboom (doppeltes Gold), Piraten (Spieler mit 8+ Karten verlieren 2, außer mit Festung).
+- **70 % – Neue Welt:** Eine zweite Insel, Weltereignisse häufiger.
+Alles erreichst du über das Globus-Symbol „Neue Welt“ neben dem Handelsknopf; das Gold steht oben links in deiner Hand.

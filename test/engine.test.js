@@ -901,13 +901,13 @@ test('Zollhaus: Zahl wählen, bis zum nächsten eigenen Zug 1 Karte je Rohstoffa
   assert.deepEqual(s.levies, [], 'das Zollhaus endet, wenn der Aussteller wieder dran ist');
 });
 
-test('Zeitalter: neue Insel bei 30 %, Handelsmesse bei 55 %, zweite Insel bei 80 % des Ziels', () => {
+test('Zeitalter: neue Insel bei 25 %, Industrie bei 50 %, zweite Insel bei 70 % des Ziels', () => {
   const g = afterSetup({ targetVP: 40, eras: true }, 9);
   const s = g.s;
   const hexes0 = g.board.hexes.length;
   g.checkEras();
   assert.equal(s.era, 0);
-  s.players[1].missions = Array(12).fill('x'); // 12 öffentliche SP = 30 % von 40
+  s.players[1].missions = Array(10).fill('x'); // 10 öffentliche SP = 25 % von 40
   g.checkEras();
   assert.equal(s.era, 1);
   assert.ok(g.board.hexes.length > hexes0, 'neue Insel');
@@ -917,11 +917,11 @@ test('Zeitalter: neue Insel bei 30 %, Handelsmesse bei 55 %, zweite Insel bei 80
   for (const id of island) for (const v of g.board.hexes[id].verts) assert.ok(g.board.vertices[v].hexes.every((h) => island.has(h)), 'Insel ist vom Festland getrennt');
   assert.ok(g.board.ports.some((p) => p.island === 1), 'Kolonialhafen');
   assert.equal(g.portRatio(0, 'wood'), 4);
-  s.players[1].missions = Array(22).fill('x');
+  s.players[1].missions = Array(20).fill('x');
   g.checkEras();
   assert.equal(s.era, 2);
   assert.equal(g.portRatio(0, 'wood'), 3, 'Handelsmesse: Bank 3:1');
-  s.players[1].missions = Array(32).fill('x');
+  s.players[1].missions = Array(28).fill('x');
   g.checkEras();
   assert.equal(s.era, 3);
   assert.equal(s.islands.length, 2);
@@ -937,7 +937,7 @@ test('Zeitalter: bei kleinem Ziel (unter 20 SP) keine Veränderung', () => {
 test('Kolonie: auf neuer Insel ohne Straßenanschluss für Siedlung + 1 Erz, nur eine pro Insel', () => {
   const g = afterSetup({ targetVP: 40, eras: true }, 9);
   const s = g.s;
-  s.players[1].missions = Array(12).fill('x');
+  s.players[1].missions = Array(10).fill('x');
   g.checkEras();
   s.turn = 0; s.sub = 'actions';
   const spots = g.legalColonySpots(0);
@@ -949,4 +949,50 @@ test('Kolonie: auf neuer Insel ohne Straßenanschluss für Siedlung + 1 Erz, nur
   assert.equal(s.buildings[spots[0]].colony, true);
   assert.equal(g.legalColonySpots(0).length, 0, 'nur eine Kolonie je Insel (danach per Straße weiter)');
   assert.ok(g.legalRoadSpots(0).some((e) => g.board.edges[e].a === spots[0] || g.board.edges[e].b === spots[0]), 'Straßen von der Kolonie aus');
+});
+
+test('Neue Welt: Gold aus Kolonien, Spezialgebäude, Erfindungen, Weltereignisse', () => {
+  const g = afterSetup({ targetVP: 40, eras: true }, 9);
+  const s = g.s;
+  s.players[1].missions = Array(20).fill('x');
+  g.checkEras();
+  assert.equal(s.era, 2);
+  s.turn = 0; s.sub = 'actions'; s.turnNumber = 30;
+  const p = s.players[0];
+  // Kolonie -> Gold
+  const spot = g.legalColonySpots(0)[0];
+  p.hand = { wood: 3, brick: 3, sheep: 3, wheat: 3, ore: 3 };
+  assert.equal(g.build(0, 'colony', spot).ok, true);
+  s.sub = 'roll';
+  g.payGold(0);
+  assert.equal(p.gold, 1);
+  // Spezialgebäude braucht eine Stadt
+  const city = Object.keys(s.buildings).map(Number).find((v) => s.buildings[v].owner === 0);
+  s.buildings[city].type = 'city';
+  s.sub = 'actions';
+  p.hand = { wood: 3, brick: 3, sheep: 3, wheat: 3, ore: 3 };
+  const vp0 = g.vp(0);
+  assert.equal(g.build(0, 'market', city).ok, true);
+  assert.equal(g.vp(0), vp0 + 1);
+  assert.equal(g.build(0, 'workshop', city).ok, false, 'je Stadt nur ein Spezialgebäude');
+  assert.equal(g.legalSpecialSpots(0, 'market').length, 0, 'ein Markt je Spieler');
+  // Gold: tauschen und erforschen
+  p.gold = 7;
+  assert.equal(g.research(0, 'scholars').ok, true);
+  assert.equal(g.vp(0), vp0 + 2);
+  p.gold = 3;
+  assert.equal(g.research(0, 'compass').ok, true);
+  assert.equal(g.portRatio(0, 'wood'), 2, 'Banktausch 3:1 (Zeitalter 2) minus Kompass = 2:1');
+  p.gold = 2; p.hand.ore = 0; s.bank.ore = 5;
+  assert.equal(g.exchangeGold(0, 'ore').ok, true);
+  assert.equal(p.hand.ore, 1);
+  // Piraten: 8+ Karten ohne Festung verlieren 2
+  s.worldEvent = null;
+  s.players[1].hand = { wood: 4, brick: 4, sheep: 0, wheat: 0, ore: 0 };
+  const rng = g.rng; let n = 0; g.rng = () => (n++ === 0 ? 0 : 0.99); // erster Wurf < Schwelle, Ereignis-Auswahl 'pirates' (letzter Index)
+  s.turnNumber = 40;
+  g.rollWorldEvent();
+  g.rng = rng;
+  assert.equal(s.worldEvent && s.worldEvent.id, 'pirates');
+  assert.equal(g.handCount(1), 6);
 });

@@ -4,7 +4,7 @@
 //   { offer: {give, get} } – der Bot möchte einen Spielertausch anbieten
 //   { wait: true }         – der Bot ist gerade nicht an der Reihe
 
-import { RES, COSTS, PIP, STRATEGY_LABEL } from './constants.js';
+import { RES, COSTS, PIP, STRATEGY_LABEL, SPECIALS, TECHS, GOLD_RATE } from './constants.js';
 
 const RES_W = {
   wood: 1, brick: 1, sheep: 0.85, wheat: 1.1, ore: 1.1, gold: 1.3,
@@ -206,6 +206,14 @@ function topGoals(g, pi) {
   if (p.pieces.settlement > 0 && g.canAfford(pi, COSTS.colony) || (p.pieces.settlement > 0 && (s.islands || []).length)) {
     // Kolonie auf einer neuen Insel: frischer Boden, Hafen und Felder ohne Konkurrenz
     for (const vid of g.legalColonySpots(pi)) goals.push({ kind: 'colony', id: vid, score: 11 + vertexValue(g, vid, pi, owned) / 3 + (g.board.vertices[vid].port ? 1.2 : 0) });
+  }
+  for (const kind of Object.keys(SPECIALS)) { // Spezialgebäude (Zeitalter 2+): Markt zuerst (Gold), Festung wenn der Räuber droht
+    const spots = g.legalSpecialSpots(pi, kind);
+    if (!spots.length) continue;
+    const base = { market: 8.6, workshop: 8.2, fortress: 6.5 }[kind];
+    let best = null;
+    for (const vid of spots) { const v = vertexValue(g, vid, pi, owned); if (!best || v > best.v) best = { vid, v }; }
+    goals.push({ kind, id: best.vid, score: base + best.v / 6 });
   }
   if (s.devDeck.length > 0) {
     const nearArmy = p.playedKnights + p.dev.filter((c) => c.type === 'knight').length >= 2 ? 1.5 : 0;
@@ -517,6 +525,21 @@ export function botAct(g, pi) {
   if (tryPlayDev(g, pi, false)) return { did: true };
 
   const goals = topGoals(g, pi);
+
+  // 0) Gold: erst Erfindungen erforschen; nur Überschuss in fehlende Rohstoffe tauschen
+  let goldKeep = 0;
+  if ((s.era || 0) >= 2) {
+    const order = ['colonial', 'compass', 'ironplow', 'scholars'].filter((t) => !(p.techs || []).includes(t) && (t !== 'colonial' || g.buildingsOf(pi).some((b) => b.colony)));
+    if (order.length) {
+      const next = order[0];
+      if ((p.gold || 0) >= TECHS[next].gold && g.research(pi, next).ok) return { did: true };
+      goldKeep = TECHS[next].gold;
+    }
+  }
+  if ((p.gold || 0) - goldKeep >= GOLD_RATE && goals.length) {
+    const miss = Object.keys(missingFor(p.hand, costOf(goals[0])));
+    if (miss.length && s.bank[miss[0]] > 0 && g.exchangeGold(pi, miss[0]).ok) return { did: true };
+  }
 
   // 1) Anti-Pech-Marker einlösen, wenn es dem Hauptziel hilft
   if (s.settings.antiBad && p.tokens >= g.tokenCost(pi) && goals.length) {

@@ -1,7 +1,7 @@
 // App-Controller: verbindet Engine, Bots und Oberfläche.
 import { Game } from './engine/game.js';
 import { botAct, botRespondOffer, botJudgeCounter } from './engine/bot.js';
-import { RES, RES_INFO, DEV_INFO, STRATEGY_LABEL, ERA_INFO } from './engine/constants.js';
+import { RES, RES_INFO, DEV_INFO, STRATEGY_LABEL, ERA_INFO, SPECIALS, TECHS, WORLD_EVENTS } from './engine/constants.js';
 import { missionById } from './engine/missions.js';
 import { BoardView } from './ui/boardView.js';
 import {
@@ -24,7 +24,7 @@ import {
   preloadArt, ART_STYLES, artStyle, setArtStyle, styleIds, missionCardImg,
 } from './ui/assets.js';
 import {
-  devModal, tokensModal, discardModal, goldModal, stealModal, logModal,
+  devModal, tokensModal, newWorldModal, discardModal, goldModal, stealModal, logModal,
   rulesModal, gameOverModal, inviteModal, closeTopModal, closeAllModals, confirmDialog, hasModal, playDevCard,
 } from './ui/modals.js';
 import { HUMAN, setViewer } from './ui/viewer.js';
@@ -36,7 +36,7 @@ import { renderHostLobby, renderJoin, joinUrl } from './ui/lobby.js';
 
 const SAVE_KEY = 'catan-save-v1';
 /** Aktionen, die Mitspieler am Handy beim Gastgeber auslösen dürfen. */
-const REMOTE_METHODS = new Set(['acceptCounter', 'acceptResponse', 'bankTrade', 'build', 'buyDevCard', 'chooseGold', 'createOffer', 'discard', 'endTurn', 'exchangeTokens',
+const REMOTE_METHODS = new Set(['acceptCounter', 'acceptResponse', 'bankTrade', 'build', 'buyDevCard', 'chooseGold', 'createOffer', 'discard', 'endTurn', 'exchangeTokens', 'exchangeGold', 'research',
   'moveRobber', 'placeInitialRoad', 'placeInitialSettlement', 'playDev', 'respondOffer', 'rollDice', 'skipRoadBuilding', 'steal', 'withdrawOffer']);
 const SPEED_KEY = 'catan-speed';
 // [Name, Pause zwischen Bot-Aktionen (ms), Animationsfaktor, Wartezeit auf deine Antwort (ms)]
@@ -65,7 +65,7 @@ class App {
     this.seats = []; // je Spieler: 'local' (an diesem Gerät) | 'remote' (am Handy) | 'bot'
     this.mySeat = 0; // Client: eigener Platz
     this.cover = null; // Hot-Seat: Platz, an den das Gerät gerade übergeben werden soll
-    this.mode = null; // 'road' | 'settlement' | 'colony' | 'city' | 'harvest'
+    this.mode = null; // 'road' | 'settlement' | 'colony' | 'city' | 'harvest' | 'market' | 'workshop' | 'fortress'
     this.pending = null; // vorgemerkter Platz (Touch)
     this.pumping = false;
     this.rolling = false;
@@ -260,7 +260,7 @@ class App {
     switch (e.type) {
       case 'build':
         this.fresh.pieces.add(`${e.kind === 'road' ? 'e' : 'v'}${e.id}`);
-        sfx.play(e.kind, { vol: e.pi === HUMAN ? 1 : 0.6 });
+        sfx.play(e.kind === 'special' ? 'city' : e.kind, { vol: e.pi === HUMAN ? 1 : 0.6 });
         setTimeout(() => this.buildEffect(e), 40);
         break;
       case 'era': {
@@ -270,6 +270,21 @@ class App {
         this.toastHTML(`${ic('globe', 'inline')} <b>Zeitalter ${e.era} – ${esc(info.name)}</b>: ${esc(info.text)}`, 'big');
         this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + 2500);
         this.queueRender();
+        break;
+      }
+      case 'gold':
+        if (e.pi === HUMAN) { const wait = Math.max(0, this.diceRevealAt - Date.now()); setTimeout(() => this.toastHTML(`${ic('coin', 'inline')} +${e.n} Gold`, 'gain'), wait + 200); }
+        break;
+      case 'research':
+        sfx.play('jackpot', { vol: 0.6 });
+        this.toastHTML(`${ic(TECHS[e.id].icon, 'inline')} ${esc(name(e.pi))} erfindet <b>${TECHS[e.id].name}</b>`, e.pi === HUMAN ? 'big' : 'info');
+        break;
+      case 'world': {
+        const info = WORLD_EVENTS[e.id];
+        sfx.play(e.id === 'pirates' ? 'robber' : 'jackpot', { vol: 0.6 });
+        this.toastHTML(`${ic(info.icon, 'inline')} <b>Weltereignis – ${info.name}</b>${e.res ? ` ${ic(e.res, 'inline')}` : ''}: ${esc(info.text)}`, 'big');
+        if (e.hit && e.hit.includes(HUMAN)) this.toastHTML(`${ic('sword', 'inline')} Piraten plündern dich: 2 Karten weg`, 'warn');
+        this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + 2200);
         break;
       }
       case 'reveal': this.fresh.hexes.add(e.id); this.toast('Nebel gelüftet', 'info'); sfx.play('cardplay', { vol: 0.5 }); break;
@@ -852,6 +867,7 @@ class App {
       return;
     }
     if (kind === 'vertex' && this.mode === 'settlement') { if (this.act('build', HUMAN, 'settlement', id).ok) this.mode = null; return; }
+    if (kind === 'vertex' && SPECIALS[this.mode]) { if (this.act('build', HUMAN, this.mode, id).ok) this.mode = null; return; }
     if (kind === 'vertex' && this.mode === 'colony') { if (this.act('build', HUMAN, 'colony', id).ok) this.mode = null; return; }
     if (kind === 'vertex' && this.mode === 'city') { if (this.act('build', HUMAN, 'city', id).ok) this.mode = null; }
   }
@@ -910,12 +926,22 @@ class App {
       case 'trade': this.mode = null; this.ui.fabOpen = false; this.openMarket(); break;
       case 'dev': this.modal = devModal(this); break;
       case 'tokens': this.modal = tokensModal(this); break;
+      case 'newworld': this.modal = newWorldModal(this); break;
       case 'toggle-missions': this.ui.missionsOpen = !this.ui.missionsOpen; this.queueRender(); break;
       default: break;
     }
   }
 
   // ------------------------------------------------------------- Handelsmarkt (Mensch)
+  /** Spezialgebäude setzen: Stadt auf dem Brett antippen. */
+  startSpecial(kind) {
+    this.mode = kind;
+    this.ui.fabOpen = false;
+    this.pending = null;
+    this.toast(`${SPECIALS[kind].name}: tippe eine deiner Städte an`, 'info');
+    this.queueRender();
+  }
+
   openMarket() {
     const m = this.market;
     m.open = true;
@@ -1276,6 +1302,7 @@ class App {
         if (this.mode === 'road') ui.edges = new Set(g.legalRoadSpots(HUMAN));
         else if (this.mode === 'settlement') ui.vertices = new Set(g.legalSettlementSpots(HUMAN));
         else if (this.mode === 'colony') ui.vertices = new Set(g.legalColonySpots(HUMAN));
+        else if (SPECIALS[this.mode]) { ui.vertices = new Set(g.legalSpecialSpots(HUMAN, this.mode)); ui.ghost.kind = 'city'; }
         else if (this.mode === 'city') { ui.vertices = new Set(g.legalCitySpots(HUMAN)); ui.ghost.kind = 'city'; }
       }
     }
@@ -1363,7 +1390,7 @@ class App {
       buildFxRoad(a, b, color, u);
     } else {
       const v = bd.vertices[e.id];
-      buildFxPiece(e.kind, this.view.screenPoint(v.x, v.y + 0.22), color, u);
+      buildFxPiece(e.kind === 'special' ? 'city' : e.kind, this.view.screenPoint(v.x, v.y + 0.22), color, u);
     }
   }
 
