@@ -876,3 +876,26 @@ test('Entwicklungskarten-Stapel wird neu gemischt, wenn er leer ist', () => {
   s.players[0].hand = { wood: 0, brick: 0, sheep: 1, wheat: 1, ore: 1 };
   assert.equal(g.buyDevCard(0).ok, true, 'es gibt immer wieder Karten zu kaufen');
 });
+
+test('Zollhaus: Zahl wählen, bis zum nächsten eigenen Zug 1 Karte je Rohstoffart des Wurfs', () => {
+  const g = Game.create({ bots: 2, size: 'small', seed: 5, eventCards: true }, makeRng(5));
+  const s = g.s;
+  s.phase = 'main'; s.turn = 0; s.turnNumber = 5; s.sub = 'actions'; s.devPlayed = false;
+  s.players[0].dev = [{ type: 'levy', turn: 1 }];
+  assert.equal(g.playDev(0, 'levy', { num: 7 }).ok, false, '7 ist nicht erlaubt');
+  const hex = g.board.hexes.find((h) => h.num && !h.fog && ['wood', 'brick', 'sheep', 'wheat', 'ore'].includes(h.type));
+  assert.equal(g.playDev(0, 'levy', { num: hex.num }).ok, true);
+  assert.deepEqual(s.levies, [{ by: 0, num: hex.num }]);
+  for (const p of s.players) p.hand = { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 };
+  s.robber = g.board.hexes.find((h) => h.type === 'desert').id;
+  const kinds = new Set(g.board.hexes.filter((h) => h.num === hex.num && !h.fog && ['wood', 'brick', 'sheep', 'wheat', 'ore'].includes(h.type)).map((h) => h.type));
+  const before = s.players[0].hand;
+  g.produce(hex.num);
+  const got = Object.values(s.players[0].hand).reduce((a, b) => a + b, 0);
+  assert.ok(got >= kinds.size, 'mindestens eine Karte je Rohstoffart des Wurfs');
+  void before;
+  s.turn = 2; s.sub = 'actions';
+  g.endTurn(2);
+  assert.equal(s.turn, 0);
+  assert.deepEqual(s.levies, [], 'das Zollhaus endet, wenn der Aussteller wieder dran ist');
+});

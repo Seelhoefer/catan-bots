@@ -320,6 +320,17 @@ class App {
       case 'decree':
         this.toastHTML(`${ic('scroll', 'inline')} ${esc(name(e.pi))} ${e.kind === 'toll' ? 'erlässt einen Zoll' : 'verhängt eine Strafe'} auf ${ic(e.res, 'inline')} ${RES_INFO[e.res].name}`, 'big');
         break;
+      case 'levy':
+        this.toastHTML(`${ic('scroll', 'inline')} ${esc(name(e.pi))} baut ein Zollhaus auf die <b>${e.num}</b>`, 'big');
+        break;
+      case 'levyHit': {
+        const wait = Math.max(0, this.diceRevealAt - Date.now()) + 500;
+        setTimeout(() => {
+          if (this.game !== g) return;
+          this.toastHTML(`${ic('scroll', 'inline')} ${e.by === HUMAN ? 'Zollhaus' : `Zollhaus von ${esc(name(e.by))}`} auf die ${e.num}: ${e.by === HUMAN ? '+' : ''}${handHTML(e.hand)}`, e.by === HUMAN ? 'gain' : 'info');
+        }, wait);
+        break;
+      }
       case 'decreeHit': {
         const wait = Math.max(0, this.diceRevealAt - Date.now()) + 500;
         const mineHit = e.from.includes(HUMAN);

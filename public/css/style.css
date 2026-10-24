@@ -2294,3 +2294,13 @@ html[data-art="new"] .cardback::after, html[data-art="new"] .cardback::before { 
 html, body { overscroll-behavior: none; }
 #menu, .modal, .modal-body, .tp, .loglist, .popover, .lobby { overscroll-behavior: contain; }
 #board { overscroll-behavior: none; }
+
+/* Zollhaus: Zahlenwahl und Hinweis-Pille */
+.lv-nums { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.lv-num { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 64px; border-radius: 14px; border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--text); transition: background .15s, border-color .15s, transform .12s; }
+.lv-num b { font-family: var(--font-display); font-size: 24px; line-height: 1; }
+.lv-num.red b { color: #ff9b86; }
+.lv-num small { font-size: 11px; color: var(--muted); }
+.lv-num:hover { background: var(--surface-2); border-color: var(--gold); transform: translateY(-2px); }
+.dp-num { font-family: var(--font-display); font-size: 15px; padding: 0 2px; }
+@media (max-width: 420px) { .lv-nums { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; } .lv-num { min-height: 58px; } }

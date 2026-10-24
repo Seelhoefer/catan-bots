@@ -48,13 +48,14 @@ export const DEV_INFO = {
   fair: { name: 'Marktprivileg', icon: 'trade', event: true, desc: 'Bis zum Ende deines Zuges tauschst du mit der Bank jeden Rohstoff 2:1.' },
   exile: { name: 'Dieb vertreiben', icon: 'exit', event: true, desc: 'Der Räuber wird sofort in die Wüste verbannt – ohne dass jemand bestohlen wird.' },
   birthday: { name: 'Geburtstag', icon: 'gift', event: true, desc: 'Jeder Gegner schenkt dir 1 Karte – die, von der er am meisten hat.' },
+  levy: { name: 'Zollhaus', icon: 'scroll', event: true, desc: 'Wähle eine Zahl von 2 bis 12 (außer 7). Bis du wieder am Zug bist, erhältst du jedes Mal, wenn jemand diese Zahl würfelt, 1 Karte von jedem Rohstoff, den der Wurf auf dem Brett einbringt (aus der Bank).' },
   decree: { name: 'Erlass', icon: 'scroll', desc: 'Lege für eine Runde einen Zoll oder eine Strafe auf einen Rohstoff fest. Zoll: Gegner, die ihn würfeln, zahlen dir 1 Karte. Strafe: Gegner erhalten 1 Karte weniger.' },
   remap: { name: 'Weltenwandel', icon: 'globe', desc: 'Alle Landfelder werden zufällig neu verteilt. Siedlungen und Straßen bleiben stehen.' },
 };
 
 /** Karten, die nicht ausgespielt werden, sondern von selbst wirken (bleiben auf der Hand). */
 /** Reihenfolge der Karten in Fächer und Übersicht. */
-export const DEV_ORDER = ['knight', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'decree', 'blessing', 'fair', 'exile', 'birthday', 'shield', 'victory'];
+export const DEV_ORDER = ['knight', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'decree', 'levy', 'blessing', 'fair', 'exile', 'birthday', 'shield', 'victory'];
 
 export const PASSIVE_CARDS = new Set(['victory', 'shield']);
 
@@ -107,7 +108,7 @@ export const DEFAULT_SETTINGS = {
   remapCard: true,
   harvestCard: true,
   goldField: true, // Feld mit freier Rohstoffwahl
-  eventCards: false, // Erweiterung: Ereigniskarten (Schutzbrief, Rückenwind, Marktprivileg, Dieb vertreiben, Geburtstag)
+  eventCards: false, // Erweiterung: Ereigniskarten (Schutzbrief, Rückenwind, Marktprivileg, Dieb vertreiben, Geburtstag, Zollhaus)
   worldHarbor: false, // Erweiterung: ein einziger Welthafen, an dem alle Rohstoffe 2:1 getauscht werden
   decreeCard: false, // Erweiterung: Erlass-Karte – Zoll oder Strafe auf einen Rohstoff
 };

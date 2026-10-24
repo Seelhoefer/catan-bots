@@ -158,7 +158,7 @@ export function renderMenu(root, {
     fog: 'Ein Teil der Insel ist unter Nebel verborgen. Sobald eine deiner Straßen an ein verdecktes Feld grenzt, wird es aufgedeckt – und du erhältst 1 Rohstoff davon. Gründen darfst du nur an Ecken ohne Nebel.',
     worldHarbor: 'Auf dem Brett gibt es genau einen goldenen Welthafen („2:1 ALLE“). Wer dort eine Siedlung oder Stadt hat, tauscht jeden Rohstoff 2:1 mit der Bank. Er ersetzt einen der normalen 3:1-Häfen, es gibt also nur diesen einen.',
     decreeCard: 'Neue Entwicklungskarte „Erlass“: Du legst für eine Runde einen Zoll oder eine Strafe auf einen Rohstoff fest. Zoll: Gegner, die ihn erwürfeln, zahlen dir 1 Karte davon. Strafe: Sie erhalten 1 Karte weniger. Gilt, bis du wieder am Zug bist.',
-    eventCards: 'Fünf zusätzliche Karten im Entwicklungsstapel, wie die Ereigniskarten bei Monopoly: Schutzbrief (einmal vom Dieb verschont – er darf dich nicht bestehlen oder du musst bei einer 7 nichts abwerfen), Rückenwind (nächster Wurf: jedes getroffene Feld bringt 1 Karte extra), Marktprivileg (bis Zugende tauschst du mit der Bank 2:1), Dieb vertreiben (der Räuber geht in die Wüste) und Geburtstag (jeder Gegner schenkt dir 1 Karte).',
+    eventCards: 'Sechs zusätzliche Karten im Entwicklungsstapel, wie die Ereigniskarten bei Monopoly: Schutzbrief (einmal vom Dieb verschont – er darf dich nicht bestehlen oder du musst bei einer 7 nichts abwerfen), Rückenwind (nächster Wurf: jedes getroffene Feld bringt 1 Karte extra), Marktprivileg (bis Zugende tauschst du mit der Bank 2:1), Dieb vertreiben (der Räuber geht in die Wüste) und Geburtstag (jeder Gegner schenkt dir 1 Karte) und Zollhaus (du wählst eine Zahl: bis zu deinem nächsten Zug bringt dir jeder Wurf darauf 1 Karte je Rohstoffart des Wurfs).',
     antiBad: 'Erhältst du bei einem Wurf (außer einer 7) gar nichts, bekommst du 1 Anti-Pech-Marker. Hast du so viele Marker, wie du Siegpunkte hast, tauschst du sie gegen 1 Rohstoff deiner Wahl. So gleicht sich Pech aus.',
     missions: 'Missionskarten liegen für alle sichtbar aus (3, auf größeren Inseln 4 oder 5). Wer eine Bedingung als Erster erfüllt – etwa Weltentdecker (Gebäude an allen 5 Rohstoffen), Metropole (mehrere Städte) oder Goldregen (viele Karten mit einem Wurf) –, erhält +1 Siegpunkt. Jede Mission gibt es nur einmal.',
     remapCard: 'Entwicklungskarte „Weltenwandel“: Alle Landfelder werden zufällig neu gemischt (Rohstoffe und Zahlen). Siedlungen und Straßen bleiben stehen – für alle Spieler ändert sich, was sie ernten.',
@@ -270,7 +270,7 @@ export function renderMenu(root, {
     const ext = sec('Erweiterungen', el('div', { class: 'mw-rules' },
       sw('worldHarbor', 'Welthafen', 'Ein einziger Hafen, an dem alle Rohstoffe 2:1 getauscht werden', RULE_INFO.worldHarbor),
       sw('decreeCard', 'Erlass-Karte', 'Neue Karte: Zoll oder Strafe auf einen Rohstoff festlegen', RULE_INFO.decreeCard),
-      sw('eventCards', 'Ereigniskarten', 'Schutzbrief, Rückenwind, Marktprivileg, Dieb vertreiben, Geburtstag', RULE_INFO.eventCards),
+      sw('eventCards', 'Ereigniskarten', 'Schutzbrief, Rückenwind, Marktprivileg, Zollhaus …', RULE_INFO.eventCards),
       sw('missions', 'Missionskarten', 'Ziele für +1 Siegpunkt: Weltentdecker, Metropole …', RULE_INFO.missions)));
 
     const more = el('section', { class: 'mw-sec more' },

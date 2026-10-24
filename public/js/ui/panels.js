@@ -246,8 +246,14 @@ export function awardHeroHTML(kind, holder, { prev = null, value = 0 } = {}) {
 /** Aktive Erlasse (Zoll / Strafe) als kleine Hinweise: Symbol, Rohstoff, Aussteller. */
 export function renderDecrees(g) {
   const list = g.s.decrees || [];
-  if (!list.length || g.s.phase === 'setup') return '';
-  return list.map((d) => {
+  const levies = (g.s.levies || []).map((l) => {
+    const p = g.s.players[l.by];
+    const mine = l.by === HUMAN;
+    const tip = `Zollhaus auf die ${l.num} (${mine ? 'du' : p.name}): Wer die ${l.num} würfelt, bringt ${mine ? 'dir' : p.name} 1 Karte je Rohstoffart des Wurfs – bis ${mine ? 'du' : p.name} wieder am Zug ${mine ? 'bist' : 'ist'}.`;
+    return `<span class="dpill toll ${mine ? 'mine' : ''}" data-act="decree-info" data-by="${l.by}" title="${esc(tip)}" aria-label="${esc(tip)}">${ic('scroll', 'inline')}<b>Zollhaus</b><b class="dp-num">${l.num}</b><span class="dp-av">${avatarSVG(p.face, p.color, 20)}</span></span>`;
+  });
+  if ((!list.length && !levies.length) || g.s.phase === 'setup') return '';
+  return levies.join('') + list.map((d) => {
     const p = g.s.players[d.by];
     const mine = d.by === HUMAN;
     const kind = d.kind === 'toll' ? 'Zoll' : 'Strafe';

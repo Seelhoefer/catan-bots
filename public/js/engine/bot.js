@@ -426,6 +426,17 @@ function tryPlayDev(g, pi, beforeRoll) {
     }
     if (bestR && bestV >= 14) return g.playDev(pi, 'monopoly', { res: bestR }).ok;
   }
+  if (g.playableDev(pi, 'levy')) {
+    // Zollhaus: die Zahl, die mir am meisten Karten bringt (viele Rohstoffarten auf dem Brett, häufig gewürfelt)
+    const pips = { 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 8: 5, 9: 4, 10: 3, 11: 2, 12: 1 };
+    let best = null;
+    for (const n of Object.keys(pips).map(Number)) {
+      const kinds = new Set(g.board.hexes.filter((h) => h.num === n && !h.fog && h.id !== s.robber && RES.includes(h.type)).map((h) => h.type));
+      const v = kinds.size * pips[n];
+      if (!best || v > best.v) best = { n, v };
+    }
+    if (best && best.v >= 4) return g.playDev(pi, 'levy', { num: best.n }).ok;
+  }
   if (g.playableDev(pi, 'decree')) {
     // Erlass: den Rohstoff wählen, der den Gegnern am meisten bringt und mir am wenigsten schadet
     const lead = s.players.filter((o) => o.id !== pi).sort((a, b) => g.vp(b.id, true) - g.vp(a.id, true))[0];

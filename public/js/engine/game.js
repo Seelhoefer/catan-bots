@@ -19,7 +19,7 @@ function devDeckCards(settings) {
   if (settings.remapCard) add('remap', 2 * f);
   if (settings.harvestCard) add('harvest', 2 * f);
   if (settings.decreeCard) add('decree', 2 * f);
-  if (settings.eventCards) { for (const t of ['shield', 'blessing', 'fair', 'exile', 'birthday']) add(t, 2 * f); }
+  if (settings.eventCards) { for (const t of ['shield', 'blessing', 'fair', 'exile', 'birthday', 'levy']) add(t, 2 * f); }
   return deck;
 }
 
@@ -123,6 +123,7 @@ export class Game {
       longestRoad: { holder: null, len: 0 },
       largestArmy: { holder: null, count: 0 },
       missions,
+      levies: [], // aktive Zollhäuser: { by, num } – gelten bis der Aussteller wieder am Zug ist
       decrees: [], // aktive Erlasse: { by, res, kind: 'toll' | 'penalty' } – gelten bis der Aussteller wieder am Zug ist
       gold: {},
       offers: [],
@@ -430,6 +431,20 @@ export class Game {
         received[p.id] += n;
       }
     }
+    const levyHits = [];
+    for (const lv of (s.levies || []).filter((x) => x.num === total)) { // Zollhaus: 1 Karte je Rohstoffart, die der Wurf einbringt
+      const got = emptyHand();
+      const kinds = new Set(this.board.hexes.filter((h) => h.num === total && !h.fog && h.id !== s.robber && RES.includes(h.type)).map((h) => h.type));
+      for (const res of kinds) {
+        const reserved = Object.values(tolls).reduce((a, h2) => a + h2[res], 0); // schon eingeplante Zölle
+        if (s.bank[res] - reserved < 1) continue;
+        got[res] = 1;
+      }
+      if (!RES.some((r) => got[r] > 0)) continue;
+      tolls[lv.by] = tolls[lv.by] || emptyHand();
+      for (const res of RES) tolls[lv.by][res] += got[res];
+      levyHits.push({ by: lv.by, num: lv.num, hand: got });
+    }
     for (const [by, h] of Object.entries(tolls)) {
       for (const res of RES) { s.players[by].hand[res] += h[res]; s.bank[res] -= h[res]; received[by] += h[res]; }
     }
@@ -468,6 +483,10 @@ export class Game {
         ? `📜 Zoll auf ${RES_INFO[h.res].icon}: ${names} zahl${h.from.length > 1 ? 'en' : 't'} je 1 Karte an ${s.players[h.by].name}.`
         : `📜 Strafe auf ${RES_INFO[h.res].icon}: ${names} erhält${h.from.length > 1 ? 'en' : ''} 1 Karte weniger.`, h.by);
       this.emit({ type: 'decreeHit', by: h.by, kind: h.kind, res: h.res, from: h.from });
+    }
+    for (const l of levyHits) {
+      this.log(`🏛️ Zollhaus auf die ${l.num}: ${s.players[l.by].name} erhält ${this.fmtHand(l.hand)}.`, l.by);
+      this.emit({ type: 'levyHit', by: l.by, num: l.num, hand: l.hand });
     }
     for (const [by, h] of Object.entries(tolls)) this.emit({ type: 'gain', pi: Number(by), hand: h });
     if (s.settings.antiBad) {
@@ -784,6 +803,13 @@ export class Game {
         ? `📜 ${p.name} erlässt einen Zoll auf ${RES_INFO[res].icon}: Wer ${RES_INFO[res].name} erwürfelt, zahlt 1 Karte an ${p.name} – bis ${p.name} wieder am Zug ist.`
         : `📜 ${p.name} verhängt eine Strafe auf ${RES_INFO[res].icon}: Wer ${RES_INFO[res].name} erwürfelt, erhält 1 Karte weniger – bis ${p.name} wieder am Zug ist.`, pi);
       this.emit({ type: 'decree', pi, res, kind });
+    } else if (type === 'levy') {
+      const num = Number(params.num);
+      if (!Number.isInteger(num) || num < 2 || num > 12 || num === 7) return fail('Wähle eine Zahl von 2 bis 12 (außer 7).');
+      p.dev.splice(idx, 1);
+      s.levies = (s.levies || []).filter((d) => d.by !== pi).concat({ by: pi, num });
+      this.log(`🏛️ ${p.name} baut ein Zollhaus auf die ${num}: Wer die ${num} würfelt, bringt ${p.name} bis zum nächsten Zug 1 Karte je Rohstoffart des Wurfs.`, pi);
+      this.emit({ type: 'levy', pi, num });
     } else if (type === 'blessing') {
       p.dev.splice(idx, 1);
       p.blessing = true;
@@ -1030,6 +1056,7 @@ export class Game {
     for (const o of [...s.offers]) this.closeOffer(o, 'expired');
     s.turn = (s.turn + 1) % s.players.length;
     s.turnNumber++;
+    s.levies = (s.levies || []).filter((d) => d.by !== s.turn); // das Zollhaus endet, wenn sein Aussteller wieder dran ist
     s.decrees = (s.decrees || []).filter((d) => d.by !== s.turn); // der Erlass endet, wenn sein Aussteller wieder dran ist
     s.sub = 'roll';
     s.dice = null;

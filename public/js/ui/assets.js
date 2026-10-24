@@ -10,13 +10,13 @@ export const COLOR_ID = Object.fromEntries(PLAYER_COLORS.map((c) => [c.hex, c.id
 const MOBILE = 'assets/mobile/';
 /** Web-Set (Illustriert): neue Entwicklungs-, Ereignis- und Missionskarten (Felder, Häfen, Figuren und Rohstoffkarten sind wieder die ursprünglichen Bilder). */
 const WEB = 'assets/web/';
-const WEB_CARDS = new Set(['knight', 'victory', 'roadbuilding', 'plenty', 'monopoly', 'shield', 'blessing', 'fair', 'exile', 'birthday']);
+const WEB_CARDS = new Set(['knight', 'victory', 'roadbuilding', 'plenty', 'monopoly', 'shield', 'blessing', 'fair', 'exile', 'birthday', 'levy']);
 const WEB_MISSIONS = new Set(['explorer', 'citybuilder', 'haul']);
 /** Neue Ereigniskarten im Mobil-Set (die anderen Karten bleiben wie sie sind). */
 const MOBILE_CARDS = new Set(['shield', 'blessing', 'fair', 'exile', 'birthday']);
 
 export const piece = (colorId, kind) => (styleId === 'mobile' ? `${MOBILE}pieces/${colorId}-${kind}.webp` : `${BASE}pieces/${colorId}-${kind}.webp`);
-export const cardImgSrc = (type) => (styleId === 'mobile' && MOBILE_CARDS.has(type) ? `${MOBILE}cards/${type}.webp` : styleId === 'new' && WEB_CARDS.has(type) ? `${WEB}cards/${type}.webp` : `assets/cards/${type}.webp`);
+export const cardImgSrc = (type) => (type === 'levy' ? `${WEB}cards/levy.webp` : styleId === 'mobile' && MOBILE_CARDS.has(type) ? `${MOBILE}cards/${type}.webp` : styleId === 'new' && WEB_CARDS.has(type) ? `${WEB}cards/${type}.webp` : `assets/cards/${type}.webp`);
 /** Rohstoffkarte (Mobil-Set) für die Hand am Handy. */
 export const resCardImg = (res) => `${MOBILE}cards/res-${res}.webp`;
 /** Missionskarte (Mobil-Set); Missionen ohne eigenes Bild bekommen die allgemeine „Mission“-Karte. */
@@ -159,6 +159,6 @@ export async function preloadArt() {
   const results = await Promise.all(list.map(load));
   art.ok = results.every(Boolean);
   // Karten im Hintergrund nachladen (nicht kritisch)
-  ['knight', 'victory', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'decree', 'shield', 'blessing', 'fair', 'exile', 'birthday'].forEach((t) => load(cardImgSrc(t)));
+  ['knight', 'victory', 'roadbuilding', 'plenty', 'monopoly', 'harvest', 'remap', 'decree', 'shield', 'blessing', 'fair', 'exile', 'birthday', 'levy'].forEach((t) => load(cardImgSrc(t)));
   return art.ok;
 }

@@ -113,7 +113,7 @@ export function devModal(app) {
       else if (!ready && g.s.devPlayed) note = 'Nur 1 Karte pro Zug';
       else if (!ready && t === 'harvest') note = 'Kein passendes Feld';
       const play = () => {
-        if (t === 'harvest') { app.startHarvest(); m.close(); } else if (t === 'decree') { m.close(); decreeModal(app); } else if (t === 'plenty') { pick = { type: 'plenty', chosen: [] }; draw(); } else if (t === 'monopoly') { pick = { type: 'monopoly' }; draw(); } else if (t === 'remap') {
+        if (t === 'harvest') { app.startHarvest(); m.close(); } else if (t === 'decree') { m.close(); decreeModal(app); } else if (t === 'levy') { m.close(); levyModal(app); } else if (t === 'plenty') { pick = { type: 'plenty', chosen: [] }; draw(); } else if (t === 'monopoly') { pick = { type: 'monopoly' }; draw(); } else if (t === 'remap') {
           confirmDialog('Weltenwandel einsetzen?', 'Alle Landfelder werden zufällig neu verteilt – für alle Spieler! Siedlungen und Straßen bleiben stehen.', 'Neu mischen').then((yes) => {
             if (yes) { const x = app.act('playDev', HUMAN, 'remap'); if (x.ok) m.close(); }
           });
@@ -157,6 +157,7 @@ export function playDevCard(app, type) {
     return;
   }
   if (type === 'decree') { decreeModal(app); return; }
+  if (type === 'levy') { levyModal(app); return; }
   if (['blessing', 'fair', 'exile', 'birthday'].includes(type)) {
     confirmDialog(`${DEV_INFO[type].name} ausspielen?`, DEV_INFO[type].desc, 'Ausspielen').then((yes) => { if (yes) app.act('playDev', HUMAN, type); });
     return;
@@ -205,6 +206,22 @@ export function decreeModal(app) {
     el('div', { class: 'pk-row' }, RES.map((r) => circPick(r, { onclick: () => { const x = app.act('playDev', HUMAN, 'decree', { res: r, kind }); if (x.ok) m.close(); } }))),
   );
   draw();
+  return m;
+}
+
+/** Zollhaus: eine Zahl von 2 bis 12 (ohne 7) wählen; die Punkte zeigen, wie oft sie fällt. */
+export function levyModal(app) {
+  const m = openModal({ title: 'Zollhaus', bare: true });
+  const g = app.game;
+  const nums = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12];
+  m.body.append(
+    el('p', { class: 'dc-hint' }, 'Wähle eine Zahl. Bis du wieder am Zug bist, erhältst du jedes Mal, wenn jemand sie würfelt, 1 Karte von jedem Rohstoff, den der Wurf auf dem Brett einbringt.'),
+    el('div', { class: 'lv-nums' }, nums.map((n) => {
+      const hexes = g.board.hexes.filter((h) => h.num === n && !h.fog).length;
+      return el('button', { type: 'button', class: `lv-num ${n === 6 || n === 8 ? 'red' : ''}`, title: `${hexes} Feld${hexes === 1 ? '' : 'er'} mit der ${n}`, onclick: () => { const x = app.act('playDev', HUMAN, 'levy', { num: n }); if (x.ok) m.close(); } },
+        el('b', {}, String(n)), el('small', {}, `${hexes} Feld${hexes === 1 ? '' : 'er'}`));
+    })),
+  );
   return m;
 }
 
@@ -344,7 +361,7 @@ export function rulesModal() {
       <li>🌍 <b>Weltenwandel:</b> Neue Entwicklungskarte. Alle Landfelder werden zufällig neu gemischt; Siedlungen &amp; Straßen bleiben.</li>
       <li>⚓ <b>Welthafen (Erweiterung):</b> Ein einziger Hafen am Rand tauscht alle Rohstoffe 2:1 – er ersetzt einen 3:1-Hafen und ist golden markiert.</li>
       <li>📜 <b>Erlass-Karte (Erweiterung):</b> Entwicklungskarte. Lege einen <b>Zoll</b> (Gegner, die den Rohstoff erwürfeln, zahlen dir 1 Karte) oder eine <b>Strafe</b> (sie erhalten 1 Karte weniger) auf einen Rohstoff. Gilt für jeden Wurf, bis du wieder am Zug bist; du selbst bist ausgenommen.</li>
-      <li>🛡️ <b>Ereigniskarten (Erweiterung):</b> Fünf zusätzliche Karten im Stapel – <b>Schutzbrief</b> (einmal vor dem Dieb sicher: kein Bestehlen oder kein Abwerfen bei der 7), <b>Rückenwind</b> (nächster Wurf: jedes getroffene Feld +1 Karte), <b>Marktprivileg</b> (bis Zugende 2:1 mit der Bank), <b>Dieb vertreiben</b> (Räuber in die Wüste) und <b>Geburtstag</b> (jeder Gegner schenkt dir 1 Karte).</li>
+      <li>🛡️ <b>Ereigniskarten (Erweiterung):</b> Sechs zusätzliche Karten im Stapel – <b>Zollhaus</b> (du wählst eine Zahl von 2 bis 12 außer 7; bis zu deinem nächsten Zug bringt jeder Wurf darauf dir 1 Karte je Rohstoffart des Wurfs), <b>Schutzbrief</b> (einmal vor dem Dieb sicher: kein Bestehlen oder kein Abwerfen bei der 7), <b>Rückenwind</b> (nächster Wurf: jedes getroffene Feld +1 Karte), <b>Marktprivileg</b> (bis Zugende 2:1 mit der Bank), <b>Dieb vertreiben</b> (Räuber in die Wüste) und <b>Geburtstag</b> (jeder Gegner schenkt dir 1 Karte).</li>
       <li>🍀 <b>Anti-Pech-Marker:</b> Erhältst du bei einem Wurf (außer 7) nichts, bekommst du 1 Marker. So viele Marker wie du Siegpunkte hast = 1 Rohstoff deiner Wahl.</li>
       <li>🎖️ <b>Missionskarten:</b> 3 zufällige Ziele (auf größeren Inseln mehr) liegen für alle sichtbar aus – zum Beispiel Weltentdecker, Metropole oder Goldregen. Wer sie als Erster schafft, bekommt +1 Siegpunkt.</li>
     </ul>
