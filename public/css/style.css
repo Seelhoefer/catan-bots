@@ -2304,3 +2304,8 @@ html, body { overscroll-behavior: none; }
 .lv-num:hover { background: var(--surface-2); border-color: var(--gold); transform: translateY(-2px); }
 .dp-num { font-family: var(--font-display); font-size: 15px; padding: 0 2px; }
 @media (max-width: 420px) { .lv-nums { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; } .lv-num { min-height: 58px; } }
+
+/* Gegner-Stärke: Punkte passen immer unter den Avatar, auch in schmalen Spalten */
+.mw-bot { align-self: start; }
+.mw-dots { width: 100%; max-width: 84px; justify-content: center; gap: 0; }
+.mw-dots button { flex: 1 1 0; min-width: 0; max-width: 28px; }
