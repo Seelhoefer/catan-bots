@@ -1397,13 +1397,20 @@ class App {
     const fan = $('#handFan');
     if (!fan || !fan.firstElementChild) return;
     const groups = [...fan.children].filter((c) => c.classList.contains('rgroup') || c.classList.contains('dgroup'));
-    const cw = parseFloat(getComputedStyle(fan).getPropertyValue('--cw')) || 64;
-    const gap = parseFloat(getComputedStyle(fan).getPropertyValue('--gap')) || 18;
-    const avail = Math.max(240, window.innerWidth - 660);
+    const cs = getComputedStyle(fan);
+    const cw = parseFloat(cs.getPropertyValue('--cw')) || 64;
+    const gap = parseFloat(cs.getPropertyValue('--gap')) || 18;
+    const bar = $('#handBar');
+    const avail = Math.max(200, (bar && bar.clientWidth) || window.innerWidth - 660);
     const extra = groups.reduce((a, g2) => a + g2.children.length - 1, 0);
     const fixed = groups.length * cw + (groups.length - 1) * gap;
     const step = extra > 0 ? Math.max(9, Math.min(cw * 0.5, (avail - fixed) / extra)) : cw * 0.5;
     fan.style.setProperty('--step', `${step.toFixed(1)}px`);
+    // passt es auch mit engster Überlappung nicht, wird der ganze Fächer verkleinert (statt die Knöpfe zu verdrängen)
+    const w = fan.offsetWidth; // Layoutbreite ohne Skalierung
+    fan.style.setProperty('--fs', w > avail ? Math.max(0.4, (avail - 8) / w).toFixed(3) : '1');
+    const key = `${w}|${avail}`;
+    if (this._fitKey !== key) { this._fitKey = key; requestAnimationFrame(() => this.fitHand()); } // Breiten (Leiste, Bilder, Schriften) können sich nachträglich ändern: bis es stabil ist erneut messen
   }
 
   renderMarketLayer() {

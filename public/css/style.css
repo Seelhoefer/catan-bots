@@ -2309,3 +2309,8 @@ html, body { overscroll-behavior: none; }
 .mw-bot { align-self: start; }
 .mw-dots { width: 100%; max-width: 84px; justify-content: center; gap: 0; }
 .mw-dots button { flex: 1 1 0; min-width: 0; max-width: 28px; }
+
+/* Viele Karten auf der Hand: der Fächer bleibt zwischen Bau-/Handelsknöpfen und „Zug beenden“ und wird bei Bedarf verkleinert */
+.bottombar .handbar { flex: 1 1 0; min-width: 0; max-width: 100%; }
+.bottombar .handbar { position: relative; }
+.bottombar .hand-fan { position: absolute; left: 50%; bottom: 0; width: max-content; height: 100%; transform-origin: 50% 100%; transform: translateX(-50%) scale(var(--fs, 1)); }
