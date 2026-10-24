@@ -350,6 +350,7 @@ export function rulesModal() {
       <li><b>Bauen:</b> Straße (🌲🧱), Siedlung (🌲🧱🐑🌾, mind. 2 Kanten Abstand, an eigener Straße), Stadt (🌾🌾⛰️⛰️⛰️ auf einer Siedlung), Entwicklungskarte (🐑🌾⛰️).</li>
       <li><b>Eine 7:</b> Wer mehr als 7 Karten hat, gibt die Hälfte ab. Der Würfler versetzt den Räuber und stiehlt eine Karte.</li>
       <li><b>Handeln:</b> Mit Bots frei verhandeln, mit der Bank 4:1, mit einem 3:1-Hafen 3:1, mit einem 2:1-Hafen 2:1 für den jeweiligen Rohstoff.</li>
+      <li>🌅 <b>Zeitalter (ab 20 Siegpunkten Ziel):</b> Erreicht der Führende 30 % des Ziels, taucht eine <b>neue Insel</b> auf. Dort gründest du eine <b>Kolonie</b> (Siedlung + 1 Erz, ohne Straße, nur eine je Insel – danach baust du dort mit Straßen weiter) und handelst über den <b>Kolonialhafen</b> (2:1). Bei 55 % senkt die <b>Handelsmesse</b> den Banktausch für alle auf 3:1, bei 80 % erscheint eine zweite Insel.</li>
       <li><b>Kartenstapel:</b> Ist der Stapel leer, wird er sofort neu gemischt – Ritter, Siegpunkte und alle Sonderkarten gibt es immer wieder zu kaufen.</li>
       <li><b>Sonderkarten:</b> Längste Handelsstraße (ab 5 Straßen) und Größte Rittermacht (ab 3 Rittern) geben je 2 Siegpunkte.</li>
     </ul>

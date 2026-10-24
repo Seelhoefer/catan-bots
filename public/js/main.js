@@ -1,7 +1,7 @@
 // App-Controller: verbindet Engine, Bots und Oberfläche.
 import { Game } from './engine/game.js';
 import { botAct, botRespondOffer, botJudgeCounter } from './engine/bot.js';
-import { RES, RES_INFO, DEV_INFO, STRATEGY_LABEL } from './engine/constants.js';
+import { RES, RES_INFO, DEV_INFO, STRATEGY_LABEL, ERA_INFO } from './engine/constants.js';
 import { missionById } from './engine/missions.js';
 import { BoardView } from './ui/boardView.js';
 import {
@@ -65,7 +65,7 @@ class App {
     this.seats = []; // je Spieler: 'local' (an diesem Gerät) | 'remote' (am Handy) | 'bot'
     this.mySeat = 0; // Client: eigener Platz
     this.cover = null; // Hot-Seat: Platz, an den das Gerät gerade übergeben werden soll
-    this.mode = null; // 'road' | 'settlement' | 'city' | 'harvest'
+    this.mode = null; // 'road' | 'settlement' | 'colony' | 'city' | 'harvest'
     this.pending = null; // vorgemerkter Platz (Touch)
     this.pumping = false;
     this.rolling = false;
@@ -263,6 +263,15 @@ class App {
         sfx.play(e.kind, { vol: e.pi === HUMAN ? 1 : 0.6 });
         setTimeout(() => this.buildEffect(e), 40);
         break;
+      case 'era': {
+        const info = ERA_INFO[e.era];
+        for (const id of e.island || []) this.fresh.hexes.add(id);
+        sfx.play('jackpot', { vol: 0.7 });
+        this.toastHTML(`${ic('globe', 'inline')} <b>Zeitalter ${e.era} – ${esc(info.name)}</b>: ${esc(info.text)}`, 'big');
+        this.rollPauseUntil = Math.max(this.rollPauseUntil, Date.now() + 2500);
+        this.queueRender();
+        break;
+      }
       case 'reveal': this.fresh.hexes.add(e.id); this.toast('Nebel gelüftet', 'info'); sfx.play('cardplay', { vol: 0.5 }); break;
       case 'remap':
         this.fresh.remap = true;
@@ -843,6 +852,7 @@ class App {
       return;
     }
     if (kind === 'vertex' && this.mode === 'settlement') { if (this.act('build', HUMAN, 'settlement', id).ok) this.mode = null; return; }
+    if (kind === 'vertex' && this.mode === 'colony') { if (this.act('build', HUMAN, 'colony', id).ok) this.mode = null; return; }
     if (kind === 'vertex' && this.mode === 'city') { if (this.act('build', HUMAN, 'city', id).ok) this.mode = null; }
   }
 
@@ -874,7 +884,7 @@ class App {
         this.pending = null;
         this.queueRender();
         break;
-      case 'build-road': case 'build-settlement': case 'build-city': {
+      case 'build-road': case 'build-settlement': case 'build-colony': case 'build-city': {
         const k = act.slice(6);
         this.ui.fabOpen = false;
         this.pending = null;
@@ -1265,6 +1275,7 @@ class App {
       else if (this.mode === 'harvest') { ui.hexes = new Set(g.harvestHexes(HUMAN)); ui.ghost.hexKind = 'harvest'; } else if (s.sub === 'actions') {
         if (this.mode === 'road') ui.edges = new Set(g.legalRoadSpots(HUMAN));
         else if (this.mode === 'settlement') ui.vertices = new Set(g.legalSettlementSpots(HUMAN));
+        else if (this.mode === 'colony') ui.vertices = new Set(g.legalColonySpots(HUMAN));
         else if (this.mode === 'city') { ui.vertices = new Set(g.legalCitySpots(HUMAN)); ui.ghost.kind = 'city'; }
       }
     }

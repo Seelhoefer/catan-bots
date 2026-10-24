@@ -226,12 +226,7 @@ export function generateBoard(sizeId, variant, rng, opts = {}) {
   placePorts(board, rng, opts);
   if (variant === 'fog') placeFog(board, rng);
 
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  for (const v of board.vertices) {
-    minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
-    minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
-  }
-  board.bounds = { minX, maxX, minY, maxY };
+  computeBounds(board);
   return board;
 }
 
@@ -242,6 +237,146 @@ export function remapBoard(board, rng) {
   const numbers = board.hexes.filter((h) => h.type !== 'desert').map((h) => h.num);
   board.hexes.forEach((h, i) => { h.type = types[i]; });
   placeNumbers(board, numbers, rng);
+}
+
+function computeBounds(board) {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const v of board.vertices) {
+    minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
+    minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
+  }
+  board.bounds = { minX, maxX, minY, maxY };
+}
+
+/** Neue Felder in das bestehende Ecken-/Kanten-Netz einfügen (alte IDs bleiben unverändert, neue werden angehängt). */
+function extendGraph(board, fromIndex) {
+  const vmap = new Map(board.vertices.map((v) => [vKey(v), v.id]));
+  const emap = new Map(Object.entries(board.edgeIndex).map(([k, id]) => [k, id]));
+  for (let hi = fromIndex; hi < board.hexes.length; hi++) {
+    const h = board.hexes[hi];
+    const ids = [];
+    for (let k = 0; k < 6; k++) {
+      const p = hexCorner(h.x, h.y, k);
+      const key = vKey(p);
+      let id = vmap.get(key);
+      if (id === undefined) {
+        id = board.vertices.length;
+        vmap.set(key, id);
+        board.vertices.push({ id, x: p.x, y: p.y, hexes: [], adj: [], edges: [], port: null });
+      }
+      if (!board.vertices[id].hexes.includes(h.id)) board.vertices[id].hexes.push(h.id);
+      ids.push(id);
+    }
+    h.verts = ids;
+    for (let k = 0; k < 6; k++) {
+      const a = ids[k];
+      const b = ids[(k + 1) % 6];
+      const ek = a < b ? `${a}-${b}` : `${b}-${a}`;
+      let eid = emap.get(ek);
+      if (eid === undefined) {
+        eid = board.edges.length;
+        emap.set(ek, eid);
+        board.edges.push({ id: eid, a: Math.min(a, b), b: Math.max(a, b), hexes: [] });
+        board.vertices[a].adj.push(b);
+        board.vertices[b].adj.push(a);
+        board.vertices[a].edges.push(eid);
+        board.vertices[b].edges.push(eid);
+      }
+      board.edges[eid].hexes.push(h.id);
+    }
+  }
+  board.edgeIndex = Object.fromEntries(emap);
+}
+
+const hexDist = (q, r) => Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r));
+
+/**
+ * Eine neue Insel (Zeitalter): Mitte + Ring (7 Felder, auf großen Karten mehr), durch mindestens ein Meeresfeld vom Rest getrennt.
+ * Hat zwei Häfen (einen Kolonialhafen 2:1 und einen 3:1). Gibt die IDs der neuen Felder zurück.
+ */
+export function addIsland(board, rng, number = 1, extraRing = 0) {
+  const R = board.radius;
+  const cells = [[0, 0], ...HEX_DIRS];
+  const ring2 = [];
+  for (let i = 0; i < 6; i++) { // Ring 2 in Winkelreihenfolge: Ecken und Kantenmitten
+    const [a, b] = [HEX_DIRS[i], HEX_DIRS[(i + 1) % 6]];
+    ring2.push([a[0] * 2, a[1] * 2], [a[0] + b[0], a[1] + b[1]]);
+  }
+  for (let i = 0; i < extraRing; i++) cells.push(ring2[i]);
+  const existing = board.hexes.filter((h) => h.island).map((h) => ({ x: h.x, y: h.y }));
+  let center = null;
+  for (let D = R + 3 + (extraRing ? 1 : 0); D < R + 9 && !center; D++) {
+    let best = null;
+    for (let q = -D; q <= D; q++) {
+      for (let r = -D; r <= D; r++) {
+        if (hexDist(q, r) !== D) continue;
+        const spots = cells.map(([dq, dr]) => [q + dq, r + dr]);
+        const clash = spots.some(([sq, sr]) => board.hexIndex[`${sq},${sr}`] !== undefined
+          || HEX_DIRS.some(([a, b]) => board.hexIndex[`${sq + a},${sr + b}`] !== undefined));
+        if (clash) continue;
+        const c = hexCenter(q, r);
+        const far = existing.length ? Math.min(...existing.map((e) => Math.hypot(e.x - c.x, e.y - c.y))) : 0;
+        const score = far + rng() * 1.5;
+        if (!best || score > best.score) best = { q, r, score };
+      }
+    }
+    if (best) center = best;
+  }
+  if (!center) return [];
+  const from = board.hexes.length;
+  const kinds = shuffle([...RES, ...RES], rng);
+  const nums = shuffle(cells.length <= 7 ? [3, 4, 5, 6, 8, 9, 10] : [3, 4, 5, 6, 8, 9, 10, 11, 5, 9], rng);
+  const ids = [];
+  cells.forEach(([dq, dr], i) => {
+    const q = center.q + dq;
+    const r = center.r + dr;
+    const { x, y } = hexCenter(q, r);
+    const h = { id: board.hexes.length, q, r, x, y, type: kinds[i % kinds.length], num: nums[i % nums.length], fog: false, island: number };
+    board.hexes.push(h);
+    board.hexIndex[`${q},${r}`] = h.id;
+    ids.push(h.id);
+  });
+  // rote Zahlen nicht nebeneinander, gleiche Zahlen möglichst auch nicht
+  for (let tries = 0; tries < 200; tries++) {
+    let bad = 0;
+    for (const id of ids) for (const n of hexNeighbors(board, id)) {
+      if (!ids.includes(n) || n < id) continue;
+      const a = board.hexes[id].num; const b = board.hexes[n].num;
+      if (a === b || ((a === 6 || a === 8) && (b === 6 || b === 8))) bad++;
+    }
+    if (!bad) break;
+    const sh = shuffle(ids.map((id) => board.hexes[id].num), rng);
+    ids.forEach((id, i) => { board.hexes[id].num = sh[i]; });
+  }
+  extendGraph(board, from);
+  // Häfen: ein Kolonialhafen (2:1 für die Ware der Insel) und ein 3:1-Hafen an der Küste der Insel
+  const mine = new Set(ids);
+  const coast = board.edges.filter((e) => e.hexes.length === 1 && mine.has(e.hexes[0]));
+  const c0 = hexCenter(center.q, center.r);
+  const mid = (e) => ({ x: (board.vertices[e.a].x + board.vertices[e.b].x) / 2, y: (board.vertices[e.a].y + board.vertices[e.b].y) / 2 });
+  coast.sort((e1, e2) => Math.atan2(mid(e1).y - c0.y, mid(e1).x - c0.x) - Math.atan2(mid(e2).y - c0.y, mid(e2).x - c0.x));
+  const specialty = RES[Math.floor(rng() * RES.length)];
+  const types = [specialty, 'any'];
+  const used = new Set();
+  let idx = Math.floor(rng() * coast.length);
+  types.forEach((type, k) => {
+    let at = (idx + Math.floor((k * coast.length) / 2)) % coast.length;
+    for (let t = 0; t < coast.length; t++) {
+      const e = coast[at];
+      if (!used.has(e.a) && !used.has(e.b)) break;
+      at = (at + 1) % coast.length;
+    }
+    const e = coast[at];
+    if (used.has(e.a) || used.has(e.b)) return;
+    used.add(e.a); used.add(e.b);
+    const m = mid(e);
+    const len = Math.hypot(m.x - c0.x, m.y - c0.y) || 1;
+    board.vertices[e.a].port = type;
+    board.vertices[e.b].port = type;
+    board.ports.push({ id: board.ports.length, type, edge: e.id, verts: [e.a, e.b], x: m.x + ((m.x - c0.x) / len) * 0.76, y: m.y + ((m.y - c0.y) / len) * 0.76, ex: m.x, ey: m.y, island: number });
+  });
+  computeBounds(board);
+  return ids;
 }
 
 export function hexPips(h) {

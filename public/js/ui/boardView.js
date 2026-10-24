@@ -362,7 +362,12 @@ export class BoardView {
   render(game, ui = {}) {
     const board = game.s.board;
     const key = `${board.size}-${board.variant}-${board.hexes.length}-${board.bounds.maxX}`;
-    if (this.fitKey !== key) { this.board = board; this.fit(board); this.fitKey = key; this.flags.clear(); this.flagLayer.innerHTML = ''; this.flagsFresh = true; }
+    const baseKey = `${board.size}-${board.variant}`;
+    if (this.fitKey !== key) {
+      const grew = this.baseKey === baseKey && this.fitKey; // gleiche Partie, neue Insel: sanft herauszoomen statt springen
+      this.board = board; this.fit(board, !!grew); this.fitKey = key; this.baseKey = baseKey;
+      if (!grew) { this.flags.clear(); this.flagLayer.innerHTML = ''; this.flagsFresh = true; }
+    }
     this.board = board;
     const s = game.s;
     const out = [];

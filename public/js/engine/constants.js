@@ -15,7 +15,18 @@ export const COSTS = {
   settlement: { wood: 1, brick: 1, sheep: 1, wheat: 1 },
   city: { wheat: 2, ore: 3 },
   devcard: { sheep: 1, wheat: 1, ore: 1 },
+  colony: { wood: 1, brick: 1, sheep: 1, wheat: 1, ore: 1 }, // Kolonie auf einer neuen Insel: Siedlung + Schiff (1 Erz), ohne Straßenanschluss
 };
+
+/** Zeitalter (ab 20 Siegpunkten Ziel): so viel Prozent des Ziels muss der Führende erreichen. */
+export const ERA_STEPS = [0.3, 0.55, 0.8];
+export const ERA_MIN_VP = 20;
+export const ERA_INFO = [
+  null,
+  { name: 'Entdeckung', text: 'Eine neue Insel taucht auf! Gründe dort Kolonien und handle über den Kolonialhafen.' },
+  { name: 'Handelsmesse', text: 'Der Seehandel blüht: Die Bank tauscht für alle nur noch 3:1.' },
+  { name: 'Neue Welt', text: 'Eine zweite Insel taucht auf – noch mehr Platz für Kolonien.' },
+];
 
 // Spielfeldgrößen. `radius` = Anzahl der Hex-Ringe um die Mitte.
 export const SIZES = {
@@ -111,19 +122,22 @@ export const DEFAULT_SETTINGS = {
   eventCards: false, // Erweiterung: Ereigniskarten (Schutzbrief, Rückenwind, Marktprivileg, Dieb vertreiben, Geburtstag, Zollhaus)
   worldHarbor: false, // Erweiterung: ein einziger Welthafen, an dem alle Rohstoffe 2:1 getauscht werden
   decreeCard: false, // Erweiterung: Erlass-Karte – Zoll oder Strafe auf einen Rohstoff
+  eras: true, // Zeitalter: ab 20 Siegpunkten Ziel erscheinen neue Inseln (Kolonien) und neue Handelsregeln
 };
 
 /** Spielpläne der Bots (siehe bot.js). */
 export const STRATEGY_LABEL = { expand: 'Expansion', cities: 'Städtebau', harbor: 'Hafenhandel', army: 'Rittermacht' };
 
 /** Obergrenze für das Siegpunktziel. */
-export const MAX_TARGET_VP = 50;
+export const MAX_TARGET_VP = 100;
 
 /** Grobe Schätzung, bis zu welchem Siegpunktziel eine Partie auf dieser Karte realistisch endet (Bauplätze sind begrenzt). */
-export function realisticVP(sizeId, players) {
+export function realisticVP(sizeId, players, eras = false) {
   const size = SIZES[sizeId] || SIZES.small;
   const r = size.radius;
   const sites = (6 * r * r + 12 * r + 6) / 2; // Bauplätze mit Abstandsregel
   const perPlayer = (sites / Math.max(1, players)) * 2 * 0.85; // fast alles zu Städten ausgebaut
-  return Math.floor(perPlayer + 4 + (5 * size.factor) / Math.max(1, players));
+  const cap = Math.floor(perPlayer + 4 + (5 * size.factor) / Math.max(1, players));
+  if (!eras) return cap;
+  return cap + Math.floor((2 * 12 * 1.7) / Math.max(1, players)); // mit Zeitalter: zwei neue Inseln bieten zusätzliche Bauplätze
 }

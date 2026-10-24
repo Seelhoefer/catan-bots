@@ -157,6 +157,7 @@ export function renderMenu(root, {
   const RULE_INFO = {
     fog: 'Ein Teil der Insel ist unter Nebel verborgen. Sobald eine deiner Straßen an ein verdecktes Feld grenzt, wird es aufgedeckt – und du erhältst 1 Rohstoff davon. Gründen darfst du nur an Ecken ohne Nebel.',
     worldHarbor: 'Auf dem Brett gibt es genau einen goldenen Welthafen („2:1 ALLE“). Wer dort eine Siedlung oder Stadt hat, tauscht jeden Rohstoff 2:1 mit der Bank. Er ersetzt einen der normalen 3:1-Häfen, es gibt also nur diesen einen.',
+    eras: 'Bei langen Partien (ab 20 Siegpunkten) wird es dynamischer: Erreicht der Führende 30 % des Ziels, taucht eine neue Insel auf – dort gründest du Kolonien (Siedlung + 1 Erz, ohne Straßenanschluss) und handelst über den Kolonialhafen. Bei 55 % tauscht die Bank für alle nur noch 3:1 (Handelsmesse), bei 80 % erscheint eine zweite Insel. Bei kürzeren Partien passiert nichts davon.',
     decreeCard: 'Neue Entwicklungskarte „Erlass“: Du legst für eine Runde einen Zoll oder eine Strafe auf einen Rohstoff fest. Zoll: Gegner, die ihn erwürfeln, zahlen dir 1 Karte davon. Strafe: Sie erhalten 1 Karte weniger. Gilt, bis du wieder am Zug bist.',
     eventCards: 'Sechs zusätzliche Karten im Entwicklungsstapel, wie die Ereigniskarten bei Monopoly: Schutzbrief (einmal vom Dieb verschont – er darf dich nicht bestehlen oder du musst bei einer 7 nichts abwerfen), Rückenwind (nächster Wurf: jedes getroffene Feld bringt 1 Karte extra), Marktprivileg (bis Zugende tauschst du mit der Bank 2:1), Dieb vertreiben (der Räuber geht in die Wüste) und Geburtstag (jeder Gegner schenkt dir 1 Karte) und Zollhaus (du wählst eine Zahl: bis zu deinem nächsten Zug bringt dir jeder Wurf darauf 1 Karte je Rohstoffart des Wurfs).',
     antiBad: 'Erhältst du bei einem Wurf (außer einer 7) gar nichts, bekommst du 1 Anti-Pech-Marker. Hast du so viele Marker, wie du Siegpunkte hast, tauschst du sie gegen 1 Rohstoff deiner Wahl. So gleicht sich Pech aus.',
@@ -168,17 +169,17 @@ export function renderMenu(root, {
   let moreOpen = false;
 
   // Voreinstellungen: ein Tipp statt acht Schalter (Hick'sches Gesetz); die Auswahl bleibt danach frei änderbar
-  const OFF = { variant: 'classic', missions: false, remapCard: false, harvestCard: false, goldField: false, eventCards: false, worldHarbor: false, decreeCard: false, antiBad: false };
+  const OFF = { eras: false, variant: 'classic', missions: false, remapCard: false, harvestCard: false, goldField: false, eventCards: false, worldHarbor: false, decreeCard: false, antiBad: false };
   const PRESETS = [
     { id: 'classic', label: 'Klassisch', sub: 'Die reinen Regeln', set: { ...OFF } },
-    { id: 'explorer', label: 'Entdecker', sub: 'Nebel, Missionen, Wahlfeld', set: { ...OFF, variant: 'fog', missions: true, goldField: true, remapCard: true, harvestCard: true, antiBad: true } },
-    { id: 'all', label: 'Alles an', sub: 'Alle Erweiterungen', set: { variant: 'classic', missions: true, remapCard: true, harvestCard: true, goldField: true, eventCards: true, worldHarbor: true, decreeCard: true, antiBad: true } },
+    { id: 'explorer', label: 'Entdecker', sub: 'Nebel, Missionen, Wahlfeld', set: { ...OFF, eras: true, variant: 'fog', missions: true, goldField: true, remapCard: true, harvestCard: true, antiBad: true } },
+    { id: 'all', label: 'Alles an', sub: 'Alle Erweiterungen', set: { eras: true, variant: 'classic', missions: true, remapCard: true, harvestCard: true, goldField: true, eventCards: true, worldHarbor: true, decreeCard: true, antiBad: true } },
   ];
   const presetOn = (pr) => Object.entries(pr.set).every(([k, v]) => settings[k] === v);
-  const EXT_LABELS = [['variant', 'Nebel', (v) => v === 'fog'], ['worldHarbor', 'Welthafen'], ['decreeCard', 'Erlass'], ['eventCards', 'Ereigniskarten'], ['missions', 'Missionen'], ['antiBad', 'Anti-Pech'], ['remapCard', 'Weltenwandel'], ['harvestCard', 'Ernte'], ['goldField', 'Wahlfeld']];
+  const EXT_LABELS = [['variant', 'Nebel', (v) => v === 'fog'], ['worldHarbor', 'Welthafen'], ['eras', 'Zeitalter'], ['decreeCard', 'Erlass'], ['eventCards', 'Ereigniskarten'], ['missions', 'Missionen'], ['antiBad', 'Anti-Pech'], ['remapCard', 'Weltenwandel'], ['harvestCard', 'Ernte'], ['goldField', 'Wahlfeld']];
   const summaryText = () => {
     const n = settings.bots + 1 + friends();
-    const on = EXT_LABELS.filter(([k, , f]) => (f ? f(settings[k]) : settings[k])).length;
+    const on = EXT_LABELS.filter(([k, , f]) => (k === 'eras' && settings.targetVP < 20 ? false : f ? f(settings[k]) : settings[k])).length;
     return `${n} Spieler · ${SIZES[settings.size].label} · ${settings.targetVP} SP · ${on} Regeln aktiv`;
   };
 
@@ -254,7 +255,7 @@ export function renderMenu(root, {
     const hint = el('p', { class: 'mw-hint' });
     const num = el('b', { class: 'mw-vp-n' }, String(settings.targetVP));
     const updateHint = () => {
-      const cap = realisticVP(settings.size, settings.bots + 1 + friends());
+      const cap = realisticVP(settings.size, settings.bots + 1 + friends(), settings.eras && settings.targetVP >= 20);
       hint.textContent = settings.targetVP > cap + 2 ? `Auf dieser Insel realistisch bis ca. ${cap} SP` : '';
       hint.style.display = hint.textContent ? '' : 'none';
     };
@@ -268,6 +269,7 @@ export function renderMenu(root, {
     const points = sec('Siegpunkte', el('div', { class: 'mw-vp' }, el('span', { class: 'mw-vp-ico', html: ic('trophy') }), num), range, hint);
 
     const ext = sec('Erweiterungen', el('div', { class: 'mw-rules' },
+      sw('eras', 'Zeitalter', 'Ab 20 SP: neue Inseln, Kolonien und Handelsmesse', RULE_INFO.eras),
       sw('worldHarbor', 'Welthafen', 'Ein einziger Hafen, an dem alle Rohstoffe 2:1 getauscht werden', RULE_INFO.worldHarbor),
       sw('decreeCard', 'Erlass-Karte', 'Neue Karte: Zoll oder Strafe auf einen Rohstoff festlegen', RULE_INFO.decreeCard),
       sw('eventCards', 'Ereigniskarten', 'Schutzbrief, Rückenwind, Marktprivileg, Zollhaus …', RULE_INFO.eventCards),

@@ -517,7 +517,7 @@ test('Größte Rittermacht: Wechsel löst ein Award-Event aus und zählt +2 Sieg
   assert.equal(g.s.largestArmy.holder, 0);
 });
 
-test('Siegpunktziel bis 50: Spielstücke und Siegpunktkarten wachsen mit', () => {
+test('Siegpunktziel bis 100: Spielstücke und Siegpunktkarten wachsen mit', () => {
   const g50 = newGame({ size: 'huge', targetVP: 50 });
   const g10 = newGame({ size: 'huge', targetVP: 10 });
   assert.equal(g50.s.settings.targetVP, 50);
@@ -525,7 +525,8 @@ test('Siegpunktziel bis 50: Spielstücke und Siegpunktkarten wachsen mit', () =>
   assert.ok(g50.player(0).pieces.city > g10.player(0).pieces.city);
   const victory = (g) => g.s.devDeck.filter((t) => t === 'victory').length;
   assert.ok(victory(g50) > victory(g10));
-  assert.equal(newGame({ targetVP: 99 }).s.settings.targetVP, 50, 'mehr als 50 wird gekappt');
+  assert.equal(newGame({ targetVP: 99 }).s.settings.targetVP, 99);
+  assert.equal(newGame({ targetVP: 250 }).s.settings.targetVP, 100, 'mehr als 100 wird gekappt');
 });
 
 test('Patt: ohne Bauplätze und ohne Punktänderung gewinnt nach 30 Runden der Führende', () => {
@@ -898,4 +899,54 @@ test('Zollhaus: Zahl wählen, bis zum nächsten eigenen Zug 1 Karte je Rohstoffa
   g.endTurn(2);
   assert.equal(s.turn, 0);
   assert.deepEqual(s.levies, [], 'das Zollhaus endet, wenn der Aussteller wieder dran ist');
+});
+
+test('Zeitalter: neue Insel bei 30 %, Handelsmesse bei 55 %, zweite Insel bei 80 % des Ziels', () => {
+  const g = afterSetup({ targetVP: 40, eras: true }, 9);
+  const s = g.s;
+  const hexes0 = g.board.hexes.length;
+  g.checkEras();
+  assert.equal(s.era, 0);
+  s.players[1].missions = Array(12).fill('x'); // 12 öffentliche SP = 30 % von 40
+  g.checkEras();
+  assert.equal(s.era, 1);
+  assert.ok(g.board.hexes.length > hexes0, 'neue Insel');
+  assert.equal(s.islands.length, 1);
+  const island = new Set(s.islands[0]);
+  assert.ok(g.board.hexes.filter((h) => island.has(h.id)).every((h) => h.island === 1));
+  for (const id of island) for (const v of g.board.hexes[id].verts) assert.ok(g.board.vertices[v].hexes.every((h) => island.has(h)), 'Insel ist vom Festland getrennt');
+  assert.ok(g.board.ports.some((p) => p.island === 1), 'Kolonialhafen');
+  assert.equal(g.portRatio(0, 'wood'), 4);
+  s.players[1].missions = Array(22).fill('x');
+  g.checkEras();
+  assert.equal(s.era, 2);
+  assert.equal(g.portRatio(0, 'wood'), 3, 'Handelsmesse: Bank 3:1');
+  s.players[1].missions = Array(32).fill('x');
+  g.checkEras();
+  assert.equal(s.era, 3);
+  assert.equal(s.islands.length, 2);
+});
+
+test('Zeitalter: bei kleinem Ziel (unter 20 SP) keine Veränderung', () => {
+  const g = afterSetup({ targetVP: 10, eras: true }, 9);
+  g.s.players[1].missions = Array(9).fill('x');
+  g.checkEras();
+  assert.equal(g.s.era, 0);
+});
+
+test('Kolonie: auf neuer Insel ohne Straßenanschluss für Siedlung + 1 Erz, nur eine pro Insel', () => {
+  const g = afterSetup({ targetVP: 40, eras: true }, 9);
+  const s = g.s;
+  s.players[1].missions = Array(12).fill('x');
+  g.checkEras();
+  s.turn = 0; s.sub = 'actions';
+  const spots = g.legalColonySpots(0);
+  assert.ok(spots.length > 5);
+  s.players[0].hand = { wood: 1, brick: 1, sheep: 1, wheat: 1, ore: 0 };
+  assert.equal(g.build(0, 'colony', spots[0]).ok, false, 'ohne Erz nicht');
+  s.players[0].hand = { wood: 1, brick: 1, sheep: 1, wheat: 1, ore: 1 };
+  assert.equal(g.build(0, 'colony', spots[0]).ok, true);
+  assert.equal(s.buildings[spots[0]].colony, true);
+  assert.equal(g.legalColonySpots(0).length, 0, 'nur eine Kolonie je Insel (danach per Straße weiter)');
+  assert.ok(g.legalRoadSpots(0).some((e) => g.board.edges[e].a === spots[0] || g.board.edges[e].b === spots[0]), 'Straßen von der Kolonie aus');
 });

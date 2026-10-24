@@ -203,6 +203,10 @@ function topGoals(g, pi) {
       goals.push({ kind: 'settlement', id: vid, score: 9 + vertexValue(g, vid, pi, owned) / 3 + (traitOf(g, pi) === 'expander' ? 1.2 : 0) });
     }
   }
+  if (p.pieces.settlement > 0 && g.canAfford(pi, COSTS.colony) || (p.pieces.settlement > 0 && (s.islands || []).length)) {
+    // Kolonie auf einer neuen Insel: frischer Boden, Hafen und Felder ohne Konkurrenz
+    for (const vid of g.legalColonySpots(pi)) goals.push({ kind: 'colony', id: vid, score: 11 + vertexValue(g, vid, pi, owned) / 3 + (g.board.vertices[vid].port ? 1.2 : 0) });
+  }
   if (s.devDeck.length > 0) {
     const nearArmy = p.playedKnights + p.dev.filter((c) => c.type === 'knight').length >= 2 ? 1.5 : 0;
     const tr = traitOf(g, pi);

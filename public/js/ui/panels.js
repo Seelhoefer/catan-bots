@@ -1,6 +1,6 @@
 // HUD (Kopfzeile), Aktionsleiste, Missionen, Verlauf – als HTML-Strings.
 import {
-  RES, RES_INFO, COSTS, DEV_INFO, DEV_ORDER, PASSIVE_CARDS, STRATEGY_LABEL,
+  RES, RES_INFO, COSTS, DEV_INFO, DEV_ORDER, PASSIVE_CARDS, STRATEGY_LABEL, ERA_INFO,
 } from '../engine/constants.js';
 import { cardHTML } from './cards.js';
 import { missionById, missionDesc } from '../engine/missions.js';
@@ -128,6 +128,10 @@ function buildStatus(g, kind) {
     if (p.pieces.settlement <= 0) return 'Keine Siedlungen mehr übrig';
     if (!g.canAfford(HUMAN, COSTS.settlement)) return 'Dir fehlen Rohstoffe';
     if (!g.legalSettlementSpots(HUMAN).length) return 'Kein Platz (Straße nötig, Abstandsregel)';
+  } else if (kind === 'colony') {
+    if (p.pieces.settlement <= 0) return 'Keine Siedlungen mehr übrig';
+    if (!g.canAfford(HUMAN, COSTS.colony)) return 'Dir fehlen Holz, Lehm, Wolle, Getreide + Erz';
+    if (!g.legalColonySpots(HUMAN).length) return 'Auf jeder neuen Insel hast du schon eine Kolonie';
   } else if (kind === 'city') {
     if (p.pieces.city <= 0) return 'Keine Städte mehr übrig';
     if (!g.canAfford(HUMAN, COSTS.city)) return 'Dir fehlen 2 Getreide + 3 Erz';
@@ -144,7 +148,7 @@ function pieceIcon(g, kind) {
   if (!art.ok) return null;
   const cid = COLOR_ID[g.s.players[HUMAN].color] || 'blue';
   if (kind === 'road') return roadIconSVG(cid);
-  if (kind === 'settlement' || kind === 'city') return `<img class="tool-piece" src="${piece(cid, kind)}" alt="" draggable="false">`;
+  if (kind === 'settlement' || kind === 'city' || kind === 'colony') return `<img class="tool-piece" src="${piece(cid, kind === 'colony' ? 'settlement' : kind)}" alt="" draggable="false">`;
   if (kind === 'devcard') return '<span class="cardback"></span>';
   return null;
 }
@@ -154,9 +158,11 @@ const anyPlayable = (g) => DEV_ORDER.filter((t) => !PASSIVE_CARDS.has(t)).some((
 const BUILD_ITEMS = [ // von oben nach unten (die Straße liegt am nächsten am Knopf)
   ['devcard', 'Entwicklungskarte', 'card'],
   ['city', 'Stadt', 'city'],
+  ['colony', 'Kolonie (neue Insel)', 'anchor'],
   ['settlement', 'Siedlung', 'house'],
   ['road', 'Straße', 'road'],
 ];
+const buildItems = (g) => BUILD_ITEMS.filter(([k]) => k !== 'colony' || (g.s.islands || []).length > 0);
 
 function costChips(g, kind) {
   const hand = g.s.players[HUMAN].hand;
@@ -179,9 +185,9 @@ export function renderFab(g, mode, open) {
   const mineTurn = s.turn === HUMAN;
   if (!mineTurn) return ''; // bei fremden Zügen keine Bau-/Handelsknöpfe
   const canAct = mineTurn && s.sub === 'actions' && !(s.roadBuildingLeft > 0);
-  const anyReady = canAct && BUILD_ITEMS.some(([k]) => buildReady(g, k));
+  const anyReady = canAct && buildItems(g).some(([k]) => buildReady(g, k));
   const canBank = canAct && RES.some((r) => p.hand[r] >= g.portRatio(HUMAN, r));
-  const items = BUILD_ITEMS.map(([kind, label, icon]) => {
+  const items = buildItems(g).map(([kind, label, icon]) => {
     const reason = canAct ? buildStatus(g, kind) : 'Nicht dein Zug';
     return `<button class="fab-item ${!reason ? 'ready' : 'dis'} ${mode === kind ? 'on' : ''}" data-act="${kind === 'devcard' ? 'buy-dev' : `build-${kind}`}" ${reason ? 'data-disabled="1"' : ''} title="${esc(reason || label)}" aria-label="${esc(label)}">
       <span class="fi-ico">${pieceIcon(g, kind) || ic(icon)}</span>
@@ -205,7 +211,7 @@ export function renderNext(g) {
     return `<button class="seal skip" data-act="skip-roads" title="Straßenbau überspringen" aria-label="Straßenbau überspringen">${ic('close')}</button>`;
   }
   if (s.sub !== 'actions') return '';
-  const idle = !['road', 'settlement', 'city', 'devcard'].some((k) => !buildStatus(g, k));
+  const idle = !['road', 'settlement', 'city', 'devcard', ...((g.s.islands || []).length ? ['colony'] : [])].some((k) => !buildStatus(g, k));
   return `<button class="seal ${idle ? 'idle' : ''}" data-act="end-turn" title="Zug beenden" aria-label="Zug beenden"><span class="seal-ring"></span><span class="seal-core">${ic('arrow')}</span></button>`;
 }
 
@@ -252,8 +258,10 @@ export function renderDecrees(g) {
     const tip = `Zollhaus auf die ${l.num} (${mine ? 'du' : p.name}): Wer die ${l.num} würfelt, bringt ${mine ? 'dir' : p.name} 1 Karte je Rohstoffart des Wurfs – bis ${mine ? 'du' : p.name} wieder am Zug ${mine ? 'bist' : 'ist'}.`;
     return `<span class="dpill toll ${mine ? 'mine' : ''}" data-act="decree-info" data-by="${l.by}" title="${esc(tip)}" aria-label="${esc(tip)}">${ic('scroll', 'inline')}<b>Zollhaus</b><b class="dp-num">${l.num}</b><span class="dp-av">${avatarSVG(p.face, p.color, 20)}</span></span>`;
   });
-  if ((!list.length && !levies.length) || g.s.phase === 'setup') return '';
-  return levies.join('') + list.map((d) => {
+  const era = g.s.era || 0;
+  const eraPill = era ? `<span class="dpill era" data-act="decree-info" title="${esc(`Zeitalter ${era} – ${ERA_INFO[era].name}: ${ERA_INFO[era].text}`)}" aria-label="Zeitalter ${era}">${ic('globe', 'inline')}<b>Zeitalter ${era}</b></span>` : '';
+  if ((!list.length && !levies.length && !era) || g.s.phase === 'setup') return '';
+  return eraPill + levies.join('') + list.map((d) => {
     const p = g.s.players[d.by];
     const mine = d.by === HUMAN;
     const kind = d.kind === 'toll' ? 'Zoll' : 'Strafe';

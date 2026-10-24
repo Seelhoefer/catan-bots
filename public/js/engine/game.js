@@ -1,10 +1,10 @@
 // Regel-Engine: kompletter Spielzustand (JSON-serialisierbar) + alle Aktionen.
 
 import {
-  RES, RES_INFO, COSTS, SIZES, DEV_INFO, PASSIVE_CARDS, PLAYER_COLORS, BOT_ROSTER, HUMAN_FACES, DEFAULT_SETTINGS,
+  RES, RES_INFO, COSTS, ERA_STEPS, ERA_MIN_VP, ERA_INFO, SIZES, DEV_INFO, PASSIVE_CARDS, PLAYER_COLORS, BOT_ROSTER, HUMAN_FACES, DEFAULT_SETTINGS,
 } from './constants.js';
 import { makeRng, shuffle } from './rng.js';
-import { generateBoard, remapBoard } from './board.js';
+import { generateBoard, remapBoard, addIsland } from './board.js';
 import { MISSION_POOL, missionById, missionMax } from './missions.js';
 
 const ok = (extra = {}) => ({ ok: true, ...extra });
@@ -40,7 +40,7 @@ export class Game {
     const r = rng || makeRng(settings.seed);
     settings.humans = Math.max(1, Math.min(Math.floor(settings.humans) || 1, size.maxPlayers));
     settings.bots = Math.max(settings.humans >= 2 ? 0 : 1, Math.min(settings.bots, size.maxPlayers - settings.humans));
-    settings.targetVP = Math.max(4, Math.min(50, settings.targetVP));
+    settings.targetVP = Math.max(4, Math.min(100, settings.targetVP));
 
     const board = generateBoard(settings.size, settings.variant, r, { gold: settings.goldField, worldHarbor: settings.worldHarbor });
     const extra = size.sizeBonus + Math.ceil(Math.max(0, settings.targetVP - 10) / 2);
@@ -123,6 +123,8 @@ export class Game {
       longestRoad: { holder: null, len: 0 },
       largestArmy: { holder: null, count: 0 },
       missions,
+      era: 0, // Zeitalter (siehe checkEras)
+      islands: [], // neue Inseln: Feld-IDs je Insel
       levies: [], // aktive Zollhäuser: { by, num } – gelten bis der Aussteller wieder am Zug ist
       decrees: [], // aktive Erlasse: { by, res, kind: 'toll' | 'penalty' } – gelten bis der Aussteller wieder am Zug ist
       gold: {},
@@ -199,7 +201,7 @@ export class Game {
   tokenCost(pi) { return Math.max(1, this.vp(pi)); }
 
   portRatio(pi, res) {
-    let best = this.player(pi).fairTurn === this.s.turnNumber ? 2 : 4; // Marktprivileg: bis zum Ende des Zuges 2:1
+    let best = this.player(pi).fairTurn === this.s.turnNumber ? 2 : (this.s.era || 0) >= 2 ? 3 : 4; // Handelsmesse (Zeitalter 2): Bank 3:1 // Marktprivileg: bis zum Ende des Zuges 2:1
     for (const b of this.buildingsOf(pi)) {
       const port = this.board.vertices[b.vid].port;
       if (port === 'all') best = Math.min(best, 2);
@@ -241,6 +243,19 @@ export class Game {
       } else if (v.edges.some((e) => s.roads[e] === pi)) {
         out.push(v.id);
       }
+    }
+    return out;
+  }
+
+  /** Kolonien: freie Ecken auf einer neuen Insel, auf der man noch kein Gebäude hat (ohne Straßenanschluss). */
+  legalColonySpots(pi) {
+    const s = this.s;
+    const out = [];
+    const mine = this.buildingsOf(pi);
+    for (const ids of s.islands || []) {
+      const set = new Set(ids);
+      if (mine.some((b) => this.board.vertices[b.vid].hexes.some((h) => set.has(h)))) continue;
+      for (const v of this.board.vertices) if (v.hexes.some((h) => set.has(h)) && this.vertexFree(v.id)) out.push(v.id);
     }
     return out;
   }
@@ -645,6 +660,16 @@ export class Game {
       p.pieces.settlement--;
       this.log(`${p.name} baut eine Siedlung.`, pi);
       this.emit({ type: 'build', kind, id, pi });
+    } else if (kind === 'colony') {
+      if (s.sub !== 'actions') return fail('Würfle zuerst.');
+      if (p.pieces.settlement <= 0) return fail('Du hast keine Siedlungen mehr.');
+      if (!this.canAfford(pi, COSTS.colony)) return fail('Dir fehlen Rohstoffe (Holz, Lehm, Wolle, Getreide + Erz).');
+      if (!this.legalColonySpots(pi).includes(id)) return fail('Hier kann keine Kolonie gegründet werden.');
+      this.pay(pi, COSTS.colony);
+      s.buildings[id] = { owner: pi, type: 'settlement', colony: true };
+      p.pieces.settlement--;
+      this.log(`⚓ ${p.name} gründet eine Kolonie auf der neuen Insel.`, pi);
+      this.emit({ type: 'build', kind: 'settlement', id, pi, colony: true });
     } else if (kind === 'city') {
       if (s.sub !== 'actions') return fail('Würfle zuerst.');
       if (p.pieces.city <= 0) return fail('Du hast keine Städte mehr.');
@@ -1079,7 +1104,7 @@ export class Game {
     const sig = s.players.map((p) => this.vp(p.id)).join(',');
     if (!s.stall || s.stall.sig !== sig) { s.stall = { sig, since: s.turnNumber }; return; }
     if (s.turnNumber - s.stall.since < s.players.length * 30) return;
-    const canGrow = s.players.some((p) => (p.pieces.settlement > 0 && this.legalSettlementSpots(p.id).length > 0)
+    const canGrow = s.players.some((p) => (p.pieces.settlement > 0 && (this.legalSettlementSpots(p.id).length > 0 || this.legalColonySpots(p.id).length > 0))
       || (p.pieces.city > 0 && this.legalCitySpots(p.id).length > 0)
       || (s.devDeck.includes('victory') && this.canAfford(p.id, COSTS.devcard)));
     if (canGrow) { s.stall.since = s.turnNumber - s.players.length * 15; return; } // noch Luft: später erneut prüfen
@@ -1093,7 +1118,28 @@ export class Game {
   }
 
   // ---------------------------------------------------------------- Auswertung
+  /** Zeitalter: bei langen Partien (ab 20 SP) lösen Etappen des Führenden neue Regeln aus – neue Inseln und günstigerer Seehandel. */
+  checkEras() {
+    const s = this.s;
+    if (!s.settings.eras || s.settings.targetVP < ERA_MIN_VP || s.phase !== 'main') return;
+    s.era = s.era || 0;
+    if (!s.islands) s.islands = [];
+    const lead = Math.max(...s.players.map((p) => this.vp(p.id, true)));
+    while (s.era < ERA_STEPS.length && lead >= Math.ceil(s.settings.targetVP * ERA_STEPS[s.era])) {
+      s.era++;
+      let island = [];
+      if (s.era === 1 || s.era === 3) {
+        island = addIsland(this.board, this.rng, s.islands.length + 1, SIZES[s.settings.size].factor >= 2 ? 3 : 0);
+        if (island.length) s.islands.push(island);
+      }
+      const info = ERA_INFO[s.era];
+      this.log(`🌅 Zeitalter ${s.era} – ${info.name}: ${info.text}`);
+      this.emit({ type: 'era', era: s.era, island });
+    }
+  }
+
   afterAction() {
+    this.checkEras();
     this.updateLongestRoad();
     this.updateLargestArmy();
     this.checkMissions();
