@@ -207,10 +207,7 @@ Wird die letzte Entwicklungs-/Ereigniskarte gekauft, mischt das Spiel sofort ein
 Voreinstellungen oben („Klassisch“, „Entdecker“, „Alles an“) setzen alle Regeln mit einem Tipp, danach bleibt alles frei änderbar. „Du“ hat eine eigene Karte, am Desktop liegen die Einstellungen in zwei Spalten, unten zeigt eine Zeile die Zusammenfassung (Spieler · Insel · Siegpunkte · aktive Regeln) direkt über „Spiel starten“.
 
 ## 🖼️ Web-Assets (Grafikstil „Illustriert“, Desktop)
-Neue Felder, Häfen, Siedlungen/Städte, Rohstoffkarten und die fünf Entwicklungskarten liegen unter `public/assets/web/` und gelten für den Stil „Illustriert“ (Desktop-Standard; Handy-Mobil-Set, „Vektor“ und „Klassisch“ bleiben unverändert).
-- **Felder:** Namensschilder entfernt, der vom Schild verdeckte untere Rand ist aus dem Bild ergänzt (weich gespiegelt, Rahmen nachgezeichnet).
-- **Häfen:** Szene ohne Namenstafel, auf dem Brett größer gezeichnet.
-- **Siedlungen/Städte:** Rot, Blau, Grün aus dem Paket; Orange, Violett und Pink sind aus Gelb, Blau und Rot umgefärbt (das Paket hat nur 5 Farben, zwei davon – Gelb, Weiß – gibt es im Spiel nicht).
+Felder, Häfen, Siedlungen/Städte (6 Farben) und Rohstoffkarten sind wieder die ursprünglichen Bilder (`assets/hexbg`, `assets/art-v2`, `assets/illustrated`). Die neuen Karten liegen unter `public/assets/web/`.
 - **Karten:** Entwicklungskarten (Ritter, Siegpunkt, Straßenbau, Erfindung, Monopol) und Kartenrücken aus dem Paket, Ränder von Rand-Resten befreit. Die fünf Ereigniskarten und drei Missionskarten (Weltentdecker, Metropole, Goldregen) haben **neu gesetzten Text, der zu den Spielregeln passt** (Bildtext war falsch) – Bild und Rahmen aus dem Paket. Missionskarten erscheinen beim Erfüllen groß.
 - **Bots:** Mira, Cassian, Elara, Lyra, Valen, Aurelio (neue Porträts, Zuschnitt aus den Premium-Portraits). Die bisherigen Bots (Fritz, Greta, Otto, Lea, Amir) sind ersetzt.
 - **Hintergrund:** wieder das bisherige Meer. **Palette:** Deep Forest / Antique Brass / Parchment aus dem Paket.

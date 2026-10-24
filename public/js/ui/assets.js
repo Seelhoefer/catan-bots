@@ -8,14 +8,14 @@ const BASE = 'assets/illustrated/';
 export const COLOR_ID = Object.fromEntries(PLAYER_COLORS.map((c) => [c.hex, c.id]));
 
 const MOBILE = 'assets/mobile/';
-/** Web-Set (Illustriert): neue Felder, Häfen, Siedlungen/Städte in allen sechs Spielerfarben, Entwicklungskarten, Rohstoffkarten. */
+/** Web-Set (Illustriert): neue Entwicklungs-, Ereignis- und Missionskarten (Felder, Häfen, Figuren und Rohstoffkarten sind wieder die ursprünglichen Bilder). */
 const WEB = 'assets/web/';
 const WEB_CARDS = new Set(['knight', 'victory', 'roadbuilding', 'plenty', 'monopoly', 'shield', 'blessing', 'fair', 'exile', 'birthday']);
 const WEB_MISSIONS = new Set(['explorer', 'citybuilder', 'haul']);
 /** Neue Ereigniskarten im Mobil-Set (die anderen Karten bleiben wie sie sind). */
 const MOBILE_CARDS = new Set(['shield', 'blessing', 'fair', 'exile', 'birthday']);
 
-export const piece = (colorId, kind) => (styleId === 'mobile' ? `${MOBILE}pieces/${colorId}-${kind}.webp` : styleId === 'new' ? `${WEB}pieces/${colorId}-${kind}.webp` : `${BASE}pieces/${colorId}-${kind}.webp`);
+export const piece = (colorId, kind) => (styleId === 'mobile' ? `${MOBILE}pieces/${colorId}-${kind}.webp` : `${BASE}pieces/${colorId}-${kind}.webp`);
 export const cardImgSrc = (type) => (styleId === 'mobile' && MOBILE_CARDS.has(type) ? `${MOBILE}cards/${type}.webp` : styleId === 'new' && WEB_CARDS.has(type) ? `${WEB}cards/${type}.webp` : `assets/cards/${type}.webp`);
 /** Rohstoffkarte (Mobil-Set) für die Hand am Handy. */
 export const resCardImg = (res) => `${MOBILE}cards/res-${res}.webp`;
@@ -53,11 +53,9 @@ export const ART_STYLES = {
   new: {
     label: 'Illustriert',
     res: (r) => `assets/art-v2/resources/${r}.webp`,
-    harbor: (t) => `${WEB}harbors/${harborName(t)}.webp`,
-    world: `${WEB}harbors/world-harbor.webp`,
+    harbor: (t) => `assets/art-v2/harbors/${harborName(t)}.webp`,
     fog: 'assets/art-v2/fog/fog-hex.webp',
-    tile: (t) => `${WEB}tiles/${t}.webp`, // komplette Feld-Hintergründe (Zahl liegt mittig darauf, keine Icons nötig)
-    pieces: { settlement: { w: 256, h: 256, l: 14, r: 226, b: 249, target: 0.88 }, city: { w: 256, h: 256, l: 10, r: 238, b: 249, target: 1.0 } },
+    tile: (t) => `assets/hexbg/${t}.webp`, // komplette Feld-Hintergründe (Zahl liegt mittig darauf, keine Icons nötig)
   },
   vector: {
     label: 'Vektor',
@@ -119,8 +117,7 @@ const styleList = (id) => {
     ...(id === 'vector' ? ['any', 'wood', 'brick', 'sheep', 'wheat', 'ore'].map((t) => `assets/art-v2/harbors/${harborName(t)}.webp`) : []),
     ...(st.fog ? [st.fog] : []),
     ...(st.tile ? ['wood', 'brick', 'sheep', 'wheat', 'ore', 'desert', 'gold'].map(st.tile) : []),
-    ...(id === 'new' ? [ART_STYLES.new.world, ...PLAYER_COLORS.flatMap((c) => ['settlement', 'city'].map((k) => `${WEB}pieces/${c.id}-${k}.webp`)),
-      ...['wood', 'brick', 'sheep', 'wheat', 'ore'].map((r) => `${WEB}cards/res-${r}.webp`), ...[...WEB_CARDS].map((t) => `${WEB}cards/${t}.webp`), ...[...WEB_MISSIONS].map((t) => `${WEB}missions/${t}.webp`)] : []),
+    ...(id === 'new' ? [...[...WEB_CARDS].map((t) => `${WEB}cards/${t}.webp`), ...[...WEB_MISSIONS].map((t) => `${WEB}missions/${t}.webp`)] : []),
     ...(id === 'mobile' ? [`${MOBILE}robber/robber.webp`, ...PLAYER_COLORS.flatMap((c) => ['settlement', 'city'].map((k) => `${MOBILE}pieces/${c.id}-${k}.webp`)),
       ...['wood', 'brick', 'sheep', 'wheat', 'ore'].map(resCardImg), ...[...MOBILE_CARDS].map((t) => `${MOBILE}cards/${t}.webp`)] : []),
   ];

@@ -85,7 +85,13 @@ export class BoardView {
     const svg = this.svg;
     svg.addEventListener('wheel', (e) => {
       e.preventDefault();
-      this.zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 0.88 : 1.14);
+      // Zoom proportional zur Scrollstärke: Touchpads (viele kleine Impulse) laufen flüssig, Mausrad-Rasten zoomen in festen Schritten weich
+      const px = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
+      const notch = e.deltaMode === 0 && Math.abs(px) >= 50 && !e.ctrlKey;
+      if (notch) { this.zoomAt(e.clientX, e.clientY, px < 0 ? 0.88 : 1.14); return; }
+      const f = Math.min(1.25, Math.max(0.8, Math.exp(px * (e.ctrlKey ? 0.01 : 0.0022))));
+      this.stopZoom();
+      this.zoomAt(e.clientX, e.clientY, f, false);
     }, { passive: false });
 
     svg.addEventListener('pointerdown', (e) => {
@@ -463,12 +469,12 @@ export class BoardView {
     for (const p of board.ports) {
       if (p.type === 'all') { // Welthafen: goldene Marke, alle Rohstoffe 2:1
         out.push(`<g transform="translate(${p.x},${p.y})" class="port world"><circle r="0.45" cy="0.05" class="port-shadow"/>`
-          + `<image href="${worldHarborImg()}" x="${artStyle() === 'new' ? -0.68 : -0.5}" y="${artStyle() === 'new' ? -0.68 : -0.5}" width="${artStyle() === 'new' ? 1.36 : 1}" height="${artStyle() === 'new' ? 1.36 : 1}" class="port-img"/></g>`); // gleicher Aufbau wie die anderen Hafenkarten, nur etwas größer
+          + `<image href="${worldHarborImg()}" x="-0.5" y="-0.5" width="1" height="1" class="port-img"/></g>`); // gleicher Aufbau wie die anderen Hafenkarten, nur etwas größer
         continue;
       }
       const hb = art.ok ? harborImg(p.type) : null;
       if (hb) {
-        const hs = artStyle() === 'new' ? 1.3 : 0.94; // die Hafenszenen des Web-Sets brauchen mehr Platz, damit das Segel lesbar bleibt
+        const hs = 0.94;
         out.push(`<g transform="translate(${p.x},${p.y})" class="port${p.type === 'any' ? ' any' : ''}"><circle r="${(hs * 0.48).toFixed(3)}" cy="0.05" class="port-shadow"/><image href="${hb}" x="${(-hs / 2).toFixed(3)}" y="${(-hs / 2).toFixed(3)}" width="${hs}" height="${hs}" class="port-img"/></g>`);
         continue;
       }
@@ -509,7 +515,9 @@ export class BoardView {
     // Hervorhebungen (klickbar) – ruhig, mit Vorschau der Figur beim Darüberfahren
     const ghost = ui.ghost || {};
     const gcol = ghost.color || '#fff';
-    out.push(`<g class="hl" style="--ph:${(-(performance.now() % 2600)).toFixed(0)}ms">`);
+    // Pulse-Phase nur beim Start der Auswahl festlegen: bleibt der Inhalt gleich, wird das Brett nicht neu aufgebaut (kein Flackern)
+    if (!picking) this._ph = null; else if (this._ph == null) this._ph = -(performance.now() % 2600);
+    out.push(`<g class="hl" style="--ph:${(this._ph || 0).toFixed(0)}ms">`);
     if (ui.selected) {
       for (const id of ui.selected) {
         const v = board.vertices[id];
@@ -553,7 +561,11 @@ export class BoardView {
     }
     out.push('</g>');
 
-    this.world.innerHTML = out.join('');
+    const html = out.join('');
+    if (html !== this._worldHtml) { // unveränderte Szene nicht neu aufbauen: sonst laden alle Bilder neu und es flackert, besonders beim Zoomen
+      this._worldHtml = html;
+      this.world.innerHTML = html;
+    }
     this.svg.classList.toggle('picking', picking);
     this.svg.dataset.ghost = ghost.kind || '';
   }
